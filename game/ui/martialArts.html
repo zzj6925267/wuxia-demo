@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>武学系统</title>
+  <link rel="stylesheet" href="martialArts.css">
+</head>
+<body>
+  <div class="martial-arts-container">
+    <!-- 顶部标题和返回 -->
+    <div class="header">
+      <button class="back-btn" id="backBtn">← 返回</button>
+      <h1 class="title">武 学 系 统</h1>
+      <div class="exp-display">
+        <span>阅历：</span>
+        <span class="exp-value" id="playerExp">500</span>
+      </div>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="main-content">
+      <!-- 左侧：页签和武学列表 -->
+      <div class="left-panel">
+        <!-- 武学分类页签 -->
+        <div class="type-tabs">
+          <button class="type-tab active" data-type="武功">武功</button>
+          <button class="type-tab" data-type="内功">内功</button>
+          <button class="type-tab" data-type="轻功">轻功</button>
+        </div>
+
+        <!-- 武学列表 -->
+        <div class="martial-list" id="martialList">
+        </div>
+      </div>
+
+      <!-- 右侧：详情 -->
+      <div class="right-panel">
+        <!-- 当前无选中提示 -->
+        <div class="no-selection" id="noSelection">
+          <div class="no-selection-icon">📚</div>
+          <div class="no-selection-text">请选择武学</div>
+        </div>
+
+        <!-- 武学详情 -->
+        <div class="detail-panel" id="detailPanel" style="display: none;">
+          <!-- 武学头部 -->
+          <div class="detail-header">
+            <div class="martial-icon" id="detailIcon">⚔️</div>
+            <div class="martial-info">
+              <div class="martial-name" id="detailName">武学名称</div>
+              <div class="martial-meta">
+                <span class="rank-badge" id="detailRank">初阶</span>
+                <span class="school-badge" id="detailSchool">正阳派</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 描述 -->
+          <div class="detail-desc" id="detailDesc">武学描述</div>
+
+          <!-- 境界 -->
+          <div class="level-section">
+            <div class="level-header">
+              <span class="level-label">修为：</span>
+              <span class="level-value" id="detailLevel">第 1 重</span>
+            </div>
+            <div class="realm-container">
+              <div class="realm-box" id="realm1"></div>
+              <div class="realm-box" id="realm2"></div>
+              <div class="realm-box" id="realm3"></div>
+            </div>
+            <div class="practice-section">
+              <span>当前重已修炼：<span id="practiceTimes">0</span>/3</span>
+            </div>
+            <button class="practice-btn" id="practiceBtn">修炼 (消耗 50 阅历)</button>
+          </div>
+
+          <!-- 属性加成 -->
+          <div class="stats-section">
+            <h3>属性加成</h3>
+            <div class="stats-grid" id="detailStats">
+            </div>
+          </div>
+
+          <!-- 招式列表 -->
+          <div class="skills-section">
+            <h3>招式</h3>
+            <div class="skills-grid" id="detailSkills">
+            </div>
+          </div>
+
+          <!-- 装备按钮 -->
+          <div class="action-buttons">
+            <button class="equip-btn" id="equipBtn">激 发</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 引用脚本 -->
+  <script src="martialArtsData.js"></script>
+  <script src="martialArts.js"></script>
+</body>
+</html>

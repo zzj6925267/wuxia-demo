@@ -35,6 +35,7 @@
       <div class="map-nodes" id="worldMapNodes"></div>
       <div class="character-button-area">
         <button class="btn-character" id="btnCharacter" onclick="toggleCharacterPanel()">👤 角色</button>
+        <button class="btn-character" id="btnMartialArts" onclick="openMartialArts()">⚔️ 武学</button>
       </div>
     </div>
 
@@ -155,20 +156,20 @@
           <div class="char-skills">
             <h3>武学</h3>
             <div class="skills-row">
-              <div class="skill-item">
+              <div class="skill-item" id="skillSlot1" onclick="openMartialArts('武功')">
                 <span>⚔️</span>
                 <span id="charWeaponSkill">正阳基础剑式</span>
-                <span>3/10重</span>
+                <span class="skill-level">3/10重</span>
               </div>
-              <div class="skill-item">
+              <div class="skill-item" id="skillSlot2" onclick="openMartialArts('内功')">
                 <span>💨</span>
                 <span id="charInnerSkill">正阳吐纳诀</span>
-                <span>2/10重</span>
+                <span class="skill-level">2/10重</span>
               </div>
-              <div class="skill-item">
+              <div class="skill-item" id="skillSlot3" onclick="openMartialArts('轻功')">
                 <span>👟</span>
                 <span id="charLightSkill">踏云步</span>
-                <span>1/10重</span>
+                <span class="skill-level">1/10重</span>
               </div>
             </div>
           </div>

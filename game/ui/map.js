@@ -2,6 +2,16 @@
  * 地图UI组件
  */
 
+// 打开武学系统
+function openMartialArts(type) {
+  // 如果指定了type，通过URL传递
+  if (type) {
+    window.location.href = 'martialArts.html?type=' + encodeURIComponent(type);
+  } else {
+    window.location.href = 'martialArts.html';
+  }
+}
+
 // 当前正阳派位置（默认在门派入口）
 let currentZhengyangBuilding = 'menkou';
 
