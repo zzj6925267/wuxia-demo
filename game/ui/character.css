@@ -324,6 +324,7 @@ body {
 }
 
 .skill-slot:hover {
+  background: rgba(201, 162, 39, 0.15);
   border-color: #c9a227;
   transform: translateY(-3px);
 }
@@ -795,6 +796,67 @@ body {
   text-align: center;
   color: #999;
   padding: 40px;
+}
+
+/* 装备详情 tooltip */
+.equip-tooltip {
+  position: fixed;
+  background: rgba(20, 20, 30, 0.98);
+  padding: 20px;
+  border-radius: 12px;
+  max-width: 320px;
+  color: #fff;
+  font-size: 14px;
+  z-index: 2000;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  display: none;
+  border: 1px solid #444;
+}
+
+.equip-tooltip .tooltip-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.equip-tooltip .tooltip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #444;
+}
+
+.equip-tooltip .tooltip-name {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.equip-tooltip .tooltip-level {
+  color: #999;
+  font-size: 14px;
+}
+
+.equip-tooltip .tooltip-desc {
+  color: #ccc;
+  font-size: 13px;
+  line-height: 1.6;
+  margin-bottom: 15px;
+  padding: 10px;
+  background: rgba(61, 67, 69, 0.5);
+  border-radius: 6px;
+}
+
+.equip-tooltip .tooltip-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.equip-tooltip .tooltip-stat {
+  color: #4caf50;
+  font-size: 13px;
 }
 
 /* 响应式设计 */

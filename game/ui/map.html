@@ -98,11 +98,11 @@
           <div class="char-display">
             <!-- 左边装备 -->
             <div class="char-equip-left">
-              <div class="char-equip-slot" id="charWeaponSlot" onclick="showCharEquipment('weapon')">
+              <div class="char-equip-slot" id="charWeaponSlot" onclick="showCharEquipment('weapon')" onmouseenter="handleEquipHover(event, 'weapon')" onmouseleave="hideEquipTooltip()">
                 <span class="slot-icon">🗡️</span>
                 <span class="slot-name">武器</span>
               </div>
-              <div class="char-equip-slot" id="charArmorSlot" onclick="showCharEquipment('armor')">
+              <div class="char-equip-slot" id="charArmorSlot" onclick="showCharEquipment('armor')" onmouseenter="handleEquipHover(event, 'armor')" onmouseleave="hideEquipTooltip()">
                 <span class="slot-icon">🛡️</span>
                 <span class="slot-name">护甲</span>
               </div>
@@ -116,11 +116,11 @@
             
             <!-- 右边装备 -->
             <div class="char-equip-right">
-              <div class="char-equip-slot" id="charAccessorySlot" onclick="showCharEquipment('accessory')">
+              <div class="char-equip-slot" id="charAccessorySlot" onclick="showCharEquipment('accessory')" onmouseenter="handleEquipHover(event, 'accessory')" onmouseleave="hideEquipTooltip()">
                 <span class="slot-icon">💍</span>
                 <span class="slot-name">饰品</span>
               </div>
-              <div class="char-equip-slot" id="charShoesSlot" onclick="showCharEquipment('shoes')">
+              <div class="char-equip-slot" id="charShoesSlot" onclick="showCharEquipment('shoes')" onmouseenter="handleEquipHover(event, 'shoes')" onmouseleave="hideEquipTooltip()">
                 <span class="slot-icon">👢</span>
                 <span class="slot-name">鞋子</span>
               </div>
@@ -195,11 +195,11 @@
 
           <h3 class="stats-category-title">修为</h3>
           <div class="stats-grid">
-            <div class="stat-item"><span class="stat-icon">✊</span><span class="stat-name">拳脚</span><span class="stat-value" id="statFist">15</span></div>
-            <div class="stat-item"><span class="stat-icon">🗡️</span><span class="stat-name">剑术</span><span class="stat-value" id="statSword">45</span></div>
-            <div class="stat-item"><span class="stat-icon">🗡️</span><span class="stat-name">刀术</span><span class="stat-value" id="statBlade">10</span></div>
-            <div class="stat-item"><span class="stat-icon">👟</span><span class="stat-name">轻功</span><span class="stat-value" id="statLight">30</span></div>
-            <div class="stat-item"><span class="stat-icon">💨</span><span class="stat-name">内功</span><span class="stat-value" id="statInner">35</span></div>
+            <div class="stat-item"><span class="stat-icon">✊</span><span class="stat-name">拳脚</span><span class="stat-value"><span id="statFistBase">15</span><span id="statFistPreview" style="color:#4caf50;display:none;"></span></span></div>
+            <div class="stat-item"><span class="stat-icon">🗡️</span><span class="stat-name">剑术</span><span class="stat-value"><span id="statSwordBase">45</span><span id="statSwordPreview" style="color:#4caf50;display:none;"></span></span></div>
+            <div class="stat-item"><span class="stat-icon">🗡️</span><span class="stat-name">刀术</span><span class="stat-value"><span id="statBladeBase">10</span><span id="statBladePreview" style="color:#4caf50;display:none;"></span></span></div>
+            <div class="stat-item"><span class="stat-icon">👟</span><span class="stat-name">轻功</span><span class="stat-value"><span id="statLightBase">30</span><span id="statLightPreview" style="color:#4caf50;display:none;"></span></span></div>
+            <div class="stat-item"><span class="stat-icon">💨</span><span class="stat-name">内功</span><span class="stat-value"><span id="statInnerBase">35</span><span id="statInnerPreview" style="color:#4caf50;display:none;"></span></span></div>
           </div>
 
           <h3 class="stats-category-title">四维</h3>
@@ -293,6 +293,9 @@
     </div>
   </div>
 
+  <!-- 装备详情 tooltip -->
+  <div class="equip-tooltip" id="equipTooltip"></div>
+
   <!-- 正阳派小地图容器（默认隐藏） -->
   <div class="map-container" id="zhengyangMap" style="display: none;">
     <div class="map-header">
@@ -342,6 +345,7 @@
   <script src="../js/data/maps.js"></script>
   <script src="zhengyangMapData.js"></script>
   <script src="npcData.js"></script>
+  <script src="martialArtsData.js"></script>
   
   <!-- UI层 -->
   <script src="character.js"></script>

@@ -1,4 +1,126 @@
 // 角色系统数据
+
+// 武学数据副本
+const LOCAL_MARTIAL_ARTS = [
+  {
+    id: 1,
+    name: '正阳基础剑式',
+    type: '武功',
+    skillType: 'sword',
+    rank: '初阶',
+    school: '正阳派',
+    currentLevel: 3,
+    maxLevel: 10,
+    practiceTimes: 2,
+    equipped: true,
+    baseBonus: { sword: 5 },
+    stats: { attack: 25, hit: 10 },
+    skills: []
+  },
+  {
+    id: 2,
+    name: '流云剑法',
+    type: '武功',
+    skillType: 'sword',
+    rank: '中阶',
+    school: '正阳派',
+    currentLevel: 0,
+    maxLevel: 10,
+    practiceTimes: 0,
+    equipped: false,
+    baseBonus: { sword: 8 },
+    stats: { attack: 45, hit: 20, speed: 10 },
+    skills: []
+  },
+  {
+    id: 3,
+    name: '正阳吐纳诀',
+    type: '内功',
+    skillType: 'innerSkill',
+    rank: '初阶',
+    school: '正阳派',
+    currentLevel: 2,
+    maxLevel: 10,
+    practiceTimes: 1,
+    equipped: true,
+    baseBonus: { innerSkill: 5 },
+    stats: { hp: 50, defense: 10, innerSkill: 15 },
+    skills: []
+  },
+  {
+    id: 4,
+    name: '紫霞心经',
+    type: '内功',
+    skillType: 'innerSkill',
+    rank: '高阶',
+    school: '正阳派',
+    currentLevel: 0,
+    maxLevel: 10,
+    practiceTimes: 0,
+    equipped: false,
+    baseBonus: { innerSkill: 10 },
+    stats: { hp: 150, defense: 30, parry: 20, innerSkill: 40 },
+    skills: []
+  },
+  {
+    id: 5,
+    name: '踏云步',
+    type: '轻功',
+    skillType: 'lightSkill',
+    rank: '初阶',
+    school: '正阳派',
+    currentLevel: 1,
+    maxLevel: 10,
+    practiceTimes: 0,
+    equipped: true,
+    baseBonus: { lightSkill: 5 },
+    stats: { speed: 30, dodge: 15 },
+    skills: []
+  }
+];
+
+// 从localStorage读取武学数据并计算加成
+function getLocalMartialBonuses() {
+  const bonuses = {
+    fist: 0,
+    sword: 0,
+    blade: 0,
+    lightSkill: 0,
+    innerSkill: 0
+  };
+
+  let arts = LOCAL_MARTIAL_ARTS;
+  
+  // 获取当前角色ID
+  const currentCharId = getCurrentCharacter().id;
+  
+  // 尝试从localStorage加载（多角色支持）
+  try {
+    const saved = localStorage.getItem('playerMartialArts_' + currentCharId);
+    if (saved) {
+      arts = JSON.parse(saved);
+    }
+  } catch (e) {
+    arts = LOCAL_MARTIAL_ARTS;
+  }
+
+  arts.forEach(martial => {
+    if (martial.baseBonus && martial.currentLevel > 0) {
+      Object.entries(martial.baseBonus).forEach(([key, val]) => {
+        if (bonuses.hasOwnProperty(key)) {
+          bonuses[key] += val * martial.currentLevel;
+        }
+      });
+    }
+  });
+
+  Object.keys(bonuses).forEach(key => {
+    if (bonuses[key] > 100) bonuses[key] = 100;
+  });
+
+  return bonuses;
+}
+
 const characters = [
   {
     id: 1,
@@ -161,41 +283,94 @@ function toggleCharacterPanel() {
 }
 
 /**
+ * 从武学系统获取当前激活的武学
+ */
+function getEquippedMartialArts() {
+  const charId = getCurrentCharacter().id;
+  const saved = localStorage.getItem('playerMartialArts_' + charId);
+  let martialArts = MARTIAL_ARTS_LIBRARY;
+  
+  if (saved) {
+    martialArts = JSON.parse(saved);
+  }
+  
+  const equipped = {
+    武功: null,
+    内功: null,
+    轻功: null
+  };
+  
+  martialArts.forEach(m => {
+    if (m.equipped) {
+      equipped[m.type] = m;
+    }
+  });
+  
+  return equipped;
+}
+
+/**
  * 加载角色数据
  */
 function loadCharacterData() {
   const char = getCurrentCharacter();
-  
+
+  // 调试输出
+  if (typeof calculateMartialArtsBonuses === 'function') {
+    console.log('武学加成:', calculateMartialArtsBonuses());
+  } else {
+    console.log('找不到calculateMartialArtsBonuses函数');
+  }
+
   CHAR_UI.charAvatar.textContent = char.icon;
-  CHAR_UI.charLevel.textContent = `Lv.${char.level}`;
+  CHAR_UI.charLevel.textContent = 'Lv.' + char.level;
   CHAR_UI.charName.textContent = char.name;
   CHAR_UI.charGender.textContent = char.gender;
   CHAR_UI.charFaction.textContent = char.faction;
   CHAR_UI.charPower.textContent = char.power;
   CHAR_UI.charDesc.textContent = char.description;
   
-  // 更新健康条和tooltip
+  // 更新健康条
   const healthPct = (char.health.current / char.health.max) * 100;
   CHAR_UI.charHealthBar.style.width = `${healthPct}%`;
-  document.getElementById('healthTooltip').textContent = `${char.health.current}/${char.health.max}，剩余${char.health.max - char.health.current}`;
   
-  // 更新经验条和tooltip
+  // 更新经验条
   const expPct = (char.exp.current / char.exp.max) * 100;
   CHAR_UI.charExpBar.style.width = `${expPct}%`;
-  document.getElementById('expTooltip').textContent = `${char.exp.current}/${char.exp.max}，还需${char.exp.max - char.exp.current}升级`;
   
-  // 更新百分比显示
-  document.querySelector('.status-row:nth-child(1) span:last-child').textContent = `${Math.round(healthPct)}%`;
-  document.querySelector('.status-row:nth-child(2) span:last-child').textContent = `${Math.round(expPct)}%`;
+  // 从武学系统获取激活的武学并更新显示
+  const equippedMartialArts = getEquippedMartialArts();
   
-  CHAR_UI.charWeaponSkill.textContent = char.skills.weapon.name;
-  document.querySelector('.skill-item:nth-child(1) span:last-child').textContent = `${char.skills.weapon.level}/${char.skills.weapon.maxLevel}重`;
+  // 更新武功
+  if (equippedMartialArts['武功']) {
+    // 支持两套 ID
+    const weaponSkillEl = document.getElementById('weaponSkill') || document.getElementById('charWeaponSkill');
+    if (weaponSkillEl) weaponSkillEl.textContent = equippedMartialArts['武功'].name;
+    
+    const weaponLevelEl = document.querySelector('#skillWeapon .skill-level') || document.querySelector('#skillSlot1 .skill-level');
+    if (weaponLevelEl) weaponLevelEl.textContent = 
+      equippedMartialArts['武功'].currentLevel + '/' + equippedMartialArts['武功'].maxLevel + '重';
+  }
   
-  CHAR_UI.charInnerSkill.textContent = char.skills.inner.name;
-  document.querySelector('.skill-item:nth-child(2) span:last-child').textContent = `${char.skills.inner.level}/${char.skills.inner.maxLevel}重`;
+  // 更新内功
+  if (equippedMartialArts['内功']) {
+    const innerSkillEl = document.getElementById('innerSkill') || document.getElementById('charInnerSkill');
+    if (innerSkillEl) innerSkillEl.textContent = equippedMartialArts['内功'].name;
+    
+    const innerLevelEl = document.querySelector('#skillInner .skill-level') || document.querySelector('#skillSlot2 .skill-level');
+    if (innerLevelEl) innerLevelEl.textContent = 
+      equippedMartialArts['内功'].currentLevel + '/' + equippedMartialArts['内功'].maxLevel + '重';
+  }
   
-  CHAR_UI.charLightSkill.textContent = char.skills.light.name;
-  document.querySelector('.skill-item:nth-child(3) span:last-child').textContent = `${char.skills.light.level}/${char.skills.light.maxLevel}重`;
+  // 更新轻功
+  if (equippedMartialArts['轻功']) {
+    const lightSkillEl = document.getElementById('lightSkill') || document.getElementById('charLightSkill');
+    if (lightSkillEl) lightSkillEl.textContent = equippedMartialArts['轻功'].name;
+    
+    const lightLevelEl = document.querySelector('#skillLight .skill-level') || document.querySelector('#skillSlot3 .skill-level');
+    if (lightLevelEl) lightLevelEl.textContent = 
+      equippedMartialArts['轻功'].currentLevel + '/' + equippedMartialArts['轻功'].maxLevel + '重';
+  }
   
   // 更新基础属性（原始值）
   document.getElementById('statAttackBase').textContent = char.stats.attack;
@@ -206,11 +381,25 @@ function loadCharacterData() {
   document.getElementById('statParryBase').textContent = char.stats.parry;
   document.getElementById('statSpeedBase').textContent = char.stats.speed;
   
-  CHAR_UI.statFist.textContent = char.stats.fist;
-  CHAR_UI.statSword.textContent = char.stats.sword;
-  CHAR_UI.statBlade.textContent = char.stats.blade;
-  CHAR_UI.statLight.textContent = char.stats.lightSkill;
-  CHAR_UI.statInner.textContent = char.stats.innerSkill;
+  // 计算武学修为加成
+  const martialBonuses = getLocalMartialBonuses();
+  console.log('武学加成', martialBonuses);
+
+  // 显示修为（基础值+武学加成，直接显示最终值）
+  document.getElementById('statFistBase').textContent = char.stats.fist + martialBonuses.fist;
+  document.getElementById('statFistPreview').style.display = 'none';
+  
+  document.getElementById('statSwordBase').textContent = char.stats.sword + martialBonuses.sword;
+  document.getElementById('statSwordPreview').style.display = 'none';
+  
+  document.getElementById('statBladeBase').textContent = char.stats.blade + martialBonuses.blade;
+  document.getElementById('statBladePreview').style.display = 'none';
+  
+  document.getElementById('statLightBase').textContent = char.stats.lightSkill + martialBonuses.lightSkill;
+  document.getElementById('statLightPreview').style.display = 'none';
+  
+  document.getElementById('statInnerBase').textContent = char.stats.innerSkill + martialBonuses.innerSkill;
+  document.getElementById('statInnerPreview').style.display = 'none';
   CHAR_UI.remainingPoints.textContent = char.remainingPoints;
   
   // 重置预览状态
@@ -313,14 +502,102 @@ function updateCharEquipSlots() {
         <span class="slot-level">Lv.${equip.level}</span>
       `;
       slot.classList.remove('empty');
+      
+      // 添加悬停事件
+      slot.onmouseenter = (e) => showEquipTooltip(e, equip, type);
+      slot.onmouseleave = hideEquipTooltip;
     } else {
       slot.innerHTML = `
         <span class="slot-add">+</span>
         <span class="slot-name">${getTypeName(type)}</span>
       `;
       slot.classList.add('empty');
+      
+      // 移除悬停事件
+      slot.onmouseenter = null;
+      slot.onmouseleave = null;
     }
   });
+}
+
+/**
+ * 获取装备类型图标
+ */
+function getEquipTypeIcon(type) {
+  const icons = {
+    weapon: '🗡️',
+    armor: '🛡️',
+    accessory: '💍',
+    shoes: '👢'
+  };
+  return icons[type] || '📦';
+}
+
+/**
+ * 显示装备详情 tooltip
+ */
+function showEquipTooltip(e, equip, type) {
+  const tooltip = document.getElementById('equipTooltip');
+  
+  if (!tooltip) {
+    return;
+  }
+  
+  const statsHtml = renderEquipStats(equip);
+  
+  tooltip.innerHTML = `
+    <div class="tooltip-icon">${getEquipTypeIcon(type)}</div>
+    <div class="tooltip-header">
+      <span class="tooltip-name" style="color: ${getRarityColor(equip.rarity)}">${equip.name}</span>
+      <span class="tooltip-level">Lv.${equip.level}</span>
+    </div>
+    <div class="tooltip-desc">${equip.desc}</div>
+    <div class="tooltip-stats">${statsHtml}</div>
+  `;
+  
+  // 强制显示
+  tooltip.style.display = 'block';
+  tooltip.style.zIndex = '9999';
+  tooltip.style.visibility = 'visible';
+  
+  // 定位 tooltip，避免超出屏幕 - 使用 currentTarget 确保是装备槽元素
+  const target = e.currentTarget || e.target;
+  const rect = target.getBoundingClientRect();
+  let left = rect.right + 15;
+  let top = rect.top;
+  
+  // 如果右边超出屏幕，显示在左边
+  if (left + 320 > window.innerWidth) {
+    left = rect.left - 335;
+  }
+  
+  // 如果下边超出屏幕，向上调整
+  if (top + tooltip.offsetHeight > window.innerHeight) {
+    top = window.innerHeight - tooltip.offsetHeight - 20;
+  }
+  
+  tooltip.style.left = left + 'px';
+  tooltip.style.top = top + 'px';
+}
+
+/**
+ * 处理装备槽悬停
+ */
+function handleEquipHover(e, type) {
+  const char = getCurrentCharacter();
+  const equip = char.equipped[type];
+  
+  if (equip) {
+    showEquipTooltip(e, equip, type);
+  }
+}
+
+/**
+ * 隐藏装备详情 tooltip
+ */
+function hideEquipTooltip() {
+  const tooltip = document.getElementById('equipTooltip');
+  tooltip.style.display = 'none';
 }
 
 function getRarityIcon(rarity) {
@@ -351,6 +628,13 @@ function getRarityColor(rarity) {
     'orange': '#ff9800'
   };
   return colors[rarity] || '#9e9e9e';
+}
+
+/**
+ * 打开武学系统
+ */
+function openMartialArts(type) {
+  window.location.href = 'martialArts.html?type=' + encodeURIComponent(type);
 }
 
 /**
@@ -385,8 +669,12 @@ function showCharEquipment(type) {
   if (invItems.length > 0) {
     invItems.forEach(item => {
       const canEquip = item.level <= char.level;
+      const itemJson = encodeURIComponent(JSON.stringify(item));
       html += `
-        <div class="equip-item ${!canEquip ? 'disabled' : ''}" onclick="${canEquip ? `equipCharItem('${type}', ${item.id})` : ''}">
+        <div class="equip-item ${!canEquip ? 'disabled' : ''}" 
+             onclick="${canEquip ? `equipCharItem('${type}', ${item.id})` : ''}"
+             onmouseenter="showModalEquipTooltip(event, '${itemJson}', '${type}')"
+             onmouseleave="hideEquipTooltip()">
           <span style="color: ${getRarityColor(item.rarity)}">${item.name}</span>
           <span>Lv.${item.level}</span>
           ${!canEquip ? '<span class="level-warn">等级不足</span>' : ''}
@@ -402,16 +690,24 @@ function showCharEquipment(type) {
   CHAR_UI.charModal.style.display = 'flex';
 }
 
+/**
+ * 显示弹窗中装备的 tooltip
+ */
+function showModalEquipTooltip(e, itemJson, type) {
+  const item = JSON.parse(decodeURIComponent(itemJson));
+  showEquipTooltip(e, item, type);
+}
+
 function renderEquipStats(equip) {
   let stats = '';
-  if (equip.attack) stats += `<div>攻击 +${equip.attack}</div>`;
-  if (equip.defense) stats += `<div>防御 +${equip.defense}</div>`;
-  if (equip.hp) stats += `<div>气血 +${equip.hp}</div>`;
-  if (equip.hit) stats += `<div>命中 +${equip.hit}</div>`;
-  if (equip.dodge) stats += `<div>闪躲 +${equip.dodge}</div>`;
-  if (equip.parry) stats += `<div>招架 +${equip.parry}</div>`;
-  if (equip.speed) stats += `<div>速度 +${equip.speed}</div>`;
-  if (equip.innerSkill) stats += `<div>内功 +${equip.innerSkill}</div>`;
+  if (equip.attack) stats += `<div class="tooltip-stat">攻击 +${equip.attack}</div>`;
+  if (equip.defense) stats += `<div class="tooltip-stat">防御 +${equip.defense}</div>`;
+  if (equip.hp) stats += `<div class="tooltip-stat">气血 +${equip.hp}</div>`;
+  if (equip.hit) stats += `<div class="tooltip-stat">命中 +${equip.hit}</div>`;
+  if (equip.dodge) stats += `<div class="tooltip-stat">闪躲 +${equip.dodge}</div>`;
+  if (equip.parry) stats += `<div class="tooltip-stat">招架 +${equip.parry}</div>`;
+  if (equip.speed) stats += `<div class="tooltip-stat">速度 +${equip.speed}</div>`;
+  if (equip.innerSkill) stats += `<div class="tooltip-stat">内功 +${equip.innerSkill}</div>`;
   return stats;
 }
 

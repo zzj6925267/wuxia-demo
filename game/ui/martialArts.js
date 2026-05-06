@@ -23,6 +23,9 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initPage() {
+  // 渲染角色选择器
+  renderCharacterList();
+
   // 读取URL参数
   const urlParams = new URLSearchParams(window.location.search);
   const typeParam = urlParams.get('type');
@@ -59,6 +62,26 @@ function initPage() {
   createSkillTooltip();
 }
 
+// 渲染角色选择器
+function renderCharacterList() {
+  const container = document.getElementById('martialCharacterList');
+  container.innerHTML = martialCharacters.map((char, index) => `
+    <div class="martial-char-item ${char.id === currentMartialCharacterId ? 'active' : ''}" 
+         onclick="handleCharacterSwitch(${char.id})">
+      <span class="martial-char-icon">${char.icon}</span>
+      <span class="martial-char-name">${char.name}</span>
+    </div>
+  `).join('');
+}
+
+// 处理角色切换
+function handleCharacterSwitch(charId) {
+  if (charId === currentMartialCharacterId) return;
+  if (typeof switchMartialCharacter === 'function') {
+    switchMartialCharacter(charId);
+  }
+}
+
 // 切换类型
 function switchType(type) {
   currentType = type;
@@ -83,10 +106,17 @@ function switchType(type) {
 // 渲染武学列表
 function renderList() {
   const list = document.getElementById('martialList');
-  const items = playerMartialArts.filter(m => m.type === currentType);
+  let items = playerMartialArts.filter(m => m.type === currentType);
+
+  // 排序：已装备的排前面
+  items.sort((a, b) => {
+    if (a.equipped && !b.equipped) return -1;
+    if (!a.equipped && b.equipped) return 1;
+    return 0;
+  });
 
   if (items.length === 0) {
-    list.innerHTML = '<div class="no-selection" style="padding:40px;text-align:center;"><div style="font-size:40px;margin-bottom:10px;">📚</div><div style="color:#666;">暂无武学</div></div>';
+    list.innerHTML = '<div style="padding:40px;text-align:center;color:#666;"><div style="font-size:40px;margin-bottom:10px;">📚</div><div>暂无武学</div></div>';
     return;
   }
 
@@ -169,7 +199,7 @@ function renderDetail() {
 
   // 属性加成
   const statsHtml = Object.entries(m.stats).map(([key, val]) => {
-    const labels = { attack: '攻击', hp: '气血', hit: '命中', dodge: '闪躲', 
+    const labels = { attack: '攻击', hp: '气血', hit: '命中', dodge: '躲闪', 
                      defense: '防御', parry: '招架', speed: '速度', 
                      innerSkill: '内功', lightSkill: '轻功', sword: '剑术',
                      fist: '拳脚', blade: '刀术' };
@@ -205,7 +235,7 @@ function renderDetail() {
     equipBtn.classList.add('unequip');
     equipBtn.onclick = () => unequipMartialArt();
   } else {
-    equipBtn.textContent = '激 发';
+    equipBtn.textContent = '激 活';
     equipBtn.classList.remove('unequip');
     equipBtn.onclick = () => equipMartialArt();
   }
@@ -247,6 +277,9 @@ function practiceMartialArt() {
   // 重新渲染
   renderDetail();
   renderList();
+  
+  // 保存数据
+  if (typeof saveMartialData === 'function') saveMartialData();
 }
 
 // 装备武学
@@ -263,6 +296,9 @@ function equipMartialArt() {
   
   renderDetail();
   renderList();
+  
+  // 保存数据
+  if (typeof saveMartialData === 'function') saveMartialData();
 }
 
 // 卸载武学
@@ -271,6 +307,9 @@ function unequipMartialArt() {
   
   renderDetail();
   renderList();
+  
+  // 保存数据
+  if (typeof saveMartialData === 'function') saveMartialData();
 }
 
 // 创建技能tooltip

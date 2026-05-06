@@ -41,11 +41,11 @@
           <div class="character-display">
             <!-- 左边装备槽 -->
             <div class="equipment-left">
-              <div class="slot weapon" id="weaponSlot" onclick="showEquipment('weapon')">
+              <div class="slot weapon" id="weaponSlot" onclick="showCharEquipment('weapon')" onmouseenter="handleEquipHover(event, 'weapon')" onmouseleave="hideEquipTooltip()">
                 <span class="slot-icon">🗡️</span>
                 <span class="slot-name">武器</span>
               </div>
-              <div class="slot armor" id="armorSlot" onclick="showEquipment('armor')">
+              <div class="slot armor" id="armorSlot" onclick="showCharEquipment('armor')" onmouseenter="handleEquipHover(event, 'armor')" onmouseleave="hideEquipTooltip()">
                 <span class="slot-icon">🛡️</span>
                 <span class="slot-name">护甲</span>
               </div>
@@ -59,11 +59,11 @@
             
             <!-- 右边装备槽 -->
             <div class="equipment-right">
-              <div class="slot accessory" id="accessorySlot" onclick="showEquipment('accessory')">
+              <div class="slot accessory" id="accessorySlot" onclick="showCharEquipment('accessory')" onmouseenter="handleEquipHover(event, 'accessory')" onmouseleave="hideEquipTooltip()">
                 <span class="slot-icon">💍</span>
                 <span class="slot-name">饰品</span>
               </div>
-              <div class="slot shoes" id="shoesSlot" onclick="showEquipment('shoes')">
+              <div class="slot shoes" id="shoesSlot" onclick="showCharEquipment('shoes')" onmouseenter="handleEquipHover(event, 'shoes')" onmouseleave="hideEquipTooltip()">
                 <span class="slot-icon">👢</span>
                 <span class="slot-name">鞋子</span>
               </div>
@@ -112,17 +112,17 @@
           <div class="skills-section">
             <div class="section-title">武学</div>
             <div class="skills-slots">
-              <div class="skill-slot" id="skillWeapon" onclick="showSkill('weapon')">
+              <div class="skill-slot" id="skillWeapon" onclick="openMartialArts('武功')">
                 <div class="skill-icon">⚔️</div>
                 <div class="skill-name" id="weaponSkill">正阳基础剑式</div>
                 <div class="skill-level">1/10重</div>
               </div>
-              <div class="skill-slot" id="skillInner" onclick="showSkill('inner')">
+              <div class="skill-slot" id="skillInner" onclick="openMartialArts('内功')">
                 <div class="skill-icon">💨</div>
                 <div class="skill-name" id="innerSkill">正阳吐纳诀</div>
                 <div class="skill-level">1/10重</div>
               </div>
-              <div class="skill-slot" id="skillLight" onclick="showSkill('light')">
+              <div class="skill-slot" id="skillLight" onclick="openMartialArts('轻功')">
                 <div class="skill-icon">👟</div>
                 <div class="skill-name" id="lightSkill">踏云步</div>
                 <div class="skill-level">1/10重</div>
@@ -294,6 +294,9 @@
       </div>
     </div>
   </div>
+
+  <!-- 装备详情 tooltip -->
+  <div class="equip-tooltip" id="equipTooltip"></div>
 
   <script src="character.js"></script>
 </body>

@@ -851,6 +851,15 @@ body {
   padding: 15px;
   text-align: center;
   min-width: 140px;
+  cursor: pointer;
+  transition: all 0.3s;
+  border: 2px solid transparent;
+}
+
+.skill-item:hover {
+  background: rgba(201, 162, 39, 0.15);
+  border-color: #c9a227;
+  transform: translateY(-2px);
 }
 
 .skill-item span:first-child {
