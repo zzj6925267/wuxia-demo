@@ -1,0 +1,56 @@
+[gd_scene format=3 uid="uid://c6k81h2af0s1q"]
+
+[ext_resource type="Script" uid="uid://dlj3b607pkocr" path="res://Scripts/dialog_scene.gd" id="1_lubf1"]
+[ext_resource type="Script" uid="uid://b7c1e9f52a4d" path="res://Scripts/dialog_loader.gd" id="2_9a7b3"]
+
+[node name="Control" type="Control" unique_id=1137943333]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_lubf1")
+
+[node name="Background" type="ColorRect" parent="." unique_id=1542762421]
+layout_mode = 0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.8)
+
+[node name="DialogBox" type="PanelContainer" parent="." unique_id=876741667]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.1
+anchor_right = 0.9
+anchor_bottom = 1.0
+offset_top = -150.0
+offset_bottom = 20.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="DialogBox" unique_id=1234567890]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 10.0
+margin_top = 10.0
+margin_right = -10.0
+margin_bottom = -10.0
+
+[node name="SpeakerLabel" type="Label" parent="DialogBox/VBoxContainer" unique_id=1586581951]
+layout_mode = 2
+custom_font_size = 24
+add_color_override("font_color", Color(1, 0.9, 0.7, 1))
+
+[node name="TextLabel" type="RichTextLabel" parent="DialogBox/VBoxContainer" unique_id=1417619779]
+layout_mode = 2
+custom_font_size = 20
+fit_content = true
+
+[node name="ChoicesContainer" type="VBoxContainer" parent="DialogBox/VBoxContainer" unique_id=2088462180]
+layout_mode = 2
+alignment = 1
+
+[node name="DialogLoader" type="Node" parent="." unique_id=9876543210]
+script = ExtResource("2_9a7b3")

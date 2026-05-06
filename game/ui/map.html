@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>江湖舆图</title>
+  <link rel="stylesheet" href="map.css">
+</head>
+<body>
+  <!-- 大地图容器 -->
+  <div class="map-container" id="worldMap">
+    <div class="map-header">
+      <h1 class="map-title">江湖舆图</h1>
+      <p class="map-subtitle">点击相邻地点移动</p>
+    </div>
+
+    <div class="map-area">
+      <svg class="map-lines" viewBox="0 0 800 720" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#c9a227" />
+            <stop offset="50%" stop-color="#f4d03f" />
+            <stop offset="100%" stop-color="#c9a227" />
+          </linearGradient>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+      </svg>
+      <div class="map-nodes" id="worldMapNodes"></div>
+      <div class="character-button-area">
+        <button class="btn-character" id="btnCharacter" onclick="toggleCharacterPanel()">👤 角色</button>
+      </div>
+    </div>
+
+    <div class="location-panel">
+      <div class="panel-header">
+        <span class="location-icon" id="locationIcon">🏠</span>
+        <h2 class="location-name" id="locationName">悦来客栈</h2>
+      </div>
+      <p class="location-description" id="locationDesc">江湖中最有名的客栈...</p>
+      <div class="location-status" id="locationStatus">
+        <span class="status-tag safe">安全区域</span>
+      </div>
+      <div class="location-actions">
+        <button class="btn-action btn-explore" id="btnExplore">探索此地</button>
+        <button class="btn-action btn-rest" id="btnRest">休息恢复</button>
+        <button class="btn-action btn-leave" id="btnLeave">离开地图</button>
+      </div>
+    </div>
+
+    <div class="travel-overlay" id="travelOverlay" style="display: none;">
+      <div class="travel-content">
+        <div class="travel-icon">🚶</div>
+        <p class="travel-text" id="travelText">正在前往...</p>
+        <div class="travel-progress">
+          <div class="travel-bar"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 角色面板（默认隐藏） -->
+  <div class="character-panel" id="characterPanel" style="display: none;">
+    <div class="character-container">
+      <div class="character-header">
+        <h2 class="character-title">👤 角色系统</h2>
+        <button class="close-character-btn" onclick="toggleCharacterPanel()">×</button>
+      </div>
+
+      <div class="character-main">
+        <!-- 页签切换 -->
+        <div class="char-tabs">
+          <button class="char-tab-btn active" onclick="switchCharTab('info')">信息</button>
+          <button class="char-tab-btn" onclick="switchCharTab('stats')">属性</button>
+        </div>
+
+        <!-- 信息页签 -->
+        <div class="char-tab-content" id="charInfoTab">
+          <!-- 角色列表 -->
+          <div class="char-list">
+            <div class="char-item active" onclick="switchCharacter(0)">
+              <span class="char-item-icon">👨‍🦰</span>
+              <span class="char-item-name">少侠</span>
+            </div>
+            <div class="char-item" onclick="switchCharacter(1)">
+              <span class="char-item-icon">👧</span>
+              <span class="char-item-name">苏瑶</span>
+            </div>
+          </div>
+
+          <div class="char-display">
+            <!-- 左边装备 -->
+            <div class="char-equip-left">
+              <div class="char-equip-slot" id="charWeaponSlot" onclick="showCharEquipment('weapon')">
+                <span class="slot-icon">🗡️</span>
+                <span class="slot-name">武器</span>
+              </div>
+              <div class="char-equip-slot" id="charArmorSlot" onclick="showCharEquipment('armor')">
+                <span class="slot-icon">🛡️</span>
+                <span class="slot-name">护甲</span>
+              </div>
+            </div>
+            
+            <!-- 中间头像 -->
+            <div class="char-avatar">
+              <div class="char-icon" id="charAvatar">👨‍🦰</div>
+              <div class="char-level" id="charLevel">Lv.10</div>
+            </div>
+            
+            <!-- 右边装备 -->
+            <div class="char-equip-right">
+              <div class="char-equip-slot" id="charAccessorySlot" onclick="showCharEquipment('accessory')">
+                <span class="slot-icon">💍</span>
+                <span class="slot-name">饰品</span>
+              </div>
+              <div class="char-equip-slot" id="charShoesSlot" onclick="showCharEquipment('shoes')">
+                <span class="slot-icon">👢</span>
+                <span class="slot-name">鞋子</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="char-info">
+            <div class="info-row"><span>姓名</span><span id="charName">少侠</span></div>
+            <div class="info-row"><span>性别</span><span id="charGender">男</span></div>
+            <div class="info-row"><span>势力</span><span id="charFaction">正阳派</span></div>
+            <div class="info-row"><span>战力</span><span class="highlight" id="charPower">580</span></div>
+          </div>
+
+          <div class="char-status">
+            <div class="status-row">
+              <span>状态</span>
+              <div class="status-bar-container">
+                <div class="status-bar health" id="charHealthBar"></div>
+              </div>
+              <span>100%</span>
+            </div>
+            <div class="status-row">
+              <span>经验</span>
+              <div class="status-bar-container">
+                <div class="status-bar exp" id="charExpBar"></div>
+              </div>
+              <span>45%</span>
+            </div>
+          </div>
+
+          <div class="char-skills">
+            <h3>武学</h3>
+            <div class="skills-row">
+              <div class="skill-item">
+                <span>⚔️</span>
+                <span id="charWeaponSkill">正阳基础剑式</span>
+                <span>3/10重</span>
+              </div>
+              <div class="skill-item">
+                <span>💨</span>
+                <span id="charInnerSkill">正阳吐纳诀</span>
+                <span>2/10重</span>
+              </div>
+              <div class="skill-item">
+                <span>👟</span>
+                <span id="charLightSkill">踏云步</span>
+                <span>1/10重</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="char-desc">
+            <h3>人物介绍</h3>
+            <p id="charDesc">初入江湖的少年侠客，心怀侠义，立志成为一代大侠。</p>
+          </div>
+        </div>
+
+        <!-- 属性页签 -->
+        <div class="char-tab-content" id="charStatsTab" style="display: none;">
+          <div class="stats-grid">
+            <div class="stat-item"><span class="stat-icon">⚔️</span><span class="stat-name">攻击</span><span class="stat-value" id="statAttack">85</span></div>
+            <div class="stat-item"><span class="stat-icon">❤️</span><span class="stat-name">气血</span><span class="stat-value" id="statHp">420</span></div>
+            <div class="stat-item"><span class="stat-icon">🎯</span><span class="stat-name">命中</span><span class="stat-value" id="statHit">95</span></div>
+            <div class="stat-item"><span class="stat-icon">💨</span><span class="stat-name">闪躲</span><span class="stat-value" id="statDodge">45</span></div>
+            <div class="stat-item"><span class="stat-icon">🛡️</span><span class="stat-name">防御</span><span class="stat-value" id="statDefense">52</span></div>
+            <div class="stat-item"><span class="stat-icon">🤝</span><span class="stat-name">招架</span><span class="stat-value" id="statParry">38</span></div>
+            <div class="stat-item"><span class="stat-icon">⚡</span><span class="stat-name">速度</span><span class="stat-value" id="statSpeed">72</span></div>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-item"><span class="stat-icon">✊</span><span class="stat-name">拳脚</span><span class="stat-value" id="statFist">15</span></div>
+            <div class="stat-item"><span class="stat-icon">🗡️</span><span class="stat-name">剑术</span><span class="stat-value" id="statSword">45</span></div>
+            <div class="stat-item"><span class="stat-icon">🗡️</span><span class="stat-name">刀术</span><span class="stat-value" id="statBlade">10</span></div>
+            <div class="stat-item"><span class="stat-icon">👟</span><span class="stat-name">轻功</span><span class="stat-value" id="statLight">30</span></div>
+            <div class="stat-item"><span class="stat-icon">💨</span><span class="stat-name">内功</span><span class="stat-value" id="statInner">35</span></div>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-item">
+              <span class="stat-icon">💪</span>
+              <span class="stat-name">臂力</span>
+              <span class="stat-value" id="statStrength">12</span>
+              <button class="add-point-btn" onclick="addCharPoint('strength')">+</button>
+            </div>
+            <div class="stat-item">
+              <span class="stat-icon">🦶</span>
+              <span class="stat-name">身法</span>
+              <span class="stat-value" id="statAgility">10</span>
+              <button class="add-point-btn" onclick="addCharPoint('agility')">+</button>
+            </div>
+            <div class="stat-item">
+              <span class="stat-icon">🦴</span>
+              <span class="stat-name">根骨</span>
+              <span class="stat-value" id="statBone">9</span>
+              <button class="add-point-btn" onclick="addCharPoint('bone')">+</button>
+            </div>
+            <div class="stat-item">
+              <span class="stat-icon">🧘</span>
+              <span class="stat-name">内息</span>
+              <span class="stat-value" id="statQi">11</span>
+              <button class="add-point-btn" onclick="addCharPoint('qi')">+</button>
+            </div>
+          </div>
+
+          <div class="remaining-points">
+            剩余属性点：<span class="highlight" id="remainingPoints">3</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 装备弹窗 -->
+  <div class="char-modal" id="charModal" style="display: none;">
+    <div class="char-modal-content">
+      <div class="char-modal-header">
+        <h3 id="modalTitle">选择装备</h3>
+        <button class="close-modal-btn" onclick="closeCharModal()">×</button>
+      </div>
+      <div class="char-modal-body" id="charModalBody"></div>
+    </div>
+  </div>
+
+  <!-- 正阳派小地图容器（默认隐藏） -->
+  <div class="map-container" id="zhengyangMap" style="display: none;">
+    <div class="map-header">
+      <h1 class="map-title">正阳派</h1>
+      <p class="map-subtitle">门派地图</p>
+    </div>
+
+    <div class="map-area zhengyang-map">
+      <svg class="map-lines" viewBox="0 0 900 650">
+        <defs>
+          <linearGradient id="zhengyangLineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#c9a227" />
+            <stop offset="50%" stop-color="#f4d03f" />
+            <stop offset="100%" stop-color="#c9a227" />
+          </linearGradient>
+        </defs>
+      </svg>
+      <div class="map-nodes" id="zhengyangMapNodes"></div>
+    </div>
+
+    <div class="location-panel">
+      <div class="panel-header">
+        <span class="location-icon" id="zhengyangLocationIcon">🏰</span>
+        <h2 class="location-name" id="zhengyangLocationName">正阳主殿</h2>
+      </div>
+      <p class="location-description" id="zhengyangLocationDesc">以玄玉为基、紫檀木为梁...</p>
+      
+      <div class="npc-section" id="npcSection" style="display: none;">
+        <h3 class="npc-title">👥 此地NPC</h3>
+        <div class="npc-list" id="npcList"></div>
+      </div>
+      
+      <div class="dialogue-section" id="dialoguePanel" style="display: none;">
+        <div class="dialogue-content">
+          <div class="dialogue-speaker">
+            <span class="dialogue-npc-icon" id="dialogueNpcIcon"></span>
+            <span class="dialogue-npc-name" id="dialogueNpcName"></span>
+          </div>
+          <div class="dialogue-text" id="dialogueText"></div>
+          <div class="dialogue-options" id="dialogueOptions"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 数据层 -->
+  <script src="../js/data/maps.js"></script>
+  <script src="zhengyangMapData.js"></script>
+  <script src="npcData.js"></script>
+  
+  <!-- UI层 -->
+  <script src="character.js"></script>
+  <script src="map.js"></script>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const mapData = {
+        locations: MAP_LOCATIONS,
+        connections: ALL_CONNECTIONS
+      };
+      
+      const playerData = {
+        name: '少侠',
+        level: 1,
+        hp: 100,
+        maxHp: 100,
+        mp: 50,
+        maxMp: 50,
+        gold: 50,
+        currentLocation: 'yuelai_inn'
+      };
+      
+      initMapUI(mapData, playerData);
+    });
+  </script>
+</body>
+</html>

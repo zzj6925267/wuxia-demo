@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>正阳派 - 门派地图</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Microsoft YaHei', 'SimHei', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+      min-height: 100vh;
+      overflow-y: auto;
+    }
+    .map-container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    .map-header {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .map-title {
+      font-size: 28px;
+      color: #f4d03f;
+      text-shadow: 0 0 10px rgba(244, 208, 63, 0.5);
+    }
+    .map-subtitle {
+      font-size: 14px;
+      color: #999;
+    }
+    .back-btn {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      padding: 8px 20px;
+      background: linear-gradient(145deg, #607d8b, #546e7a);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .back-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(96, 125, 139, 0.4);
+    }
+    .map-area {
+      position: relative;
+      width: 100%;
+      height: 600px;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 12px;
+      border: 2px solid #c9a227;
+      overflow: hidden;
+    }
+    .map-area::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-image: 
+        linear-gradient(rgba(201, 162, 39, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(201, 162, 39, 0.03) 1px, transparent 1px);
+      background-size: 30px 30px;
+    }
+    .map-lines {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+    .map-lines line {
+      stroke: #c9a227;
+      stroke-width: 2;
+    }
+    .map-nodes {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+    }
+    .location-node {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .location-node:hover {
+      transform: translate(-50%, -50%) scale(1.05);
+    }
+    .location-node.current .node-inner {
+      box-shadow: 0 0 15px rgba(76, 175, 80, 0.8);
+      border-color: #4CAF50;
+      background: linear-gradient(145deg, #388e3c, #2e7d32);
+    }
+    .location-node.available .node-inner {
+      box-shadow: 0 0 8px rgba(244, 208, 63, 0.6);
+    }
+    .location-node.unavailable {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .node-inner {
+      width: 90px;
+      padding: 8px;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: linear-gradient(145deg, #2d2d44, #1a1a2e);
+      border: 2px solid #c9a227;
+      transition: all 0.3s ease;
+    }
+    .node-icon {
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+    .node-name {
+      font-size: 11px;
+      color: #fff;
+      text-align: center;
+    }
+    .node-status {
+      font-size: 8px;
+      color: #999;
+    }
+    .location-panel {
+      background: rgba(26, 26, 46, 0.9);
+      border-radius: 12px;
+      border: 1px solid #c9a227;
+      padding: 20px;
+      width: 100%;
+    }
+    .panel-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .location-icon {
+      font-size: 28px;
+    }
+    .location-name {
+      font-size: 22px;
+      color: #f4d03f;
+    }
+    .location-description {
+      font-size: 14px;
+      color: #aaa;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="map-container">
+    <div class="map-header">
+      <button class="back-btn" onclick="goBack()">← 返回大地图</button>
+      <h1 class="map-title">正阳派</h1>
+      <p class="map-subtitle">门派地图</p>
+    </div>
+
+    <div class="map-area">
+      <svg class="map-lines" viewBox="0 0 1000 550">
+        <defs>
+          <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#c9a227" />
+            <stop offset="50%" stop-color="#f4d03f" />
+            <stop offset="100%" stop-color="#c9a227" />
+          </linearGradient>
+        </defs>
+      </svg>
+      <div class="map-nodes" id="mapNodes"></div>
+    </div>
+
+    <div class="location-panel" id="locationPanel">
+      <div class="panel-header">
+        <span class="location-icon" id="locationIcon">🏰</span>
+        <h2 class="location-name" id="locationName">正阳主殿</h2>
+      </div>
+      <p class="location-description" id="locationDesc">以玄玉为基、紫檀木为梁，殿顶刻满纯阳符文，正午阳光洒下时，符文会映出金色光纹，自带正气威压。</p>
+    </div>
+  </div>
+
+  <script>
+    const BUILDINGS = {
+      zhengyang_hall: { id: 'zhengyang_hall', name: '正阳主殿', icon: '🏰', x: 500, y: 200, connections: ['wangjian_peak', 'yifeng_xuan', 'chengxin_tang', 'chunyang_ping'], desc: '门派大典、掌门议事、接待重要正道访客的核心场所。以玄玉为基、紫檀木为梁，殿顶刻满纯阳符文，正午阳光洒下时，符文会映出金色光纹，自带正气威压；殿中悬挂开山祖师手书的「正心为剑」匾额。' },
+      wangjian_peak: { id: 'wangjian_peak', name: '望剑峰', icon: '⛰️', x: 500, y: 50, connections: ['zhengyang_hall'], desc: '正阳派的禁地，历代掌门闭关突破的地方。峰顶常年被阳气笼罩，是练纯阳剑法的绝佳之地，峰下有历代掌门的衣冠冢。' },
+      yifeng_xuan: { id: 'yifeng_xuan', name: '逸风轩', icon: '🏡', x: 280, y: 200, connections: ['zhengyang_hall', 'chunyang_ping'], desc: '李逸的私人居所，也是他日常闭关、练剑的地方。没有奢华装饰，就是一间带小院的木屋，院里有个石桌、一把剑架，墙上挂着他和其他正派掌门的书信，还有几坛他爱喝的烈酒。' },
+      chengxin_tang: { id: 'chengxin_tang', name: '澄心堂', icon: '🏛️', x: 720, y: 200, connections: ['zhengyang_hall'], desc: '长老议事、处理弟子奖惩、宣讲门规的场所。堂内只有长桌和木凳，墙上刻着李逸亲自修订的门规：「不欺弱、不附邪、不滥杀、不藏私」。' },
+      chunyang_ping: { id: 'chunyang_ping', name: '纯阳剑坪', icon: '⚔️', x: 400, y: 350, connections: ['zhengyang_hall', 'yifeng_xuan', 'gui_zhen_lou', 'ningyang_bieyuan', 'cuifeng_fang'], desc: '门派弟子练剑的核心场所。位于正阳峰前的开阔平地，青石板被历代弟子的剑痕磨得光滑如镜；坪边立着十数块「剑痕碑」，刻着李逸和历代掌门的剑招心得。' },
+      gui_zhen_lou: { id: 'gui_zhen_lou', name: '归真藏经楼', icon: '📚', x: 600, y: 350, connections: ['chunyang_ping', 'huichun_tang'], desc: '存放门派武学典籍、剑谱和江湖正道秘闻的地方。楼分三层：一层放外门弟子可借阅的基础剑法，二层放内门弟子的进阶剑谱，三层藏着镇派的《纯阳剑谱》全本和开山祖师手札。' },
+      ningyang_bieyuan: { id: 'ningyang_bieyuan', name: '凝阳别院', icon: '🏠', x: 250, y: 450, connections: ['chunyang_ping', 'suxin_zhai'], desc: '内门弟子的居所，也是核心弟子闭关的地方。都是带小院的竹屋，每个院子里都有一个小剑台，方便弟子日常练剑。' },
+      cuifeng_fang: { id: 'cuifeng_fang', name: '淬锋坊', icon: '⚒️', x: 400, y: 480, connections: ['chunyang_ping', 'xijian_chi'], desc: '打造、修复门派佩剑的铸剑坊，也是正阳派的兵器库。坊里用「纯阳真火」铸剑，铸出的剑自带正气，能克制血刀门的毒器。' },
+      huichun_tang: { id: 'huichun_tang', name: '回春堂', icon: '💊', x: 700, y: 450, connections: ['gui_zhen_lou'], desc: '门派的医馆，由懂医术的长老坐诊，给弟子疗伤，也会救济山下百姓。堂里常备「纯阳正气丹」，能压制阴邪毒素。' },
+      suxin_zhai: { id: 'suxin_zhai', name: '素心斋', icon: '🍚', x: 200, y: 520, connections: ['ningyang_bieyuan'], desc: '门派的食堂，弟子、长老、掌门都在这里吃饭。以素食为主，也会给练剑辛苦的弟子准备肉食。' },
+      xijian_chi: { id: 'xijian_chi', name: '洗剑池', icon: '🏊', x: 500, y: 530, connections: ['cuifeng_fang'], desc: '山间的天然泉水池，弟子练剑后会在这里洗剑，据说能洗去剑上的戾气，也能洗去心中的杂念。池水常年清澈，带着淡淡的阳气。' }
+    };
+
+    const CONNECTIONS = [
+      ['zhengyang_hall', 'wangjian_peak'],
+      ['zhengyang_hall', 'yifeng_xuan'],
+      ['zhengyang_hall', 'chengxin_tang'],
+      ['zhengyang_hall', 'chunyang_ping'],
+      ['chunyang_ping', 'yifeng_xuan'],
+      ['chunyang_ping', 'gui_zhen_lou'],
+      ['chunyang_ping', 'ningyang_bieyuan'],
+      ['chunyang_ping', 'cuifeng_fang'],
+      ['gui_zhen_lou', 'huichun_tang'],
+      ['ningyang_bieyuan', 'suxin_zhai'],
+      ['cuifeng_fang', 'xijian_chi']
+    ];
+
+    let currentBuilding = 'zhengyang_hall';
+
+    function init() {
+      renderMap();
+      updatePanel();
+    }
+
+    function renderMap() {
+      const mapNodes = document.getElementById('mapNodes');
+      const mapLines = document.querySelector('.map-lines');
+      
+      mapNodes.innerHTML = '';
+      mapLines.innerHTML = `<defs><linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#c9a227" /><stop offset="50%" stop-color="#f4d03f" /><stop offset="100%" stop-color="#c9a227" /></linearGradient></defs>`;
+
+      const current = BUILDINGS[currentBuilding];
+      const adjacentIds = current.connections;
+
+      CONNECTIONS.forEach(([fromId, toId]) => {
+        const from = BUILDINGS[fromId];
+        const to = BUILDINGS[toId];
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', from.x);
+        line.setAttribute('y1', from.y);
+        line.setAttribute('x2', to.x);
+        line.setAttribute('y2', to.y);
+        line.setAttribute('stroke', 'url(#lineGrad)');
+        line.setAttribute('stroke-width', '2');
+        
+        const isConnected = (fromId === currentBuilding || toId === currentBuilding);
+        line.setAttribute('opacity', isConnected ? '1' : '0.5');
+        
+        mapLines.appendChild(line);
+      });
+
+      Object.values(BUILDINGS).forEach(building => {
+        const isCurrent = building.id === currentBuilding;
+        const isAvailable = adjacentIds.includes(building.id);
+        
+        const node = document.createElement('div');
+        node.className = `location-node ${isCurrent ? 'current' : ''} ${isAvailable ? 'available' : 'unavailable'}`;
+        node.style.left = `${building.x}px`;
+        node.style.top = `${building.y}px`;
+        
+        node.innerHTML = `
+          <div class="node-inner">
+            <span class="node-icon">${building.icon}</span>
+            <span class="node-name">${building.name}</span>
+            <span class="node-status">${isCurrent ? '当前所在' : isAvailable ? '可前往' : '需经相邻'}</span>
+          </div>
+        `;
+
+        if (isAvailable && !isCurrent) {
+          node.addEventListener('click', () => travelTo(building.id));
+        }
+        
+        mapNodes.appendChild(node);
+      });
+    }
+
+    function travelTo(buildingId) {
+      currentBuilding = buildingId;
+      renderMap();
+      updatePanel();
+    }
+
+    function updatePanel() {
+      const building = BUILDINGS[currentBuilding];
+      document.getElementById('locationIcon').textContent = building.icon;
+      document.getElementById('locationName').textContent = building.name;
+      document.getElementById('locationDesc').textContent = building.desc;
+    }
+
+    function goBack() {
+      window.close();
+    }
+
+    init();
+  </script>
+</body>
+</html>

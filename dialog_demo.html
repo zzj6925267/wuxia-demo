@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>武侠对话系统演示</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', 'SimHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .dialog-container {
+            width: 100%;
+            max-width: 800px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .dialog-box {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05));
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .speaker-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffd700;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        .dialog-text {
+            font-size: 16px;
+            color: #e0e0e0;
+            line-height: 1.8;
+            min-height: 60px;
+        }
+
+        .choices-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .choice-btn {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 15px 20px;
+            color: #fff;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: left;
+        }
+
+        .choice-btn:hover {
+            background: linear-gradient(145deg, rgba(255, 215, 0, 0.2), rgba(255, 215, 0, 0.1));
+            border-color: #ffd700;
+            transform: translateX(10px);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        }
+
+        .next-btn {
+            background: linear-gradient(145deg, #ffd700, #ffaa00);
+            border: none;
+            border-radius: 10px;
+            padding: 12px 30px;
+            color: #1a1a2e;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 15px;
+            float: right;
+        }
+
+        .next-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .title {
+            text-align: center;
+            color: #ffd700;
+            font-size: 28px;
+            margin-bottom: 30px;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .progress-bar {
+            height: 3px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ffd700, #ffaa00);
+            transition: width 0.5s ease;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="dialog-container">
+        <h1 class="title">武侠风云 · 对话系统演示</h1>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+
+        <div class="dialog-box">
+            <div class="speaker-name" id="speakerName"></div>
+            <div class="dialog-text" id="dialogText"></div>
+        </div>
+
+        <div class="choices-container" id="choicesContainer"></div>
+        
+        <button class="next-btn" id="nextBtn" style="display: none;">继续 →</button>
+    </div>
+
+    <script>
+        const dialogData = {
+            "dialogs": [
+                {
+                    "id": "intro",
+                    "speaker": "旁白",
+                    "text": "江湖风云再起，武林大会即将召开...",
+                    "next": "npc_1"
+                },
+                {
+                    "id": "npc_1",
+                    "speaker": "神秘老者",
+                    "text": "年轻人，你来了。我等候多时了。",
+                    "choices": [
+                        {"text": "请问您是？", "next": "npc_1_reply_1"},
+                        {"text": "您知道我会来？", "next": "npc_1_reply_2"},
+                        {"text": "武林大会何时开始？", "next": "npc_1_reply_3"}
+                    ]
+                },
+                {
+                    "id": "npc_1_reply_1",
+                    "speaker": "神秘老者",
+                    "text": "老朽无名，只是江湖中一个看客罢了。但我知道你的命运...",
+                    "next": "npc_2"
+                },
+                {
+                    "id": "npc_1_reply_2",
+                    "speaker": "神秘老者",
+                    "text": "天机不可泄露，但你的到来早已注定。",
+                    "next": "npc_2"
+                },
+                {
+                    "id": "npc_1_reply_3",
+                    "speaker": "神秘老者",
+                    "text": "三日后，在黄山之巅。但在此之前，你需要证明自己的实力。",
+                    "next": "npc_2"
+                },
+                {
+                    "id": "npc_2",
+                    "speaker": "神秘老者",
+                    "text": "去吧，年轻人。江湖之路，道阻且长。",
+                    "next": "end"
+                },
+                {
+                    "id": "end",
+                    "speaker": "旁白",
+                    "text": "你的江湖之旅，从此开始...",
+                    "next": null
+                }
+            ]
+        };
+
+        let currentDialogId = "intro";
+        let visitedDialogs = new Set();
+
+        const speakerNameEl = document.getElementById('speakerName');
+        const dialogTextEl = document.getElementById('dialogText');
+        const choicesContainerEl = document.getElementById('choicesContainer');
+        const nextBtn = document.getElementById('nextBtn');
+        const progressFill = document.getElementById('progressFill');
+
+        function getDialogById(id) {
+            return dialogData.dialogs.find(d => d.id === id);
+        }
+
+        function updateProgress() {
+            const progress = (visitedDialogs.size / dialogData.dialogs.length) * 100;
+            progressFill.style.width = progress + '%';
+        }
+
+        function showDialog(dialog) {
+            visitedDialogs.add(dialog.id);
+            updateProgress();
+
+            speakerNameEl.textContent = dialog.speaker;
+            dialogTextEl.textContent = '';
+            
+            speakerNameEl.classList.remove('fade-in');
+            dialogTextEl.classList.remove('fade-in');
+            void speakerNameEl.offsetWidth;
+            void dialogTextEl.offsetWidth;
+            speakerNameEl.classList.add('fade-in');
+            dialogTextEl.classList.add('fade-in');
+
+            let textIndex = 0;
+            const text = dialog.text;
+            const typeSpeed = 50;
+
+            const typeInterval = setInterval(() => {
+                if (textIndex < text.length) {
+                    dialogTextEl.textContent += text[textIndex];
+                    textIndex++;
+                } else {
+                    clearInterval(typeInterval);
+                    showChoicesOrNext(dialog);
+                }
+            }, typeSpeed);
+        }
+
+        function showChoicesOrNext(dialog) {
+            choicesContainerEl.innerHTML = '';
+            nextBtn.style.display = 'none';
+
+            if (dialog.choices && dialog.choices.length > 0) {
+                dialog.choices.forEach((choice, index) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'choice-btn';
+                    btn.innerHTML = `${index + 1}. ${choice.text}`;
+                    btn.style.animationDelay = `${index * 0.1}s`;
+                    
+                    btn.addEventListener('click', () => {
+                        showDialog(getDialogById(choice.next));
+                    });
+                    
+                    choicesContainerEl.appendChild(btn);
+                });
+            } else if (dialog.next) {
+                nextBtn.style.display = 'block';
+                nextBtn.onclick = () => {
+                    showDialog(getDialogById(dialog.next));
+                };
+            } else {
+                const endMsg = document.createElement('div');
+                endMsg.style.color = '#ffd700';
+                endMsg.style.textAlign = 'center';
+                endMsg.style.padding = '20px';
+                endMsg.innerHTML = '<p>—— 本章完 ——</p><p style="font-size: 14px; color: #888; margin-top: 10px;">按 F5 重新开始</p>';
+                choicesContainerEl.appendChild(endMsg);
+            }
+        }
+
+        showDialog(getDialogById(currentDialogId));
+    </script>
+</body>
+</html>
