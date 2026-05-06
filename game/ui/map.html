@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>江湖舆图</title>
   <link rel="stylesheet" href="map.css">
+  <link rel="stylesheet" href="character.css">
 </head>
 <body>
   <!-- 大地图容器 -->
@@ -139,6 +140,7 @@
                 <div class="status-bar health" id="charHealthBar"></div>
               </div>
               <span>100%</span>
+              <div class="status-tooltip" id="healthTooltip">100/100，剩余0</div>
             </div>
             <div class="status-row">
               <span>经验</span>
@@ -146,6 +148,7 @@
                 <div class="status-bar exp" id="charExpBar"></div>
               </div>
               <span>45%</span>
+              <div class="status-tooltip" id="expTooltip">45/100，还需55升级</div>
             </div>
           </div>
 
@@ -178,16 +181,18 @@
 
         <!-- 属性页签 -->
         <div class="char-tab-content" id="charStatsTab" style="display: none;">
+          <h3 class="stats-category-title">基础属性</h3>
           <div class="stats-grid">
-            <div class="stat-item"><span class="stat-icon">⚔️</span><span class="stat-name">攻击</span><span class="stat-value" id="statAttack">85</span></div>
-            <div class="stat-item"><span class="stat-icon">❤️</span><span class="stat-name">气血</span><span class="stat-value" id="statHp">420</span></div>
-            <div class="stat-item"><span class="stat-icon">🎯</span><span class="stat-name">命中</span><span class="stat-value" id="statHit">95</span></div>
-            <div class="stat-item"><span class="stat-icon">💨</span><span class="stat-name">闪躲</span><span class="stat-value" id="statDodge">45</span></div>
-            <div class="stat-item"><span class="stat-icon">🛡️</span><span class="stat-name">防御</span><span class="stat-value" id="statDefense">52</span></div>
-            <div class="stat-item"><span class="stat-icon">🤝</span><span class="stat-name">招架</span><span class="stat-value" id="statParry">38</span></div>
-            <div class="stat-item"><span class="stat-icon">⚡</span><span class="stat-name">速度</span><span class="stat-value" id="statSpeed">72</span></div>
+            <div class="stat-item"><span class="stat-icon">⚔️</span><span class="stat-name">攻击</span><span class="stat-value"><span id="statAttackBase">85</span><span id="statAttackPreview" style="color:#4caf50;display:none;"></span></span></div>
+            <div class="stat-item"><span class="stat-icon">❤️</span><span class="stat-name">气血</span><span class="stat-value"><span id="statHpBase">420</span><span id="statHpPreview" style="color:#4caf50;display:none;"></span></span></div>
+            <div class="stat-item"><span class="stat-icon">🎯</span><span class="stat-name">命中</span><span class="stat-value"><span id="statHitBase">95</span><span id="statHitPreview" style="color:#4caf50;display:none;"></span></span></div>
+            <div class="stat-item"><span class="stat-icon">💨</span><span class="stat-name">闪躲</span><span class="stat-value"><span id="statDodgeBase">45</span><span id="statDodgePreview" style="color:#4caf50;display:none;"></span></span></div>
+            <div class="stat-item"><span class="stat-icon">🛡️</span><span class="stat-name">防御</span><span class="stat-value"><span id="statDefenseBase">52</span><span id="statDefensePreview" style="color:#4caf50;display:none;"></span></span></div>
+            <div class="stat-item"><span class="stat-icon">🤝</span><span class="stat-name">招架</span><span class="stat-value"><span id="statParryBase">38</span><span id="statParryPreview" style="color:#4caf50;display:none;"></span></span></div>
+            <div class="stat-item"><span class="stat-icon">⚡</span><span class="stat-name">速度</span><span class="stat-value"><span id="statSpeedBase">72</span><span id="statSpeedPreview" style="color:#4caf50;display:none;"></span></span></div>
           </div>
 
+          <h3 class="stats-category-title">修为</h3>
           <div class="stats-grid">
             <div class="stat-item"><span class="stat-icon">✊</span><span class="stat-name">拳脚</span><span class="stat-value" id="statFist">15</span></div>
             <div class="stat-item"><span class="stat-icon">🗡️</span><span class="stat-name">剑术</span><span class="stat-value" id="statSword">45</span></div>
@@ -196,35 +201,80 @@
             <div class="stat-item"><span class="stat-icon">💨</span><span class="stat-name">内功</span><span class="stat-value" id="statInner">35</span></div>
           </div>
 
-          <div class="stats-grid">
-            <div class="stat-item">
-              <span class="stat-icon">💪</span>
-              <span class="stat-name">臂力</span>
-              <span class="stat-value" id="statStrength">12</span>
-              <button class="add-point-btn" onclick="addCharPoint('strength')">+</button>
+          <h3 class="stats-category-title">四维</h3>
+          <div class="four-dim-container">
+            <div class="four-dim-item">
+              <div class="four-dim-header">
+                <span class="stat-icon">💪</span>
+                <span class="stat-name">臂力</span>
+                <span class="four-dim-value" id="statStrengthValue">12</span>
+              </div>
+              <div class="four-dim-bar">
+                <div class="four-dim-bar-bg" id="statStrengthBar"></div>
+                <div class="four-dim-bar-preview" id="statStrengthPreviewBar"></div>
+              </div>
+              <div class="four-dim-btns">
+                <button class="dim-btn minus" onclick="previewCharPoint('strength', -1)">-</button>
+                <button class="dim-btn plus" onclick="previewCharPoint('strength', 1)">+</button>
+              </div>
             </div>
-            <div class="stat-item">
-              <span class="stat-icon">🦶</span>
-              <span class="stat-name">身法</span>
-              <span class="stat-value" id="statAgility">10</span>
-              <button class="add-point-btn" onclick="addCharPoint('agility')">+</button>
+
+            <div class="four-dim-item">
+              <div class="four-dim-header">
+                <span class="stat-icon">🦶</span>
+                <span class="stat-name">身法</span>
+                <span class="four-dim-value" id="statAgilityValue">10</span>
+              </div>
+              <div class="four-dim-bar">
+                <div class="four-dim-bar-bg" id="statAgilityBar"></div>
+                <div class="four-dim-bar-preview" id="statAgilityPreviewBar"></div>
+              </div>
+              <div class="four-dim-btns">
+                <button class="dim-btn minus" onclick="previewCharPoint('agility', -1)">-</button>
+                <button class="dim-btn plus" onclick="previewCharPoint('agility', 1)">+</button>
+              </div>
             </div>
-            <div class="stat-item">
-              <span class="stat-icon">🦴</span>
-              <span class="stat-name">根骨</span>
-              <span class="stat-value" id="statBone">9</span>
-              <button class="add-point-btn" onclick="addCharPoint('bone')">+</button>
+
+            <div class="four-dim-item">
+              <div class="four-dim-header">
+                <span class="stat-icon">🦴</span>
+                <span class="stat-name">根骨</span>
+                <span class="four-dim-value" id="statBoneValue">9</span>
+              </div>
+              <div class="four-dim-bar">
+                <div class="four-dim-bar-bg" id="statBoneBar"></div>
+                <div class="four-dim-bar-preview" id="statBonePreviewBar"></div>
+              </div>
+              <div class="four-dim-btns">
+                <button class="dim-btn minus" onclick="previewCharPoint('bone', -1)">-</button>
+                <button class="dim-btn plus" onclick="previewCharPoint('bone', 1)">+</button>
+              </div>
             </div>
-            <div class="stat-item">
-              <span class="stat-icon">🧘</span>
-              <span class="stat-name">内息</span>
-              <span class="stat-value" id="statQi">11</span>
-              <button class="add-point-btn" onclick="addCharPoint('qi')">+</button>
+
+            <div class="four-dim-item">
+              <div class="four-dim-header">
+                <span class="stat-icon">🧘</span>
+                <span class="stat-name">内息</span>
+                <span class="four-dim-value" id="statQiValue">11</span>
+              </div>
+              <div class="four-dim-bar">
+                <div class="four-dim-bar-bg" id="statQiBar"></div>
+                <div class="four-dim-bar-preview" id="statQiPreviewBar"></div>
+              </div>
+              <div class="four-dim-btns">
+                <button class="dim-btn minus" onclick="previewCharPoint('qi', -1)">-</button>
+                <button class="dim-btn plus" onclick="previewCharPoint('qi', 1)">+</button>
+              </div>
             </div>
           </div>
 
-          <div class="remaining-points">
-            剩余属性点：<span class="highlight" id="remainingPoints">3</span>
+          <div class="four-dim-actions">
+            <div class="remaining-points">
+              剩余属性点：<span class="highlight" id="remainingPoints">20</span>
+            </div>
+            <div class="preview-hint" id="previewHint"></div>
+            <button class="confirm-btn" id="confirmPointBtn" onclick="confirmCharPoint()" style="display:none;">确认加点</button>
+            <button class="cancel-btn" id="cancelPointBtn" onclick="cancelCharPoint()" style="display:none;">取消</button>
           </div>
         </div>
       </div>

@@ -8,8 +8,8 @@ const characters = [
     gender: '男',
     faction: '正阳派',
     power: 580,
-    health: 100,
-    exp: 45,
+    health: { current: 100, max: 100 },
+    exp: { current: 45, max: 100 },
     description: '初入江湖的少年侠客，心怀侠义，立志成为一代大侠。加入正阳派后，勤学苦练，剑法日益精进。',
     equipped: {
       weapon: { id: 1, name: '青锋剑', type: 'weapon', rarity: 'blue', level: 10, attack: 35, hit: 5, desc: '普通的青钢剑，剑锋锋利，适合初学者使用。' },
@@ -27,7 +27,7 @@ const characters = [
       fist: 15, sword: 45, blade: 10, lightSkill: 30, innerSkill: 35,
       strength: 12, agility: 10, bone: 9, qi: 11
     },
-    remainingPoints: 3
+    remainingPoints: 20
   },
   {
     id: 2,
@@ -37,8 +37,8 @@ const characters = [
     gender: '女',
     faction: '正阳派',
     power: 620,
-    health: 100,
-    exp: 78,
+    health: { current: 100, max: 100 },
+    exp: { current: 78, max: 100 },
     description: '正阳派内门弟子，天资聪颖，剑法出众。性格活泼开朗，乐于助人。',
     equipped: {
       weapon: { id: 4, name: '流云剑', type: 'weapon', rarity: 'blue', level: 12, attack: 42, hit: 8, desc: '剑身轻盈，挥舞时如流云般飘逸。' },
@@ -80,6 +80,14 @@ const PLAYER_INVENTORY = {
 };
 
 let currentCharacterIndex = 0;
+
+// 四维预览状态
+let pointPreview = {
+  strength: 0,
+  agility: 0,
+  bone: 0,
+  qi: 0
+};
 
 // 角色面板UI
 const CHAR_UI = {
@@ -165,8 +173,20 @@ function loadCharacterData() {
   CHAR_UI.charFaction.textContent = char.faction;
   CHAR_UI.charPower.textContent = char.power;
   CHAR_UI.charDesc.textContent = char.description;
-  CHAR_UI.charHealthBar.style.width = `${char.health}%`;
-  CHAR_UI.charExpBar.style.width = `${char.exp}%`;
+  
+  // 更新健康条和tooltip
+  const healthPct = (char.health.current / char.health.max) * 100;
+  CHAR_UI.charHealthBar.style.width = `${healthPct}%`;
+  document.getElementById('healthTooltip').textContent = `${char.health.current}/${char.health.max}，剩余${char.health.max - char.health.current}`;
+  
+  // 更新经验条和tooltip
+  const expPct = (char.exp.current / char.exp.max) * 100;
+  CHAR_UI.charExpBar.style.width = `${expPct}%`;
+  document.getElementById('expTooltip').textContent = `${char.exp.current}/${char.exp.max}，还需${char.exp.max - char.exp.current}升级`;
+  
+  // 更新百分比显示
+  document.querySelector('.status-row:nth-child(1) span:last-child').textContent = `${Math.round(healthPct)}%`;
+  document.querySelector('.status-row:nth-child(2) span:last-child').textContent = `${Math.round(expPct)}%`;
   
   CHAR_UI.charWeaponSkill.textContent = char.skills.weapon.name;
   document.querySelector('.skill-item:nth-child(1) span:last-child').textContent = `${char.skills.weapon.level}/${char.skills.weapon.maxLevel}重`;
@@ -177,26 +197,102 @@ function loadCharacterData() {
   CHAR_UI.charLightSkill.textContent = char.skills.light.name;
   document.querySelector('.skill-item:nth-child(3) span:last-child').textContent = `${char.skills.light.level}/${char.skills.light.maxLevel}重`;
   
-  CHAR_UI.statAttack.textContent = char.stats.attack;
-  CHAR_UI.statHp.textContent = char.stats.hp;
-  CHAR_UI.statHit.textContent = char.stats.hit;
-  CHAR_UI.statDodge.textContent = char.stats.dodge;
-  CHAR_UI.statDefense.textContent = char.stats.defense;
-  CHAR_UI.statParry.textContent = char.stats.parry;
-  CHAR_UI.statSpeed.textContent = char.stats.speed;
+  // 更新基础属性（原始值）
+  document.getElementById('statAttackBase').textContent = char.stats.attack;
+  document.getElementById('statHpBase').textContent = char.stats.hp;
+  document.getElementById('statHitBase').textContent = char.stats.hit;
+  document.getElementById('statDodgeBase').textContent = char.stats.dodge;
+  document.getElementById('statDefenseBase').textContent = char.stats.defense;
+  document.getElementById('statParryBase').textContent = char.stats.parry;
+  document.getElementById('statSpeedBase').textContent = char.stats.speed;
+  
   CHAR_UI.statFist.textContent = char.stats.fist;
   CHAR_UI.statSword.textContent = char.stats.sword;
   CHAR_UI.statBlade.textContent = char.stats.blade;
   CHAR_UI.statLight.textContent = char.stats.lightSkill;
   CHAR_UI.statInner.textContent = char.stats.innerSkill;
-  CHAR_UI.statStrength.textContent = char.stats.strength;
-  CHAR_UI.statAgility.textContent = char.stats.agility;
-  CHAR_UI.statBone.textContent = char.stats.bone;
-  CHAR_UI.statQi.textContent = char.stats.qi;
   CHAR_UI.remainingPoints.textContent = char.remainingPoints;
+  
+  // 重置预览状态
+  resetPointPreview();
+  
+  // 更新四维条形显示
+  updateFourDimDisplay(char);
   
   updateCharEquipSlots();
   updateAddButtons();
+}
+
+/**
+ * 更新四维条形显示
+ */
+function updateFourDimDisplay(char) {
+  const attrs = ['strength', 'agility', 'bone', 'qi'];
+  const maxVal = 100;
+  
+  attrs.forEach(attr => {
+    const baseVal = char.stats[attr];
+    const previewVal = baseVal + pointPreview[attr];
+    const previewAdd = pointPreview[attr];
+    
+    // 更新数值显示
+    document.getElementById(`stat${attr.charAt(0).toUpperCase() + attr.slice(1)}Value`).textContent = previewVal;
+    
+    // 更新条形
+    const baseBar = document.getElementById(`stat${attr.charAt(0).toUpperCase() + attr.slice(1)}Bar`);
+    const previewBar = document.getElementById(`stat${attr.charAt(0).toUpperCase() + attr.slice(1)}PreviewBar`);
+    
+    baseBar.style.width = `${(baseVal / maxVal) * 100}%`;
+    
+    if (previewAdd > 0) {
+      previewBar.style.width = `${(previewAdd / maxVal) * 100}%`;
+      previewBar.style.left = `${(baseVal / maxVal) * 100}%`;
+      previewBar.classList.add('active');
+      baseBar.style.borderRadius = '6px 0 0 6px';
+    } else {
+      previewBar.classList.remove('active');
+      baseBar.style.borderRadius = '6px';
+    }
+  });
+  
+  // 更新按钮状态
+  updateDimButtons(char);
+}
+
+/**
+ * 重置预览状态
+ */
+function resetPointPreview() {
+  pointPreview = { strength: 0, agility: 0, bone: 0, qi: 0 };
+  document.getElementById('confirmPointBtn').style.display = 'none';
+  document.getElementById('cancelPointBtn').style.display = 'none';
+  document.getElementById('previewHint').textContent = '';
+  
+  // 重置基础属性预览
+  const attrs = ['Attack', 'Hp', 'Hit', 'Dodge', 'Defense', 'Parry', 'Speed'];
+  attrs.forEach(attr => {
+    const el = document.getElementById(`stat${attr}Preview`);
+    el.style.display = 'none';
+  });
+}
+
+/**
+ * 更新四维按钮状态
+ */
+function updateDimButtons(char) {
+  const attrs = ['strength', 'agility', 'bone', 'qi'];
+  
+  attrs.forEach(attr => {
+    const previewBar = document.getElementById(`stat${attr.charAt(0).toUpperCase() + attr.slice(1)}PreviewBar`);
+    const minusBtn = previewBar.parentElement.nextElementSibling.querySelector('.minus');
+    const plusBtn = previewBar.parentElement.nextElementSibling.querySelector('.plus');
+    
+    // 加点按钮：需要剩余点数 > 0
+    plusBtn.disabled = char.remainingPoints <= 0;
+    
+    // 退点按钮：只能退预览增加的点数
+    minusBtn.disabled = pointPreview[attr] <= 0;
+  });
 }
 
 /**
@@ -353,26 +449,123 @@ function switchCharTab(tab) {
 }
 
 /**
- * 添加属性点
+ * 预览属性点分配
  */
-function addCharPoint(attr) {
+function calculatePreviewStats(char) {
+  const s = char.stats;
+  const strAdd = pointPreview.strength;
+  const agiAdd = pointPreview.agility;
+  const boneAdd = pointPreview.bone;
+  
+  const attackAdd = strAdd * 3;
+  const hpAdd = boneAdd * 20;
+  const speedAdd = agiAdd * 2;
+  const parryAdd = Math.floor((s.strength + strAdd) / 5) - Math.floor(s.strength / 5);
+  const defenseAdd = Math.floor((s.bone + boneAdd) / 3) - Math.floor(s.bone / 3);
+  
+  return {
+    attack: attackAdd,
+    hp: hpAdd,
+    speed: speedAdd,
+    parry: parryAdd,
+    defense: defenseAdd,
+    hit: 0,
+    dodge: 0
+  };
+}
+
+function updatePreviewStats(char) {
+  const preview = calculatePreviewStats(char);
+  const attrs = ['Attack', 'Hp', 'Hit', 'Dodge', 'Defense', 'Parry', 'Speed'];
+  
+  attrs.forEach(attr => {
+    const el = document.getElementById(`stat${attr}Preview`);
+    const add = preview[attr.toLowerCase()];
+    if (add > 0) {
+      el.textContent = ` +${add}`;
+      el.style.display = 'inline';
+    } else {
+      el.style.display = 'none';
+    }
+  });
+}
+
+function previewCharPoint(attr, delta) {
+  const char = getCurrentCharacter();
+  const totalPreview = pointPreview[attr] + delta;
+  
+  if (delta > 0) {
+    // 加点
+    if (char.remainingPoints <= 0) {
+      return;
+    }
+    char.remainingPoints--;
+    pointPreview[attr]++;
+  } else {
+    // 退点
+    if (pointPreview[attr] <= 0) {
+      return;
+    }
+    char.remainingPoints++;
+    pointPreview[attr]--;
+  }
+  
+  // 更新显示
+  updateFourDimDisplay(char);
+  updatePreviewStats(char);
+  
+  // 显示确认/取消按钮
+  const hasPreview = Object.values(pointPreview).some(v => v !== 0);
+  document.getElementById('confirmPointBtn').style.display = hasPreview ? 'inline-block' : 'none';
+  document.getElementById('cancelPointBtn').style.display = hasPreview ? 'inline-block' : 'none';
+  
+  // 显示预览提示
+  if (hasPreview) {
+    const totalUsed = Object.values(pointPreview).reduce((a, b) => a + b, 0);
+    document.getElementById('previewHint').textContent = `已分配 ${totalUsed} 点属性`;
+  } else {
+    document.getElementById('previewHint').textContent = '';
+  }
+}
+
+/**
+ * 确认属性点分配
+ */
+function confirmCharPoint() {
   const char = getCurrentCharacter();
   
-  if (char.remainingPoints <= 0) {
-    showCharFloatText('属性点不足！', '#f44336');
-    return;
-  }
+  // 应用预览点到角色属性
+  char.stats.strength += pointPreview.strength;
+  char.stats.agility += pointPreview.agility;
+  char.stats.bone += pointPreview.bone;
+  char.stats.qi += pointPreview.qi;
   
-  char.remainingPoints--;
-  
-  switch(attr) {
-    case 'strength': char.stats.strength++; break;
-    case 'agility': char.stats.agility++; break;
-    case 'bone': char.stats.bone++; break;
-    case 'qi': char.stats.qi++; break;
-  }
-  
+  // 更新衍生属性
   updateStatsFromFour();
+  
+  // 重置预览
+  resetPointPreview();
+  
+  // 重新加载显示
+  loadCharacterData();
+  
+  showCharFloatText('属性分配成功！', '#4caf50');
+}
+
+/**
+ * 取消属性点分配
+ */
+function cancelCharPoint() {
+  const char = getCurrentCharacter();
+  
+  // 归还预览消耗的点数
+  const totalPreview = Object.values(pointPreview).reduce((a, b) => a + b, 0);
+  char.remainingPoints += totalPreview;
+  
+  // 重置预览
+  resetPointPreview();
+  
+  // 重新加载显示
   loadCharacterData();
 }
 
@@ -433,4 +626,6 @@ window.toggleCharacterPanel = toggleCharacterPanel;
 window.switchCharacter = switchCharacter;
 window.switchCharTab = switchCharTab;
 window.showCharEquipment = showCharEquipment;
-window.addCharPoint = addCharPoint;
+window.previewCharPoint = previewCharPoint;
+window.confirmCharPoint = confirmCharPoint;
+window.cancelCharPoint = cancelCharPoint;
