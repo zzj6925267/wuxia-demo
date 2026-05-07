@@ -26,11 +26,19 @@ function initPage() {
   // 渲染角色选择器
   renderCharacterList();
 
-  // 读取URL参数
-  const urlParams = new URLSearchParams(window.location.search);
-  const typeParam = urlParams.get('type');
-  if (typeParam) {
-    currentType = typeParam;
+  // 从 localStorage 读取类型
+  const savedType = localStorage.getItem('martialArtsType');
+  
+  // 英文到中文的映射
+  const typeMap = {
+    'martial': '武功',
+    'internal': '内功',
+    'light': '轻功'
+  };
+  
+  if (savedType) {
+    // 把英文参数转成中文
+    currentType = typeMap[savedType] || savedType;
     document.querySelectorAll('.type-tab').forEach(tab => {
       if (tab.dataset.type === currentType) {
         tab.classList.add('active');
@@ -38,6 +46,8 @@ function initPage() {
         tab.classList.remove('active');
       }
     });
+    // 读取完后清除
+    localStorage.removeItem('martialArtsType');
   }
 
   // 更新阅历显示

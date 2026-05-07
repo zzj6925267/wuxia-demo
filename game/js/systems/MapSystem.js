@@ -3,12 +3,10 @@
  * @module MapSystem
  */
 
-import { getLocationById, getAdjacentLocations } from '../data/maps.js';
-
 /**
  * 地图系统类
  */
-export class MapSystem {
+class MapSystem {
   /**
    * 构造函数
    * @param {PlayerSystem} playerSystem - 玩家系统
@@ -31,7 +29,7 @@ export class MapSystem {
    * @param {string} initialLocation - 初始地点
    */
   init(initialLocation = 'yuelai_inn') {
-    this.currentLocation = getLocationById(initialLocation);
+    this.currentLocation = window.getLocationById(initialLocation);
     this.playerSystem.setFlag('current_location', initialLocation);
     
     if (this.onLocationChange) {
@@ -51,9 +49,9 @@ export class MapSystem {
    * 获取相邻地点
    * @returns {Array} 相邻地点数组
    */
-  getAdjacentLocations() {
+  getNeighboringLocations() {
     if (!this.currentLocation) return [];
-    return getAdjacentLocations(this.currentLocation.id);
+    return window.getAdjacentLocations(this.currentLocation.id);
   }
 
   /**
@@ -65,7 +63,7 @@ export class MapSystem {
     if (!this.currentLocation) return false;
     if (this.isTraveling) return false;
     
-    const adjacent = getAdjacentLocations(this.currentLocation.id);
+    const adjacent = window.getAdjacentLocations(this.currentLocation.id);
     return adjacent.some(loc => loc.id === targetLocationId);
   }
 
@@ -79,7 +77,7 @@ export class MapSystem {
       return false;
     }
 
-    const targetLocation = getLocationById(targetLocationId);
+    const targetLocation = window.getLocationById(targetLocationId);
     if (!targetLocation) return false;
 
     this.isTraveling = true;
@@ -128,7 +126,7 @@ export class MapSystem {
    * @returns {object|null} 地点信息
    */
   getLocationInfo(locationId) {
-    return getLocationById(locationId);
+    return window.getLocationById(locationId);
   }
 
   /**
@@ -147,3 +145,6 @@ export class MapSystem {
     return null;
   }
 }
+
+// 暴露到全局
+window.MapSystem = MapSystem;

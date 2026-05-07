@@ -3,12 +3,10 @@
  * @module DialogSystem
  */
 
-import { getDialogById, getDialogLine } from '../data/dialogs.js';
-
 /**
  * 对话系统类
  */
-export class DialogSystem {
+class DialogSystem {
   /**
    * 构造函数
    * @param {PlayerSystem} playerSystem - 玩家系统
@@ -34,7 +32,7 @@ export class DialogSystem {
    * @returns {boolean} 是否成功开始
    */
   startDialog(dialogId) {
-    const dialog = getDialogById(dialogId);
+    const dialog = window.getDialogById(dialogId);
     if (!dialog) {
       console.error(`Dialog not found: ${dialogId}`);
       return false;
@@ -144,7 +142,7 @@ export class DialogSystem {
   goToLine(lineId) {
     if (!this.currentDialog) return false;
 
-    const line = getDialogLine(this.currentDialog.id, lineId);
+    const line = window.getDialogLine(this.currentDialog.id, lineId);
     if (!line) {
       return this.endDialog();
     }
@@ -252,3 +250,6 @@ export class DialogSystem {
     return this.isActive;
   }
 }
+
+// 暴露到全局
+window.DialogSystem = DialogSystem;

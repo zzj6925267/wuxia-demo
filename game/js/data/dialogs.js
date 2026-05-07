@@ -6,7 +6,7 @@
 /**
  * 对话定义
  */
-export const DIALOGS = {
+const DIALOGS = {
   // 神秘老者对话
   dialog_mysterious_old_man: {
     id: 'dialog_mysterious_old_man',
@@ -181,7 +181,7 @@ export const DIALOGS = {
  * @param {string} dialogId - 对话ID
  * @returns {object|null} 对话对象
  */
-export function getDialogById(dialogId) {
+function getDialogById(dialogId) {
   return DIALOGS[dialogId] || null;
 }
 
@@ -191,8 +191,13 @@ export function getDialogById(dialogId) {
  * @param {string} lineId - 行ID
  * @returns {object|null} 对话行对象
  */
-export function getDialogLine(dialogId, lineId) {
+function getDialogLine(dialogId, lineId) {
   const dialog = getDialogById(dialogId);
   if (!dialog) return null;
   return dialog.lines.find(line => line.id === lineId) || null;
 }
+
+// 暴露到全局
+window.DIALOGS = DIALOGS;
+window.getDialogById = getDialogById;
+window.getDialogLine = getDialogLine;

@@ -6,7 +6,7 @@
 /**
  * 技能定义
  */
-export const SKILLS = {
+const SKILLS = {
   // 基础技能
   basic_attack: {
     id: 'basic_attack',
@@ -117,7 +117,7 @@ export const SKILLS = {
  * 获取技能列表
  * @returns {Array} 技能数组
  */
-export function getSkillList() {
+function getSkillList() {
   return Object.values(SKILLS);
 }
 
@@ -126,7 +126,7 @@ export function getSkillList() {
  * @param {string} skillId - 技能ID
  * @returns {object|null} 技能对象
  */
-export function getSkillById(skillId) {
+function getSkillById(skillId) {
   return SKILLS[skillId] || null;
 }
 
@@ -135,8 +135,13 @@ export function getSkillById(skillId) {
  * @param {object} character - 角色对象
  * @returns {Array} 可用技能数组
  */
-export function getCharacterSkills(character) {
+function getCharacterSkills(character) {
   return character.skills
     .map(skillId => getSkillById(skillId))
     .filter(skill => skill !== null);
 }
+
+// 暴露到全局
+window.SKILLS = SKILLS;
+window.getSkillById = getSkillById;
+window.getCharacterSkills = getCharacterSkills;

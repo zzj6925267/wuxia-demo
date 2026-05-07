@@ -137,8 +137,33 @@ const LOCATION_TYPES = {
 };
 
 /**
+ * 根据ID获取地点
+ * @param {string} locationId - 地点ID
+ * @returns {object|null} 地点对象
+ */
+function getLocationById(locationId) {
+  return MAP_LOCATIONS[locationId] || null;
+}
+
+/**
+ * 获取相邻地点
+ * @param {string} locationId - 地点ID
+ * @returns {Array} 相邻地点数组
+ */
+function getAdjacentLocations(locationId) {
+  const location = MAP_LOCATIONS[locationId];
+  if (!location) return [];
+  
+  return location.connections
+    .map(connId => MAP_LOCATIONS[connId])
+    .filter(loc => loc !== undefined);
+}
+
+/**
  * 暴露到全局
  */
 window.MAP_LOCATIONS = MAP_LOCATIONS;
 window.ALL_CONNECTIONS = ALL_CONNECTIONS;
 window.LOCATION_TYPES = LOCATION_TYPES;
+window.getLocationById = getLocationById;
+window.getAdjacentLocations = getAdjacentLocations;

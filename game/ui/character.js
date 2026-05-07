@@ -634,7 +634,17 @@ function getRarityColor(rarity) {
  * 打开武学系统
  */
 function openMartialArts(type) {
-  window.location.href = 'martialArts.html?type=' + encodeURIComponent(type);
+  // 中文到英文的映射
+  const typeMap = {
+    '武功': 'martial',
+    '内功': 'internal',
+    '轻功': 'light'
+  };
+  const englishType = typeMap[type] || type;
+  // 存到localStorage
+  localStorage.setItem('martialArtsType', englishType);
+  // 不带参数跳转
+  window.location.href = 'martialArts.html';
 }
 
 /**

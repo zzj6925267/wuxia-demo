@@ -6,7 +6,7 @@
 /**
  * 玩家初始数据
  */
-export const PLAYER_INITIAL = {
+const PLAYER_INITIAL = {
   id: 'player',
   name: '少侠',
   level: 1,
@@ -33,7 +33,7 @@ export const PLAYER_INITIAL = {
 /**
  * NPC数据
  */
-export const NPCS = {
+const NPCS = {
   mysterious_old_man: {
     id: 'mysterious_old_man',
     name: '神秘老者',
@@ -63,7 +63,7 @@ export const NPCS = {
 /**
  * 敌人数据
  */
-export const ENEMIES = {
+const ENEMIES = {
   bandit: {
     id: 'bandit',
     name: '山贼',
@@ -134,3 +134,8 @@ export const ENEMIES = {
     ]
   }
 };
+
+// 暴露到全局
+window.PLAYER_INITIAL = PLAYER_INITIAL;
+window.NPCS = NPCS;
+window.ENEMIES = ENEMIES;

@@ -3,21 +3,16 @@
  * @module PlayerSystem
  */
 
-import { GAME_CONFIG, SKILL_TYPE } from '../config.js';
-import { PLAYER_INITIAL } from '../data/characters.js';
-import { getSkillById } from '../data/skills.js';
-import { deepClone, calculateDamage, calculateHeal } from '../utils/helpers.js';
-
 /**
  * 玩家系统类
  */
-export class PlayerSystem {
+class PlayerSystem {
   /**
    * 构造函数
    * @param {object} initialData - 初始数据（可选）
    */
   constructor(initialData = null) {
-    this.player = initialData ? deepClone(initialData) : deepClone(PLAYER_INITIAL);
+    this.player = initialData ? window.deepClone(initialData) : window.deepClone(window.PLAYER_INITIAL);
     this._updateDerivedStats();
   }
 
@@ -26,7 +21,7 @@ export class PlayerSystem {
    */
   _updateDerivedStats() {
     const { stats } = this.player;
-    const multipliers = GAME_CONFIG.STAT_MULTIPLIERS;
+    const multipliers = window.GAME_CONFIG.STAT_MULTIPLIERS;
 
     // 根据属性计算攻击和防御
     this.player.attack = Math.floor(
@@ -80,8 +75,8 @@ export class PlayerSystem {
   levelUp() {
     this.player.level++;
     this.player.expToNextLevel = Math.floor(
-      GAME_CONFIG.INITIAL_STATS.expToNextLevel * 
-      Math.pow(GAME_CONFIG.EXP_MULTIPLIER, this.player.level - 1)
+      window.GAME_CONFIG.INITIAL_STATS.expToNextLevel * 
+      Math.pow(window.GAME_CONFIG.EXP_MULTIPLIER, this.player.level - 1)
     );
 
     // 升级奖励属性点
@@ -176,7 +171,7 @@ export class PlayerSystem {
    * @returns {object} 技能结果
    */
   useSkill(skillId) {
-    const skill = getSkillById(skillId);
+    const skill = window.getSkillById(skillId);
     if (!skill) {
       return { success: false, message: '技能不存在' };
     }
@@ -190,19 +185,19 @@ export class PlayerSystem {
     let result = { success: true, skill };
 
     switch (skill.type) {
-      case SKILL_TYPE.ATTACK:
-        result.damage = calculateDamage(skill.damage, this.player.attack, 0);
+      case window.SKILL_TYPE.ATTACK:
+        result.damage = window.calculateDamage(skill.damage, this.player.attack, 0);
         result.message = `${skill.name}造成了 ${result.damage} 点伤害`;
         break;
 
-      case SKILL_TYPE.HEAL:
-        const healAmount = calculateHeal(skill.healAmount, this.player.stats.spirit);
+      case window.SKILL_TYPE.HEAL:
+        const healAmount = window.calculateHeal(skill.healAmount, this.player.stats.spirit);
         this.heal(healAmount);
         result.healAmount = healAmount;
         result.message = `${skill.name}恢复了 ${healAmount} 点生命`;
         break;
 
-      case SKILL_TYPE.BUFF:
+      case window.SKILL_TYPE.BUFF:
         result.buffType = skill.buffType;
         result.buffAmount = skill.buffAmount;
         result.buffDuration = skill.buffDuration;
@@ -289,3 +284,6 @@ export class PlayerSystem {
     };
   }
 }
+
+// 暴露到全局
+window.PlayerSystem = PlayerSystem;

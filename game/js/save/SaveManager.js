@@ -3,14 +3,15 @@
  * @module SaveManager
  */
 
-import { GAME_CONFIG } from '../config.js';
-import { PLAYER_INITIAL } from '../data/characters.js';
-import { deepClone } from '../utils/helpers.js';
+// 使用全局变量（浏览器环境）
+const GAME_CONFIG = window.GAME_CONFIG || {};
+const PLAYER_INITIAL = window.PLAYER_INITIAL || {};
+const deepClone = window.deepClone || function(obj) { return JSON.parse(JSON.stringify(obj)); };
 
 /**
  * 存档管理类
  */
-export class SaveManager {
+class SaveManager {
   /**
    * 构造函数
    * @param {PlayerSystem} playerSystem - 玩家系统
@@ -179,3 +180,6 @@ export class SaveManager {
     }
   }
 }
+
+// 暴露到全局
+window.SaveManager = SaveManager;

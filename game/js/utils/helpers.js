@@ -7,7 +7,7 @@
  * 生成唯一ID
  * @returns {string} 唯一ID
  */
-export function generateId() {
+function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 
@@ -16,7 +16,7 @@ export function generateId() {
  * @param {number} num - 数字
  * @returns {string} 格式化后的字符串
  */
-export function formatNumber(num) {
+function formatNumber(num) {
   return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
@@ -26,7 +26,7 @@ export function formatNumber(num) {
  * @param {number} max - 最大值
  * @returns {number} 随机数
  */
-export function randomRange(min, max) {
+function randomRange(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
@@ -37,7 +37,7 @@ export function randomRange(min, max) {
  * @param {number} defense - 防御力
  * @returns {number} 最终伤害
  */
-export function calculateDamage(baseDamage, attack, defense) {
+function calculateDamage(baseDamage, attack, defense) {
   const damage = baseDamage + attack * 0.5 - defense * 0.3;
   return Math.max(1, Math.floor(damage));
 }
@@ -48,7 +48,7 @@ export function calculateDamage(baseDamage, attack, defense) {
  * @param {number} spirit - 内力属性
  * @returns {number} 最终治疗量
  */
-export function calculateHeal(baseHeal, spirit) {
+function calculateHeal(baseHeal, spirit) {
   return Math.floor(baseHeal + spirit * 0.2);
 }
 
@@ -57,7 +57,7 @@ export function calculateHeal(baseHeal, spirit) {
  * @param {number} critChance - 暴击率
  * @returns {boolean} 是否暴击
  */
-export function checkCritical(critChance) {
+function checkCritical(critChance) {
   return Math.random() < critChance;
 }
 
@@ -66,7 +66,7 @@ export function checkCritical(critChance) {
  * @param {number} dodgeChance - 闪避率
  * @returns {boolean} 是否闪避
  */
-export function checkDodge(dodgeChance) {
+function checkDodge(dodgeChance) {
   return Math.random() < dodgeChance;
 }
 
@@ -75,7 +75,7 @@ export function checkDodge(dodgeChance) {
  * @param {object} obj - 要拷贝的对象
  * @returns {object} 拷贝后的对象
  */
-export function deepClone(obj) {
+function deepClone(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
 
@@ -85,7 +85,7 @@ export function deepClone(obj) {
  * @param {number} delay - 延迟时间（毫秒）
  * @returns {Function} 防抖后的函数
  */
-export function debounce(fn, delay) {
+function debounce(fn, delay) {
   let timer = null;
   return function(...args) {
     if (timer) clearTimeout(timer);
@@ -99,7 +99,7 @@ export function debounce(fn, delay) {
  * @param {number} delay - 节流时间（毫秒）
  * @returns {Function} 节流后的函数
  */
-export function throttle(fn, delay) {
+function throttle(fn, delay) {
   let lastTime = 0;
   return function(...args) {
     const now = Date.now();
@@ -109,3 +109,15 @@ export function throttle(fn, delay) {
     }
   };
 }
+
+// 暴露到全局
+window.generateId = generateId;
+window.formatNumber = formatNumber;
+window.randomRange = randomRange;
+window.calculateDamage = calculateDamage;
+window.calculateHeal = calculateHeal;
+window.checkCritical = checkCritical;
+window.checkDodge = checkDodge;
+window.deepClone = deepClone;
+window.debounce = debounce;
+window.throttle = throttle;

@@ -6,7 +6,7 @@
 /**
  * 游戏基础配置
  */
-export const GAME_CONFIG = {
+const GAME_CONFIG = {
   // 玩家初始属性
   INITIAL_STATS: {
     level: 1,
@@ -53,7 +53,7 @@ export const GAME_CONFIG = {
 /**
  * 游戏状态枚举
  */
-export const GAME_STATE = {
+const GAME_STATE = {
   MENU: 'menu',           // 主菜单
   DIALOG: 'dialog',       // 对话中
   BATTLE: 'battle',       // 战斗中
@@ -65,7 +65,7 @@ export const GAME_STATE = {
 /**
  * 技能类型枚举
  */
-export const SKILL_TYPE = {
+const SKILL_TYPE = {
   ATTACK: 'attack',
   HEAL: 'heal',
   BUFF: 'buff',
@@ -75,7 +75,13 @@ export const SKILL_TYPE = {
 /**
  * 角色类型枚举
  */
-export const CHARACTER_TYPE = {
+const CHARACTER_TYPE = {
   NPC: 'npc',
   ENEMY: 'enemy'
 };
+
+// 暴露到全局
+window.GAME_CONFIG = GAME_CONFIG;
+window.GAME_STATE = GAME_STATE;
+window.SKILL_TYPE = SKILL_TYPE;
+window.CHARACTER_TYPE = CHARACTER_TYPE;

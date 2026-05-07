@@ -3,18 +3,13 @@
  * @module index
  */
 
-import { GAME_STATE } from './config.js';
-import { PlayerSystem } from './systems/PlayerSystem.js';
-import { DialogSystem } from './systems/DialogSystem.js';
-import { BattleSystem } from './systems/BattleSystem.js';
-import { InventorySystem } from './systems/InventorySystem.js';
-import { MapSystem } from './systems/MapSystem.js';
-import { SaveManager } from './save/SaveManager.js';
+// 使用全局变量（浏览器环境）
+const GAME_STATE = window.GAME_STATE || {};
 
 /**
  * 游戏主类
  */
-export class Game {
+class Game {
   constructor() {
     // 游戏系统
     this.playerSystem = null;
@@ -204,4 +199,8 @@ export class Game {
 }
 
 // 创建全局游戏实例
-export const game = new Game();
+const game = new Game();
+
+// 暴露到全局
+window.Game = Game;
+window.game = game;

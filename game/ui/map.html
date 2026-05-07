@@ -36,6 +36,7 @@
       <div class="character-button-area">
         <button class="btn-character" id="btnCharacter" onclick="toggleCharacterPanel()">👤 角色</button>
         <button class="btn-character" id="btnMartialArts" onclick="openMartialArts()">⚔️ 武学</button>
+        <button class="btn-character" id="btnInventory" onclick="openInventory()">🎒 背包</button>
       </div>
     </div>
 
@@ -156,17 +157,17 @@
           <div class="char-skills">
             <h3>武学</h3>
             <div class="skills-row">
-              <div class="skill-item" id="skillSlot1" onclick="openMartialArts('武功')">
+              <div class="skill-item" id="skillSlot1" onclick="openMartialArts('martial')">
                 <span>⚔️</span>
                 <span id="charWeaponSkill">正阳基础剑式</span>
                 <span class="skill-level">3/10重</span>
               </div>
-              <div class="skill-item" id="skillSlot2" onclick="openMartialArts('内功')">
+              <div class="skill-item" id="skillSlot2" onclick="openMartialArts('internal')">
                 <span>💨</span>
                 <span id="charInnerSkill">正阳吐纳诀</span>
                 <span class="skill-level">2/10重</span>
               </div>
-              <div class="skill-item" id="skillSlot3" onclick="openMartialArts('轻功')">
+              <div class="skill-item" id="skillSlot3" onclick="openMartialArts('light')">
                 <span>👟</span>
                 <span id="charLightSkill">踏云步</span>
                 <span class="skill-level">1/10重</span>
@@ -342,17 +343,68 @@
   </div>
 
   <!-- 数据层 -->
+  <script src="../js/config.js"></script>
   <script src="../js/data/maps.js"></script>
+  <script src="../js/data/characters.js"></script>
+  <script src="../js/data/skills.js"></script>
+  <script src="../js/data/dialogs.js"></script>
+  <script src="../js/data/items.js"></script>
+  <script src="../js/utils/helpers.js"></script>
   <script src="zhengyangMapData.js"></script>
   <script src="npcData.js"></script>
   <script src="martialArtsData.js"></script>
+  
+  <!-- 系统层 -->
+  <script src="../js/systems/PlayerSystem.js"></script>
+  <script src="../js/systems/MapSystem.js"></script>
+  <script src="../js/systems/DialogSystem.js"></script>
+  <script src="../js/systems/BattleSystem.js"></script>
+  <script src="../js/systems/InventorySystem.js"></script>
   
   <!-- UI层 -->
   <script src="character.js"></script>
   <script src="map.js"></script>
   
   <script>
+    // 使用 character.js 里已经初始化的 window.playerData
+    function initPlayerData() {
+      // character.js 在文件开头已经初始化了 window.playerData，我们什么都不用做
+      console.log('map.html 加载时，window.playerData.inventory 是：', window.playerData?.inventory);
+    }
+
+    // 打开背包页面
+    function openInventory() {
+      window.location.href = 'inventory.html';
+    }
+
+    // 打开武学页面
+    function openMartialArts(type) {
+      console.log('openMartialArts called, type:', type);
+      console.log('Current location:', window.location.href);
+      // 把类型存到localStorage
+      if (type) {
+        localStorage.setItem('martialArtsType', type);
+      }
+      // 不带参数跳转
+      window.location.href = 'martialArts.html';
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
+      initPlayerData();
+      
+      // 检查 localStorage 是否需要自动打开角色面板
+      const shouldOpenCharacter = localStorage.getItem('openCharacterOnLoad');
+      if (shouldOpenCharacter === '1') {
+        // 清除标记
+        localStorage.removeItem('openCharacterOnLoad');
+        // 延迟一点打开，确保 character.js 加载完成
+        setTimeout(() => {
+          if (typeof toggleCharacterPanel === 'function') {
+            toggleCharacterPanel();
+          }
+        }, 100);
+      }
+      
       const mapData = {
         locations: MAP_LOCATIONS,
         connections: ALL_CONNECTIONS

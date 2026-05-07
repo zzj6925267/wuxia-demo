@@ -3,15 +3,10 @@
  * @module BattleSystem
  */
 
-import { GAME_CONFIG, SKILL_TYPE } from '../config.js';
-import { ENEMIES } from '../data/characters.js';
-import { getSkillById, getCharacterSkills } from '../data/skills.js';
-import { deepClone, calculateDamage, calculateHeal, checkCritical, checkDodge } from '../utils/helpers.js';
-
 /**
  * 战斗系统类
  */
-export class BattleSystem {
+class BattleSystem {
   /**
    * 构造函数
    * @param {PlayerSystem} playerSystem - 玩家系统
@@ -41,13 +36,13 @@ export class BattleSystem {
    * @returns {boolean} 是否成功
    */
   startBattle(enemyId) {
-    const enemyData = ENEMIES[enemyId];
+    const enemyData = window.ENEMIES[enemyId];
     if (!enemyData) {
       console.error(`Enemy not found: ${enemyId}`);
       return false;
     }
 
-    this.enemy = deepClone(enemyData);
+    this.enemy = window.deepClone(enemyData);
     this.isPlayerTurn = true;
     this.isActive = true;
     this.turnCount = 1;
@@ -70,7 +65,7 @@ export class BattleSystem {
   _refreshCooldowns() {
     const player = this.playerSystem.getPlayer();
     player.skills.forEach(skillId => {
-      const skill = getSkillById(skillId);
+      const skill = window.getSkillById(skillId);
       if (skill) {
         skill.currentCooldown = 0;
       }
@@ -78,7 +73,7 @@ export class BattleSystem {
 
     if (this.enemy) {
       this.enemy.skills.forEach(skillId => {
-        const skill = getSkillById(skillId);
+        const skill = window.getSkillById(skillId);
         if (skill) {
           skill.currentCooldown = 0;
         }
@@ -124,7 +119,7 @@ export class BattleSystem {
       return { success: false, message: '不是你的回合' };
     }
 
-    const skill = getSkillById(skillId);
+    const skill = window.getSkillById(skillId);
     if (!skill) {
       return { success: false, message: '技能不存在' };
     }
@@ -142,19 +137,19 @@ export class BattleSystem {
     let result = { success: true, skill, isPlayerTurn: true };
 
     switch (skill.type) {
-      case SKILL_TYPE.ATTACK:
+      case window.SKILL_TYPE.ATTACK:
         result = this._executePlayerAttack(skill);
         break;
 
-      case SKILL_TYPE.HEAL:
+      case window.SKILL_TYPE.HEAL:
         result = this._executePlayerHeal(skill);
         break;
 
-      case SKILL_TYPE.BUFF:
+      case window.SKILL_TYPE.BUFF:
         result = this._executePlayerBuff(skill);
         break;
 
-      case SKILL_TYPE.DEBUFF:
+      case window.SKILL_TYPE.DEBUFF:
         result = this._executePlayerDebuff(skill);
         break;
     }
@@ -183,11 +178,11 @@ export class BattleSystem {
    */
   _executePlayerAttack(skill) {
     const player = this.playerSystem.getPlayer();
-    const damage = calculateDamage(skill.damage, player.attack, this.enemy.defense);
+    const damage = window.calculateDamage(skill.damage, player.attack, this.enemy.defense);
     
     // 检查暴击
-    const isCritical = checkCritical(GAME_CONFIG.BATTLE.CRITICAL_CHANCE + player.stats.agility * 0.01);
-    const finalDamage = isCritical ? Math.floor(damage * GAME_CONFIG.BATTLE.CRITICAL_MULTIPLIER) : damage;
+    const isCritical = window.checkCritical(window.GAME_CONFIG.BATTLE.CRITICAL_CHANCE + player.stats.agility * 0.01);
+    const finalDamage = isCritical ? Math.floor(damage * window.GAME_CONFIG.BATTLE.CRITICAL_MULTIPLIER) : damage;
 
     this.enemy.hp -= finalDamage;
 
@@ -213,7 +208,7 @@ export class BattleSystem {
    */
   _executePlayerHeal(skill) {
     const player = this.playerSystem.getPlayer();
-    const healAmount = calculateHeal(skill.healAmount, player.stats.spirit);
+    const healAmount = window.calculateHeal(skill.healAmount, player.stats.spirit);
     this.playerSystem.heal(healAmount);
 
     return {
@@ -280,7 +275,7 @@ export class BattleSystem {
     }
 
     // 敌人选择技能
-    const enemySkills = getCharacterSkills(this.enemy);
+    const enemySkills = window.getCharacterSkills(this.enemy);
     const availableSkills = enemySkills.filter(skill => skill.currentCooldown === 0);
     
     if (availableSkills.length === 0) {
@@ -317,11 +312,11 @@ export class BattleSystem {
    */
   _enemyUseSkill(skill) {
     switch (skill.type) {
-      case SKILL_TYPE.ATTACK:
+      case window.SKILL_TYPE.ATTACK:
         this._enemyAttack(skill);
         break;
 
-      case SKILL_TYPE.HEAL:
+      case window.SKILL_TYPE.HEAL:
         this._enemyHeal(skill);
         break;
     }
@@ -337,19 +332,19 @@ export class BattleSystem {
     const player = this.playerSystem.getPlayer();
     
     // 检查闪避
-    const dodgeChance = GAME_CONFIG.BATTLE.DODGE_CHANCE + player.stats.agility * 0.005;
-    if (checkDodge(dodgeChance)) {
+    const dodgeChance = window.GAME_CONFIG.BATTLE.DODGE_CHANCE + player.stats.agility * 0.005;
+    if (window.checkDodge(dodgeChance)) {
       if (this.onDamage) {
         this.onDamage('enemy', skill.name, 0, false, true);
       }
       return;
     }
 
-    let damage = calculateDamage(skill.damage, this.enemy.attack, player.defense);
+    let damage = window.calculateDamage(skill.damage, this.enemy.attack, player.defense);
     
     // 检查暴击
-    const isCritical = checkCritical(GAME_CONFIG.BATTLE.CRITICAL_CHANCE);
-    const finalDamage = isCritical ? Math.floor(damage * GAME_CONFIG.BATTLE.CRITICAL_MULTIPLIER) : damage;
+    const isCritical = window.checkCritical(window.GAME_CONFIG.BATTLE.CRITICAL_CHANCE);
+    const finalDamage = isCritical ? Math.floor(damage * window.GAME_CONFIG.BATTLE.CRITICAL_MULTIPLIER) : damage;
 
     const isDead = this.playerSystem.takeDamage(finalDamage);
 
@@ -362,7 +357,7 @@ export class BattleSystem {
    * 敌人基础攻击
    */
   _enemyBasicAttack() {
-    const basicSkill = getSkillById('basic_attack');
+    const basicSkill = window.getSkillById('basic_attack');
     if (basicSkill) {
       this._enemyAttack(basicSkill);
     }
@@ -373,7 +368,7 @@ export class BattleSystem {
    * @param {object} skill - 技能
    */
   _enemyHeal(skill) {
-    const healAmount = calculateHeal(skill.healAmount, 0);
+    const healAmount = window.calculateHeal(skill.healAmount, 0);
     this.enemy.hp = Math.min(this.enemy.maxHp, this.enemy.hp + healAmount);
   }
 
@@ -401,7 +396,7 @@ export class BattleSystem {
   _updateCooldowns() {
     const player = this.playerSystem.getPlayer();
     player.skills.forEach(skillId => {
-      const skill = getSkillById(skillId);
+      const skill = window.getSkillById(skillId);
       if (skill && skill.currentCooldown > 0) {
         skill.currentCooldown--;
       }
@@ -409,7 +404,7 @@ export class BattleSystem {
 
     if (this.enemy) {
       this.enemy.skills.forEach(skillId => {
-        const skill = getSkillById(skillId);
+        const skill = window.getSkillById(skillId);
         if (skill && skill.currentCooldown > 0) {
           skill.currentCooldown--;
         }
@@ -472,3 +467,6 @@ export class BattleSystem {
     return this.isActive;
   }
 }
+
+// 暴露到全局
+window.BattleSystem = BattleSystem;

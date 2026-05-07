@@ -107,6 +107,70 @@ const MARTIAL_ARTS_LIBRARY = [
     rank: '初阶',
     school: '正阳派',
     description: '脚踏祥云，轻盈飘逸',
+    currentLevel: 0,
+    maxLevel: 10,
+    practiceTimes: 0,
+    equipped: false,
+    baseBonus: { lightSkill: 5 },
+    stats: { speed: 30, dodge: 15 },
+    skills: [
+      { id: 1, name: '腾跃', type: '主动', unlockLevel: 1, icon: '🦘', description: '快速移动' },
+      { id: 2, name: '乘风', type: '被动', unlockLevel: 4, icon: '🎐', description: '增加10%躲闪' },
+      { id: 3, name: '凌云', type: '被动', unlockLevel: 7, icon: '🌤️', description: '增加速度' }
+    ]
+  }
+];
+
+// 玩家初始拥有的武学（只有基础武学）
+const INITIAL_PLAYER_MARTIAL_ARTS = [
+  {
+    id: 1,
+    name: '正阳基础剑式',
+    type: '武功',
+    skillType: 'sword',
+    rank: '初阶',
+    school: '正阳派',
+    description: '正阳派入门剑法，朴实无华，根基扎实',
+    currentLevel: 3,
+    maxLevel: 10,
+    practiceTimes: 2,
+    equipped: true,
+    baseBonus: { sword: 5 },
+    stats: { attack: 25, hit: 10 },
+    skills: [
+      { id: 1, name: '直刺', type: '主动', unlockLevel: 1, icon: '🗡️', description: '基础剑招，直刺敌人' },
+      { id: 2, name: '横斩', type: '被动', unlockLevel: 4, icon: '⚔️', description: '增加10%攻击' },
+      { id: 3, name: '剑影', type: '主动', unlockLevel: 7, icon: '✨', description: '连续三刺' }
+    ]
+  },
+  {
+    id: 3,
+    name: '正阳吐纳诀',
+    type: '内功',
+    skillType: 'innerSkill',
+    rank: '初阶',
+    school: '正阳派',
+    description: '正阳派入门吐纳法，调养内息',
+    currentLevel: 2,
+    maxLevel: 10,
+    practiceTimes: 1,
+    equipped: true,
+    baseBonus: { innerSkill: 5 },
+    stats: { hp: 50, defense: 10, innerSkill: 15 },
+    skills: [
+      { id: 1, name: '调息', type: '主动', unlockLevel: 1, icon: '🧘', description: '恢复少量气血' },
+      { id: 2, name: '固本', type: '被动', unlockLevel: 4, icon: '💪', description: '增加10%气血上限' },
+      { id: 3, name: '培元', type: '被动', unlockLevel: 7, icon: '🔋', description: '增加内力' }
+    ]
+  },
+  {
+    id: 5,
+    name: '踏云步',
+    type: '轻功',
+    skillType: 'lightSkill',
+    rank: '初阶',
+    school: '正阳派',
+    description: '脚踏祥云，轻盈飘逸',
     currentLevel: 1,
     maxLevel: 10,
     practiceTimes: 0,
@@ -133,8 +197,8 @@ let currentMartialCharacterId = 1;
 function getPlayerMartialArts(charId) {
   const saved = localStorage.getItem(`playerMartialArts_${charId}`);
   if (saved) return JSON.parse(saved);
-  // 默认初始武学
-  return [...MARTIAL_ARTS_LIBRARY];
+  // 默认初始武学（只有基础武学）
+  return [...INITIAL_PLAYER_MARTIAL_ARTS];
 }
 
 function getPlayerExperience() {
@@ -189,6 +253,9 @@ function resetMartialData() {
   document.getElementById('playerExp').textContent = playerExperience;
   alert('已重置！');
 }
+
+// 暴露武学库到全局
+window.MARTIAL_ARTS_LIBRARY = MARTIAL_ARTS_LIBRARY;
 
 // 初始加载当前角色数据
 let playerMartialArts = getPlayerMartialArts(currentMartialCharacterId);

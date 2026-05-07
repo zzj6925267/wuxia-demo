@@ -12,6 +12,11 @@ function openMartialArts(type) {
   }
 }
 
+// 打开背包系统
+function openInventory() {
+  window.location.href = 'inventory.html';
+}
+
 // 当前正阳派位置（默认在门派入口）
 let currentZhengyangBuilding = 'menkou';
 

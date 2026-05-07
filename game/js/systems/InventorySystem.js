@@ -3,12 +3,10 @@
  * @module InventorySystem
  */
 
-import { ITEMS } from '../data/items.js';
-
 /**
  * 背包系统类
  */
-export class InventorySystem {
+class InventorySystem {
   /**
    * 构造函数
    * @param {PlayerSystem} playerSystem - 玩家系统
@@ -27,7 +25,7 @@ export class InventorySystem {
     const player = this.playerSystem.getPlayer();
     return player.inventory.map(item => ({
       ...item,
-      data: ITEMS[item.id] || null
+      data: window.ITEMS[item.id] || null
     }));
   }
 
@@ -49,7 +47,7 @@ export class InventorySystem {
    * @returns {boolean} 是否成功
    */
   addItem(itemId, quantity = 1) {
-    if (!ITEMS[itemId]) {
+    if (!window.ITEMS[itemId]) {
       console.error(`Item not found: ${itemId}`);
       return false;
     }
@@ -85,7 +83,7 @@ export class InventorySystem {
    * @returns {object} 使用结果
    */
   useItem(itemId) {
-    const item = ITEMS[itemId];
+    const item = window.ITEMS[itemId];
     if (!item) {
       return { success: false, message: '物品不存在' };
     }
@@ -212,7 +210,7 @@ export class InventorySystem {
    * @returns {object|null} 物品信息
    */
   getItemInfo(itemId) {
-    return ITEMS[itemId] || null;
+    return window.ITEMS[itemId] || null;
   }
 
   /**
@@ -235,3 +233,6 @@ export class InventorySystem {
     return this.getItemCount(itemId) >= quantity;
   }
 }
+
+// 暴露到全局
+window.InventorySystem = InventorySystem;

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>背包系统</title>
+  <link rel="stylesheet" href="inventory.css">
+</head>
+<body>
+  <div class="inventory-container">
+    <div class="detail-panel">
+      <div class="panel-title">包裹</div>
+      <div class="item-detail" id="itemDetail">
+        <div class="empty-detail">
+          <div class="empty-icon">📦</div>
+          <p>请选择物品查看详情</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="main-panel">
+      <div class="tabs-bar">
+        <div class="tab active" data-category="misc">
+          <span class="tab-icon">📦</span>
+          <span class="tab-name">杂项</span>
+        </div>
+        <div class="tab" data-category="equipment">
+          <span class="tab-icon">⚔️</span>
+          <span class="tab-name">装备</span>
+        </div>
+        <div class="tab" data-category="potion">
+          <span class="tab-icon">🧪</span>
+          <span class="tab-name">丹药</span>
+        </div>
+        <div class="tab" data-category="skillbook">
+          <span class="tab-icon">📖</span>
+          <span class="tab-name">秘籍</span>
+        </div>
+        <div class="tab" data-category="material">
+          <span class="tab-icon">💎</span>
+          <span class="tab-name">材料</span>
+        </div>
+        <div class="tab" data-category="quest">
+          <span class="tab-icon">📜</span>
+          <span class="tab-name">任务</span>
+        </div>
+      </div>
+
+      <div class="items-grid" id="itemsGrid"></div>
+
+      <div class="bottom-bar">
+        <div class="capacity-info">
+          <span>包裹容量</span>
+          <span class="capacity-count" id="capacityCount">0/200</span>
+        </div>
+        <button class="btn整理" id="btnSort">整理</button>
+        <button class="btn离开" id="btnClose">离开</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="temp-backpack-overlay" id="tempBackpackOverlay" style="display: none;">
+    <div class="temp-backpack">
+      <div class="temp-title">临时背包</div>
+      <div class="temp-grid" id="tempGrid"></div>
+      <div class="temp-warning">⚠️ 关闭后临时背包物品将丢失</div>
+      <button class="btn-close-temp" id="btnCloseTemp">关闭</button>
+    </div>
+  </div>
+
+  <div class="character-select-overlay" id="characterSelectOverlay" style="display: none;">
+    <div class="character-select-modal">
+      <div class="modal-header">
+        <h2 class="modal-title">选择角色学习</h2>
+        <button class="modal-close-btn" id="closeCharacterSelectBtn">×</button>
+      </div>
+      <div class="character-list" id="characterList"></div>
+    </div>
+  </div>
+
+  <script src="../js/config.js"></script>
+  <script src="../js/data/items.js"></script>
+  <script src="martialArtsData.js"></script>
+  <script>
+    // 背包系统独立初始化 playerData
+    if (!window.playerData) {
+      window.playerData = {
+        inventory: [
+          { id: 'potion_small', quantity: 5 },
+          { id: 'potion_medium', quantity: 3 },
+          { id: 'iron_sword', quantity: 1 },
+          { id: 'leather_armor', quantity: 1 },
+          { id: 'skillbook_liuyun', quantity: 1 },
+          { id: 'skillbook_zixia', quantity: 1 },
+          { id: 'skillbook_tayun', quantity: 1 }
+        ],
+        equipment: {
+          weapon: null,
+          armor: null,
+          helmet: null,
+          shoes: null,
+          accessory: null
+        },
+        level: 10
+      };
+    }
+  </script>
+  <script src="inventory.js"></script>
+</body>
+</html>
