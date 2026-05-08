@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>青苍山麓 - 山林地图</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Microsoft YaHei', 'SimHei', sans-serif;
+      background: linear-gradient(135deg, #1a2f1a 0%, #0f1f0f 50%, #0a150a 100%);
+      min-height: 100vh;
+      overflow-y: auto;
+    }
+    .map-container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    .map-header {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .map-title {
+      font-size: 28px;
+      color: #4CAF50;
+      text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+    }
+    .map-subtitle {
+      font-size: 14px;
+      color: #999;
+    }
+    .back-btn {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      padding: 8px 20px;
+      background: linear-gradient(145deg, #4CAF50, #388E3C);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .back-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+    }
+    .map-area {
+      position: relative;
+      width: 100%;
+      height: 580px;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 12px;
+      border: 2px solid #2E7D32;
+      overflow: hidden;
+    }
+    .map-area::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-image: 
+        linear-gradient(rgba(76, 175, 80, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(76, 175, 80, 0.03) 1px, transparent 1px);
+      background-size: 30px 30px;
+    }
+    .map-lines {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+    .map-lines line {
+      stroke: #4CAF50;
+      stroke-width: 2;
+    }
+    .map-nodes {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+    }
+    .location-node {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .location-node:hover {
+      transform: translate(-50%, -50%) scale(1.05);
+    }
+    .location-node.current .node-inner {
+      box-shadow: 0 0 15px rgba(76, 175, 80, 0.8);
+      border-color: #4CAF50;
+      background: linear-gradient(145deg, #388e3c, #2e7d32);
+    }
+    .location-node.available .node-inner {
+      box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+    }
+    .location-node.unavailable {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .location-node.dungeon .node-inner {
+      border-color: #FF9800;
+    }
+    .location-node.dungeon .node-name {
+      color: #FF9800;
+    }
+    .node-inner {
+      width: 90px;
+      padding: 8px;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: linear-gradient(145deg, #2d442d, #1a2e1a);
+      border: 2px solid #2E7D32;
+      transition: all 0.3s ease;
+    }
+    .node-icon {
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+    .node-name {
+      font-size: 11px;
+      color: #fff;
+      text-align: center;
+    }
+    .node-status {
+      font-size: 8px;
+      color: #999;
+    }
+    .location-panel {
+      background: rgba(26, 46, 26, 0.9);
+      border-radius: 12px;
+      border: 1px solid #2E7D32;
+      padding: 20px;
+      width: 100%;
+    }
+    .panel-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .location-icon {
+      font-size: 28px;
+    }
+    .location-name {
+      font-size: 22px;
+      color: #4CAF50;
+    }
+    .location-description {
+      font-size: 14px;
+      color: #aaa;
+      line-height: 1.6;
+    }
+    
+    .enemy-section {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #2e7d32;
+    }
+    
+    .enemy-title {
+      color: #4caf50;
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+    
+    .enemy-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .enemy-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px;
+      background: rgba(46, 125, 50, 0.2);
+      border: 1px solid #2e7d32;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .enemy-item:hover {
+      background: rgba(46, 125, 50, 0.4);
+      transform: translateX(5px);
+    }
+    
+    .enemy-icon {
+      font-size: 28px;
+    }
+    
+    .enemy-info {
+      flex: 1;
+    }
+    
+    .enemy-name {
+      color: #fff;
+      font-size: 14px;
+      font-weight: bold;
+    }
+    
+    .enemy-level {
+      color: #ff9800;
+      font-size: 12px;
+    }
+    
+    .enemy-stats {
+      color: #aaa;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="map-container">
+    <div class="map-header">
+      <button class="back-btn" onclick="goBack()">← 返回大地图</button>
+      <h1 class="map-title">青苍山麓</h1>
+      <p class="map-subtitle">山林地图</p>
+    </div>
+
+    <div class="map-area">
+      <svg class="map-lines" viewBox="0 0 1000 580">
+        <defs>
+          <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#2E7D32" />
+            <stop offset="50%" stop-color="#4CAF50" />
+            <stop offset="100%" stop-color="#2E7D32" />
+          </linearGradient>
+        </defs>
+      </svg>
+      <div class="map-nodes" id="mapNodes"></div>
+    </div>
+
+    <div class="location-panel" id="locationPanel">
+      <div class="panel-header">
+        <span class="location-icon" id="locationIcon">🚪</span>
+        <h2 class="location-name" id="locationName">青苍山道口</h2>
+      </div>
+      <p class="location-description" id="locationDesc">通往青苍山的土路入口，两旁长满齐腰的杂草，林间偶有鸟鸣，越往深处越显昏暗。路边立着半块残破石碑，刻着「山林凶险，独行慎入」。</p>
+      
+      <div class="enemy-section" id="enemySection" style="display: none;">
+        <h3 class="enemy-title">⚔️ 此处敌人</h3>
+        <div class="enemy-list" id="enemyList"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/data/enemies.js"></script>
+  <script src="forestMapData.js"></script>
+  <script>
+    const LOCATIONS = window.FOREST_LOCATIONS;
+    const CONNECTIONS = window.FOREST_CONNECTIONS;
+
+    let currentLocation = 'qingcang_entrance';
+
+    function init() {
+      renderMap();
+      updatePanel();
+    }
+
+    function renderMap() {
+      const mapNodes = document.getElementById('mapNodes');
+      const mapLines = document.querySelector('.map-lines');
+      
+      mapNodes.innerHTML = '';
+      mapLines.innerHTML = `<defs><linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#2E7D32" /><stop offset="50%" stop-color="#4CAF50" /><stop offset="100%" stop-color="#2E7D32" /></linearGradient></defs>`;
+
+      const current = LOCATIONS[currentLocation];
+      const adjacentIds = current.connections;
+
+      CONNECTIONS.forEach(([fromId, toId]) => {
+        const from = LOCATIONS[fromId];
+        const to = LOCATIONS[toId];
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', from.x);
+        line.setAttribute('y1', from.y);
+        line.setAttribute('x2', to.x);
+        line.setAttribute('y2', to.y);
+        line.setAttribute('stroke', 'url(#lineGrad)');
+        line.setAttribute('stroke-width', '2');
+        
+        const isConnected = (fromId === currentLocation || toId === currentLocation);
+        line.setAttribute('opacity', isConnected ? '1' : '0.5');
+        
+        mapLines.appendChild(line);
+      });
+
+      Object.values(LOCATIONS).forEach(location => {
+        const isCurrent = location.id === currentLocation;
+        const isAvailable = adjacentIds.includes(location.id);
+        const isDungeon = location.id === 'heifeng_entrance';
+        
+        const node = document.createElement('div');
+        node.className = `location-node ${isCurrent ? 'current' : ''} ${isAvailable ? 'available' : 'unavailable'} ${isDungeon ? 'dungeon' : ''}`;
+        node.style.left = `${location.x}px`;
+        node.style.top = `${location.y}px`;
+        
+        node.innerHTML = `
+          <div class="node-inner">
+            <span class="node-icon">${location.icon}</span>
+            <span class="node-name">${location.name}</span>
+            <span class="node-status">${isCurrent ? '当前所在' : isAvailable ? '可前往' : '需经相邻'}</span>
+          </div>
+        `;
+
+        if (isAvailable && !isCurrent) {
+          node.addEventListener('click', () => travelTo(location.id));
+        }
+        
+        mapNodes.appendChild(node);
+      });
+    }
+
+    function travelTo(locationId) {
+      currentLocation = locationId;
+      renderMap();
+      updatePanel();
+    }
+
+    function updatePanel() {
+  const location = LOCATIONS[currentLocation];
+  document.getElementById('locationIcon').textContent = location.icon;
+  document.getElementById('locationName').textContent = location.name;
+  document.getElementById('locationDesc').textContent = location.desc;
+  
+  updateEnemyList();
+}
+
+function updateEnemyList() {
+  const enemies = getEnemiesAtLocation(currentLocation);
+  const enemySection = document.getElementById('enemySection');
+  const enemyList = document.getElementById('enemyList');
+  
+  if (enemies.length > 0) {
+    enemySection.style.display = 'block';
+    enemyList.innerHTML = enemies.map(enemy => `
+      <div class="enemy-item" onclick="startBattle('${enemy.id}')">
+        <span class="enemy-icon">${enemy.icon}</span>
+        <div class="enemy-info">
+          <div>
+            <span class="enemy-name">${enemy.name}</span>
+            <span class="enemy-level">Lv.${enemy.level}</span>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  } else {
+    enemySection.style.display = 'none';
+  }
+}
+
+function startBattle(enemyId) {
+  localStorage.setItem('battleEnemyId', enemyId);
+  window.location.href = 'battle.html';
+}
+
+    function goBack() {
+      window.location.href = 'map.html';
+    }
+
+    init();
+  </script>
+</body>
+</html>

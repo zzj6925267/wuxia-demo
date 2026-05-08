@@ -204,7 +204,18 @@ function getPlayerMartialArts(charId) {
 function getPlayerExperience() {
   const saved = localStorage.getItem('playerExperience');
   if (saved) return parseInt(saved);
-  return 500;
+  return 200;
+}
+
+function resetPlayerExperience() {
+  playerExperience = 200;
+  localStorage.setItem('playerExperience', playerExperience);
+  document.getElementById('playerExp').textContent = playerExperience;
+  
+  // 重新渲染详情，更新按钮状态
+  if (typeof renderDetail === 'function') {
+    renderDetail();
+  }
 }
 
 function saveMartialData() {

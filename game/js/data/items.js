@@ -168,6 +168,55 @@ const ITEMS = {
     },
     price: 30
   },
+  
+  tie_sword: {
+    id: 'tie_sword',
+    name: '铁剑',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'weapon',
+    quality: 'common',
+    requiredLevel: 1,
+    description: '普通的铁制长剑',
+    icon: '⚔️',
+    bonus: {
+      attack: 10
+    },
+    price: 30
+  },
+  
+  shijian_sword: {
+    id: 'shijian_sword',
+    name: '石剑',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'weapon',
+    quality: 'common',
+    requiredLevel: 5,
+    description: '石制长剑，较为粗糙',
+    icon: '🗿',
+    bonus: {
+      attack: 15
+    },
+    price: 50
+  },
+  
+  jingang_sword: {
+    id: 'jingang_sword',
+    name: '金刚剑',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'weapon',
+    quality: 'rare',
+    requiredLevel: 10,
+    description: '精钢打造，坚硬无比',
+    icon: '⚔️',
+    bonus: {
+      attack: 30,
+      defense: 5
+    },
+    price: 200
+  },
 
   steel_sword: {
     id: 'steel_sword',
@@ -273,6 +322,24 @@ const ITEMS = {
       agility: 3
     },
     price: 40
+  },
+  
+  pojiu_yeyi: {
+    id: 'pojiu_yeyi',
+    name: '破旧夜行衣',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'armor',
+    quality: 'uncommon',
+    requiredLevel: 8,
+    description: '山贼常用的夜行衣，虽破旧但灵活',
+    icon: '🥷',
+    bonus: {
+      defense: 10,
+      agility: 8,
+      dodgeRate: 5
+    },
+    price: 80
   },
 
   iron_armor: {
@@ -544,6 +611,23 @@ const ITEMS = {
     effects: {},
     price: 150
   },
+  
+  luocao_jianjing: {
+    id: 'luocao_jianjing',
+    name: '落草剑经',
+    type: 'consumable',
+    category: 'skillbook',
+    quality: 'rare',
+    description: '山寨流传的剑经，需要剑术修为25才能学习',
+    icon: '📖',
+    martialArtId: 6,
+    learningRequirement: {
+      skillType: 'sword',
+      value: 25
+    },
+    effects: {},
+    price: 300
+  },
 
   // 材料
   herb_ginseng: {
@@ -564,6 +648,26 @@ const ITEMS = {
     description: '千年灵芝',
     icon: '🍄',
     price: 50
+  },
+  
+  she_dan: {
+    id: 'she_dan',
+    name: '蛇胆',
+    type: 'material',
+    category: 'material',
+    description: '青竹蛇的蛇胆，可用于制药',
+    icon: '🐍',
+    price: 25
+  },
+  
+  she_tui: {
+    id: 'she_tui',
+    name: '蛇蜕',
+    type: 'material',
+    category: 'material',
+    description: '青竹蛇蜕下的皮，可用于制药',
+    icon: '🦴',
+    price: 15
   },
 
   iron_ore: {

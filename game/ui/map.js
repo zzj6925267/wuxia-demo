@@ -193,7 +193,7 @@ function updateLocationPanel() {
   UI.locationDesc.textContent = location.description;
   UI.locationStatus.innerHTML = `<span class="status-tag ${location.isSafe ? 'safe' : 'danger'}">${location.isSafe ? '安全区域' : '危险区域'}</span>`;
   
-  UI.btnExplore.textContent = location.id === 'zhengyang_clan' ? '进入门派' : '探索此地';
+  UI.btnExplore.textContent = location.id === 'zhengyang_clan' ? '进入门派' : (location.id === 'forest' ? '探索山林' : '探索此地');
 }
 
 /**
@@ -205,6 +205,8 @@ function handleExplore() {
   
   if (location.id === 'zhengyang_clan') {
     enterZhengyangMap();
+  } else if (location.id === 'forest') {
+    window.location.href = 'forest_map.html';
   } else {
     alert(`\u63A2\u7D22 ${location.name}...\n\n${location.description}`);
     

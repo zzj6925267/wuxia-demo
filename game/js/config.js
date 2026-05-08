@@ -47,6 +47,12 @@ const GAME_CONFIG = {
   SAVE: {
     AUTO_SAVE_INTERVAL: 30000,  // 自动存档间隔（毫秒）
     MAX_SAVE_SLOTS: 5           // 最大存档槽位
+  },
+
+  // AI文案配置
+  AI: {
+    ENABLED: true,              // 是否启用AI功能
+    AUTO_GENERATE_DIALOG: false // 是否自动生成对话
   }
 };
 

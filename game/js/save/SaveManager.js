@@ -3,10 +3,7 @@
  * @module SaveManager
  */
 
-// 使用全局变量（浏览器环境）
-const GAME_CONFIG = window.GAME_CONFIG || {};
-const PLAYER_INITIAL = window.PLAYER_INITIAL || {};
-const deepClone = window.deepClone || function(obj) { return JSON.parse(JSON.stringify(obj)); };
+// 使用全局变量（浏览器环境，已在config.js和characters.js中定义）
 
 /**
  * 存档管理类
@@ -32,7 +29,7 @@ class SaveManager {
 
     this.autoSaveTimer = setInterval(() => {
       this.autoSave();
-    }, GAME_CONFIG.SAVE.AUTO_SAVE_INTERVAL);
+    }, window.GAME_CONFIG.SAVE.AUTO_SAVE_INTERVAL);
   }
 
   /**
@@ -48,7 +45,7 @@ class SaveManager {
    * @returns {boolean} 是否成功
    */
   save(slot) {
-    if (slot < 0 || slot >= GAME_CONFIG.SAVE.MAX_SAVE_SLOTS) {
+    if (slot < 0 || slot >= window.GAME_CONFIG.SAVE.MAX_SAVE_SLOTS) {
       console.error('Invalid save slot');
       return false;
     }
@@ -75,7 +72,7 @@ class SaveManager {
    * @returns {boolean} 是否成功
    */
   load(slot) {
-    if (slot < 0 || slot >= GAME_CONFIG.SAVE.MAX_SAVE_SLOTS) {
+    if (slot < 0 || slot >= window.GAME_CONFIG.SAVE.MAX_SAVE_SLOTS) {
       console.error('Invalid save slot');
       return false;
     }
@@ -103,7 +100,7 @@ class SaveManager {
    * @returns {object|null} 存档信息
    */
   getSaveInfo(slot) {
-    if (slot < 0 || slot >= GAME_CONFIG.SAVE.MAX_SAVE_SLOTS) {
+    if (slot < 0 || slot >= window.GAME_CONFIG.SAVE.MAX_SAVE_SLOTS) {
       return null;
     }
 
@@ -133,7 +130,7 @@ class SaveManager {
    */
   getAllSaveInfo() {
     const saves = [];
-    for (let i = 0; i < GAME_CONFIG.SAVE.MAX_SAVE_SLOTS; i++) {
+    for (let i = 0; i < window.GAME_CONFIG.SAVE.MAX_SAVE_SLOTS; i++) {
       const info = this.getSaveInfo(i);
       if (info) {
         saves.push(info);
@@ -148,7 +145,7 @@ class SaveManager {
    * @returns {boolean} 是否成功
    */
   deleteSave(slot) {
-    if (slot < 0 || slot >= GAME_CONFIG.SAVE.MAX_SAVE_SLOTS) {
+    if (slot < 0 || slot >= window.GAME_CONFIG.SAVE.MAX_SAVE_SLOTS) {
       return false;
     }
 
@@ -166,7 +163,7 @@ class SaveManager {
    * 重置游戏
    */
   resetGame() {
-    this.playerSystem.player = deepClone(PLAYER_INITIAL);
+    this.playerSystem.player = window.deepClone(window.PLAYER_INITIAL);
     console.log('Game reset to initial state');
   }
 

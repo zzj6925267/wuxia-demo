@@ -58,6 +58,13 @@ function initPage() {
     window.location.href = 'map.html';
   });
 
+  // 绑定重置阅历按钮
+  document.getElementById('resetExpBtn').addEventListener('click', function() {
+    if (typeof resetPlayerExperience === 'function') {
+      resetPlayerExperience();
+    }
+  });
+
   // 绑定页签切换
   document.querySelectorAll('.type-tab').forEach(tab => {
     tab.addEventListener('click', function() {
@@ -257,6 +264,31 @@ function calculatePracticeCost(martial) {
   return baseCosts[martial.rank] + martial.currentLevel * 10;
 }
 
+// 飘字提示
+function showMartialFloatText(text, color) {
+  const floatDiv = document.createElement('div');
+  floatDiv.textContent = text;
+  floatDiv.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 24px;
+    font-weight: bold;
+    color: ${color};
+    text-shadow: 0 0 15px ${color};
+    z-index: 9999;
+    opacity: 0;
+    transition: all 0.5s ease-out;
+  `;
+  
+  document.body.appendChild(floatDiv);
+  
+  setTimeout(() => { floatDiv.style.opacity = '1'; }, 50);
+  setTimeout(() => { floatDiv.style.opacity = '0'; }, 2000);
+  setTimeout(() => { document.body.removeChild(floatDiv); }, 3000);
+}
+
 // 修炼武学
 function practiceMartialArt() {
   if (!selectedMartialArt) return;
@@ -264,7 +296,7 @@ function practiceMartialArt() {
   const cost = calculatePracticeCost(selectedMartialArt);
   
   if (playerExperience < cost) {
-    alert('阅历不足！');
+    showMartialFloatText('阅历不足！', '#ff4444');
     return;
   }
 
@@ -280,7 +312,7 @@ function practiceMartialArt() {
     if (selectedMartialArt.currentLevel < selectedMartialArt.maxLevel) {
       selectedMartialArt.currentLevel++;
       selectedMartialArt.practiceTimes = 0;
-      alert(`恭喜！${selectedMartialArt.name} 突破至第 ${selectedMartialArt.currentLevel} 重！`);
+      showMartialFloatText(`恭喜！${selectedMartialArt.name} 突破至第 ${selectedMartialArt.currentLevel} 重！`, '#44ff44');
     }
   }
 

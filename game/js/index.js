@@ -3,8 +3,7 @@
  * @module index
  */
 
-// 使用全局变量（浏览器环境）
-const GAME_STATE = window.GAME_STATE || {};
+// 使用全局变量（浏览器环境，已在config.js中定义）
 
 /**
  * 游戏主类
@@ -18,6 +17,7 @@ class Game {
     this.inventorySystem = null;
     this.mapSystem = null;
     this.saveManager = null;
+    this.aiWriter = null;
 
     // 游戏状态
     this.currentState = GAME_STATE.MENU;
@@ -68,7 +68,50 @@ class Game {
       () => this._onInventoryChange()
     );
 
+    // 创建AI文案系统
+    if (GAME_CONFIG.AI && GAME_CONFIG.AI.ENABLED) {
+      this._initAI();
+    }
+
     console.log('游戏初始化完成');
+  }
+
+  /**
+   * 初始化AI文案系统
+   */
+  _initAI() {
+    try {
+      this.aiWriter = new AIWriter();
+      
+      // 加载保存的配置
+      const config = localStorage.getItem('ai_config');
+      if (config) {
+        const data = JSON.parse(config);
+        this.aiWriter.setProvider(data.provider || 'WENXIN_YIYAN');
+        this.aiWriter.setApiKey(data.apiKey || '', data.secretKey || '');
+      }
+      
+      console.log('AI文案系统初始化完成');
+    } catch (error) {
+      console.warn('AI文案系统初始化失败:', error.message);
+      this.aiWriter = null;
+    }
+  }
+
+  /**
+   * 获取AI文案生成器
+   * @returns {AIWriter|null} AIWriter实例
+   */
+  getAIWriter() {
+    return this.aiWriter;
+  }
+
+  /**
+   * 检查AI是否可用
+   * @returns {boolean} 是否可用
+   */
+  isAIEnabled() {
+    return this.aiWriter !== null;
   }
 
   /**

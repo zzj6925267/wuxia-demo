@@ -172,6 +172,7 @@
     <div class="menu" id="mainMenu">
       <button class="menu-btn" id="btnNewGame">新的江湖</button>
       <button class="menu-btn" id="btnLoadGame">继续征程</button>
+      <button class="menu-btn" id="btnAIWriter">AI文案</button>
       <button class="menu-btn" id="btnSettings">游戏设置</button>
     </div>
 
@@ -197,6 +198,7 @@
   <script src="js/systems/DialogSystem.js"></script>
   <script src="js/systems/BattleSystem.js"></script>
   <script src="js/systems/InventorySystem.js"></script>
+  <script src="js/systems/AIWriter.js"></script>
   <script src="js/save/SaveManager.js"></script>
   <script src="js/index.js"></script>
 
@@ -206,16 +208,16 @@
     const saveSlots = document.getElementById('saveSlots');
     const btnNewGame = document.getElementById('btnNewGame');
     const btnLoadGame = document.getElementById('btnLoadGame');
+    const btnAIWriter = document.getElementById('btnAIWriter');
     const btnSettings = document.getElementById('btnSettings');
 
-    // 创建游戏实例（使用全局变量）
-    const game = window.game;
+    // 使用全局游戏实例（已在index.js中创建）
 
     /**
      * 初始化
      */
     function init() {
-      game.init();
+      window.game.init();
       bindEvents();
     }
 
@@ -225,14 +227,22 @@
     function bindEvents() {
       btnNewGame.addEventListener('click', handleNewGame);
       btnLoadGame.addEventListener('click', handleLoadGame);
+      btnAIWriter.addEventListener('click', handleAIWriter);
       btnSettings.addEventListener('click', handleSettings);
+    }
+
+    /**
+     * 处理AI文案
+     */
+    function handleAIWriter() {
+      window.location.href = './ui/ai_writer.html';
     }
 
     /**
      * 处理新游戏
      */
     function handleNewGame() {
-      game.startNewGame();
+      window.game.startNewGame();
       openMap();
     }
 
@@ -258,7 +268,7 @@
     function renderSaveSlots() {
       saveSlots.innerHTML = '';
 
-      const saves = game.saveManager.getAllSaveInfo();
+      const saves = window.game.saveManager.getAllSaveInfo();
       
       for (let i = 0; i < 5; i++) {
         const save = saves.find(s => s.slot === i);
@@ -280,7 +290,7 @@
           `;
           
           slotElement.addEventListener('click', () => {
-            if (game.loadGame(i)) {
+            if (window.game.loadGame(i)) {
               openMap();
             }
           });
@@ -288,8 +298,8 @@
           slotElement.className = 'save-slot empty';
           slotElement.innerHTML = `<div class="save-name">存档 ${i + 1}</div><div class="save-info">空存档槽</div>`;
           slotElement.addEventListener('click', () => {
-            game.startNewGame();
-            game.saveGame(i);
+            window.game.startNewGame();
+            window.game.saveGame(i);
             openMap();
           });
         }
