@@ -35,16 +35,35 @@
       color: #999;
     }
     .back-btn {
-      position: absolute;
-      top: 15px;
-      left: 15px;
-      padding: 8px 20px;
-      background: linear-gradient(145deg, #4CAF50, #388E3C);
+      display: none;
+    }
+    .leave-btn {
+      margin-top: 15px;
+      padding: 10px 20px;
+      background: linear-gradient(145deg, #f44336, #d32f2f);
       border: none;
       border-radius: 8px;
       color: white;
       font-size: 14px;
       cursor: pointer;
+      width: 100%;
+      transition: all 0.3s ease;
+    }
+    .leave-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(244, 67, 54, 0.4);
+    }
+    .gold-display {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      padding: 8px 15px;
+      background: rgba(0, 0, 0, 0.6);
+      border: 1px solid #c9a227;
+      border-radius: 20px;
+      color: #f4d03f;
+      font-size: 14px;
+      font-weight: bold;
     }
     .back-btn:hover {
       transform: translateY(-2px);
@@ -233,6 +252,7 @@
     </div>
 
     <div class="map-area">
+      <div class="gold-display" id="goldDisplay">💰 银两：<span id="goldValue">0</span></div>
       <svg class="map-lines" viewBox="0 0 1000 580">
         <defs>
           <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -256,21 +276,217 @@
         <h3 class="enemy-title">⚔️ 此处敌人</h3>
         <div class="enemy-list" id="enemyList"></div>
       </div>
+      
+      <div id="leaveBtnContainer" style="display: none;"></div>
     </div>
   </div>
 
   <script src="../js/data/enemies.js"></script>
   <script src="forestMapData.js"></script>
   <script>
-    const LOCATIONS = window.FOREST_LOCATIONS;
-    const CONNECTIONS = window.FOREST_CONNECTIONS;
+        const LOCATIONS = window.FOREST_LOCATIONS;
+        const CONNECTIONS = window.FOREST_CONNECTIONS;
 
-    let currentLocation = 'qingcang_entrance';
+        let currentLocation = 'qingcang_entrance';
 
-    function init() {
-      renderMap();
-      updatePanel();
-    }
+        // 更新银两显示
+        function updateGoldDisplay(gold) {
+          const goldEl = document.getElementById('goldValue');
+          if (goldEl) {
+            goldEl.textContent = gold;
+          }
+        }
+
+        // 显示飘字提示
+        function showFloatText(text, color) {
+          const floatDiv = document.createElement('div');
+          floatDiv.style.position = 'fixed';
+          floatDiv.style.top = '50%';
+          floatDiv.style.left = '50%';
+          floatDiv.style.transform = 'translate(-50%, -50%)';
+          floatDiv.style.fontSize = '36px';
+          floatDiv.style.fontWeight = 'bold';
+          floatDiv.style.color = color || '#f4d03f';
+          floatDiv.style.textShadow = '0 0 20px rgba(244, 208, 63, 0.8)';
+          floatDiv.style.zIndex = '9999';
+          floatDiv.style.opacity = '0';
+          floatDiv.style.transition = 'all 0.5s ease';
+          floatDiv.textContent = text;
+          document.body.appendChild(floatDiv);
+          
+          setTimeout(() => { floatDiv.style.opacity = '1'; floatDiv.style.transform = 'translate(-50%, -60%)'; }, 50);
+          setTimeout(() => { floatDiv.style.opacity = '0'; floatDiv.style.transform = 'translate(-50%, -80%)'; }, 2000);
+          setTimeout(() => { document.body.removeChild(floatDiv); }, 3000);
+        }
+
+        // 检查升级
+        function checkLevelUp(save) {
+          console.log('=== checkLevelUp 开始 ===');
+          let levelUpCount = 0;
+          let finalLevel = save.player.level;
+          
+          while (true) {
+            // 计算当前等级所需的经验（每升一级所需经验增加50%）
+            const expNeeded = Math.floor(100 * Math.pow(1.5, save.player.level - 1));
+            console.log(`当前等级: ${save.player.level}, 当前阅历: ${save.player.exp}, 升级所需: ${expNeeded}`);
+            
+            if (save.player.exp >= expNeeded) {
+              // 升级
+              save.player.exp -= expNeeded;
+              save.player.level += 1;
+              levelUpCount++;
+              console.log(`升级！当前等级: ${save.player.level}, 剩余阅历: ${save.player.exp}`);
+            } else {
+              break;
+            }
+          }
+          
+          // 如果有升级，立即显示飘字提示
+          if (levelUpCount > 0) {
+            console.log(`恭喜！升级 ${levelUpCount} 级，当前等级: ${save.player.level}`);
+            showFloatText(`恭喜！升至 ${save.player.level} 级！`, '#4caf50');
+          }
+          
+          console.log('=== checkLevelUp 结束 ===');
+        }
+
+        // 从存档读取银两并更新显示
+        function loadGoldFromSave() {
+          const saveData = localStorage.getItem('game_save_0');
+          if (saveData) {
+            try {
+              const save = JSON.parse(saveData);
+              const gold = save.player ? (save.player.gold || 0) : 0;
+              updateGoldDisplay(gold);
+            } catch (e) {
+              console.error('读取银两失败:', e);
+            }
+          }
+        }
+
+        // 处理待处理的战斗奖励
+        function applyPendingBattleRewards() {
+          console.log('=== applyPendingBattleRewards 开始 ===');
+          const pendingData = localStorage.getItem('pending_battle_rewards');
+          console.log('pending_battle_rewards:', pendingData);
+          if (!pendingData) {
+            console.log('没有待处理的战斗奖励');
+            return;
+          }
+
+          try {
+            const rewards = JSON.parse(pendingData);
+            console.log('应用战斗奖励:', rewards);
+
+            // 读取存档
+            let saveData = localStorage.getItem('game_save_0');
+            console.log('存档数据:', saveData ? '存在' : '不存在');
+            
+            let save;
+            if (!saveData) {
+              // 如果没有存档，创建一个初始存档
+              console.log('没有存档数据，创建初始存档');
+              save = {
+                player: {
+                  id: 'player',
+                  name: '少侠',
+                  level: 1,
+                  exp: 0,
+                  expToNextLevel: 100,
+                  maxHp: 100,
+                  hp: 100,
+                  maxMp: 50,
+                  mp: 50,
+                  attack: 10,
+                  defense: 5,
+                  skills: ['basic_attack', 'healing_palm'],
+                  inventory: [{ id: 'potion_small', quantity: 3 }],
+                  stats: {
+                    strength: 10,
+                    agility: 10,
+                    vitality: 10,
+                    spirit: 10
+                  },
+                  gold: 50,
+                  flags: {}
+                },
+                timestamp: Date.now(),
+                version: '1.0.0'
+              };
+            } else {
+              save = JSON.parse(saveData);
+            }
+
+            // 如果是第一次创建存档，使用角色面板的默认初始数据
+            // 或者如果存档中的阅历是0，说明是旧的初始存档，需要更新
+            if (!saveData || save.player.exp === 0) {
+              // 这些是角色面板的默认初始数据
+              save.player.exp = 45;  // 默认阅历
+              save.player.gold = save.player.gold || 0;   // 保留已有的银两
+              save.player.level = 10; // 默认等级
+              save.player.power = 580; // 默认战力
+              console.log('使用默认角色数据初始化/更新存档:', save.player);
+            }
+
+            console.log('存档解析后的数据:', save);
+            console.log('存档中的 player.gold:', save.player?.gold);
+            console.log('存档中的 player.exp:', save.player?.exp);
+
+            // 应用银两奖励（转换为数字）
+            const goldReward = parseInt(rewards.goldReward) || 0;
+            if (goldReward > 0) {
+              if (!save.player.gold) save.player.gold = 0;
+              save.player.gold += goldReward;
+              console.log(`银两 +${goldReward}, 当前: ${save.player.gold}`);
+              // 更新银两显示
+              updateGoldDisplay(save.player.gold);
+            } else {
+              console.log('没有银两奖励或奖励为0');
+            }
+
+            // 应用阅历奖励（转换为数字，注意字段名是 exp，不是 experience）
+            const expReward = parseInt(rewards.expReward) || 0;
+            if (expReward > 0) {
+              if (!save.player.exp) save.player.exp = 0;
+              save.player.exp += expReward;
+              console.log(`阅历 +${expReward}, 当前: ${save.player.exp}`);
+              
+              // 检查是否需要升级
+              checkLevelUp(save);
+            } else {
+              console.log('没有阅历奖励或奖励为0');
+            }
+
+            // 保存存档
+            localStorage.setItem('game_save_0', JSON.stringify(save));
+            console.log('存档已更新，保存的数据:', localStorage.getItem('game_save_0'));
+
+            // 清除待处理奖励
+            localStorage.removeItem('pending_battle_rewards');
+            console.log('战斗奖励已应用');
+          } catch (error) {
+            console.error('应用战斗奖励失败:', error);
+          }
+          console.log('=== applyPendingBattleRewards 结束 ===');
+        }
+
+        function init() {
+          // 首先处理战斗奖励
+          applyPendingBattleRewards();
+          
+          // 加载银两显示
+          loadGoldFromSave();
+          
+          // 检查是否有战斗前的位置，如果有则返回原地
+          const preBattleLoc = localStorage.getItem('preBattleLocation');
+          if (preBattleLoc && LOCATIONS[preBattleLoc]) {
+            currentLocation = preBattleLoc;
+            localStorage.removeItem('preBattleLocation');
+          }
+          
+          renderMap();
+          updatePanel();
+        }
 
     function renderMap() {
       const mapNodes = document.getElementById('mapNodes');
@@ -332,13 +548,22 @@
     }
 
     function updatePanel() {
-  const location = LOCATIONS[currentLocation];
-  document.getElementById('locationIcon').textContent = location.icon;
-  document.getElementById('locationName').textContent = location.name;
-  document.getElementById('locationDesc').textContent = location.desc;
-  
-  updateEnemyList();
-}
+      const location = LOCATIONS[currentLocation];
+      document.getElementById('locationIcon').textContent = location.icon;
+      document.getElementById('locationName').textContent = location.name;
+      document.getElementById('locationDesc').textContent = location.desc;
+      
+      // 检查是否是青苍山道口，如果是，显示离开按钮
+      const leaveBtnContainer = document.getElementById('leaveBtnContainer');
+      if (currentLocation === 'qingcang_entrance') {
+        leaveBtnContainer.innerHTML = '<button class="leave-btn" onclick="goBack()">🚪 离开此地</button>';
+        leaveBtnContainer.style.display = 'block';
+      } else {
+        leaveBtnContainer.style.display = 'none';
+      }
+      
+      updateEnemyList();
+    }
 
 function updateEnemyList() {
   const enemies = getEnemiesAtLocation(currentLocation);
@@ -365,10 +590,15 @@ function updateEnemyList() {
 
 function startBattle(enemyId) {
   localStorage.setItem('battleEnemyId', enemyId);
+  // 保存战斗前的位置，战斗结束后返回原地
+  localStorage.setItem('preBattleLocation', currentLocation);
   window.location.href = 'battle.html';
 }
 
     function goBack() {
+      // 保存当前位置到 localStorage，让大地图知道应该显示哪个地点
+      // 返回山林本身的位置，而不是连接的地点
+      localStorage.setItem('currentLocation', 'forest');
       window.location.href = 'map.html';
     }
 

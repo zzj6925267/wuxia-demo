@@ -149,7 +149,8 @@ const characters = [
       fist: 15, sword: 45, blade: 10, lightSkill: 30, innerSkill: 35,
       strength: 12, agility: 10, bone: 9, qi: 11
     },
-    remainingPoints: 20
+    remainingPoints: 20,
+    gold: 0
   },
   {
     id: 2,
@@ -178,7 +179,8 @@ const characters = [
       fist: 10, sword: 55, blade: 8, lightSkill: 50, innerSkill: 45,
       strength: 8, agility: 15, bone: 7, qi: 13
     },
-    remainingPoints: 0
+    remainingPoints: 0,
+    gold: 0
   }
 ];
 
@@ -256,6 +258,77 @@ function getCurrentCharacter() {
   return characters[currentCharacterIndex];
 }
 
+// 从存档加载最新数据到角色数组
+function loadFromSave() {
+  console.log('=== loadFromSave 开始 ===');
+  try {
+    const saveData = localStorage.getItem('game_save_0');
+    console.log('存档数据:', saveData ? '存在' : '不存在');
+    if (!saveData) {
+      console.log('没有存档数据');
+      return;
+    }
+
+    const save = JSON.parse(saveData);
+    console.log('存档解析后:', save);
+    const player = save.player;
+    console.log('玩家数据:', player);
+    if (!player) {
+      console.log('没有玩家数据');
+      return;
+    }
+
+    // 更新当前角色的数据
+    const char = characters[currentCharacterIndex];
+    console.log('当前角色:', char?.name, '索引:', currentCharacterIndex);
+    if (!char) {
+      console.log('没有当前角色');
+      return;
+    }
+
+    // 更新银两
+    if (player.gold !== undefined) {
+      char.gold = player.gold;
+      console.log('更新银两:', player.gold);
+    }
+
+    // 更新经验（阅历）- 注意字段名是 exp，不是 experience
+    if (player.exp !== undefined) {
+      console.log('存档中的 exp:', player.exp, '更新前角色阅历:', char.exp.current);
+      char.exp.current = player.exp;
+      console.log('更新后角色阅历:', char.exp.current);
+    } else {
+      console.log('存档中没有 exp 字段');
+    }
+
+    // 更新等级
+    if (player.level !== undefined) {
+      char.level = player.level;
+    }
+
+    // 更新战力
+    if (player.power !== undefined) {
+      char.power = player.power;
+    }
+
+    // 更新气血
+    if (player.hp !== undefined) {
+      char.health.current = player.hp;
+    }
+    if (player.maxHp !== undefined) {
+      char.health.max = player.maxHp;
+    }
+
+    console.log('角色数据已从存档更新:', {
+      gold: char.gold,
+      exp: char.exp.current,
+      level: char.level
+    });
+  } catch (e) {
+    console.error('从存档加载数据失败:', e);
+  }
+}
+
 function switchCharacter(index) {
   if (index >= 0 && index < characters.length) {
     currentCharacterIndex = index;
@@ -278,7 +351,32 @@ function toggleCharacterPanel() {
   panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
   
   if (panel.style.display === 'flex') {
+    // 检查是否有升级信息
+    checkLevelUpNotification();
+    
+    // 加载角色数据
     loadCharacterData();
+  }
+}
+
+/**
+ * 检查升级通知
+ */
+function checkLevelUpNotification() {
+  const levelUpData = localStorage.getItem('levelUpInfo');
+  if (!levelUpData) return;
+  
+  try {
+    const levelUp = JSON.parse(levelUpData);
+    console.log('升级通知:', levelUp);
+    
+    // 显示飘字提示
+    showCharFloatText(`恭喜！升至 ${levelUp.level} 级！`, '#4caf50');
+    
+    // 清除升级信息
+    localStorage.removeItem('levelUpInfo');
+  } catch (e) {
+    console.error('解析升级信息失败:', e);
   }
 }
 
@@ -313,6 +411,9 @@ function getEquippedMartialArts() {
  * 加载角色数据
  */
 function loadCharacterData() {
+  // 先从存档加载最新数据
+  loadFromSave();
+
   const char = getCurrentCharacter();
 
   // 调试输出
@@ -335,8 +436,24 @@ function loadCharacterData() {
   CHAR_UI.charHealthBar.style.width = `${healthPct}%`;
   
   // 更新经验条
-  const expPct = (char.exp.current / char.exp.max) * 100;
+  // 计算当前等级所需的经验（每升一级所需经验增加50%）
+  const expNeededForLevel = Math.floor(100 * Math.pow(1.5, char.level - 1));
+  const expPct = Math.min((char.exp.current / expNeededForLevel) * 100, 100);
   CHAR_UI.charExpBar.style.width = `${expPct}%`;
+  
+  // 更新经验数值显示
+  const expBarContainer = CHAR_UI.charExpBar.parentElement;
+  if (expBarContainer) {
+    const expPercentSpan = expBarContainer.nextElementSibling;
+    if (expPercentSpan) {
+      expPercentSpan.textContent = `${Math.floor(expPct)}%`;
+    }
+    const expTooltip = document.getElementById('expTooltip');
+    if (expTooltip) {
+      const remainingExp = expNeededForLevel - char.exp.current;
+      expTooltip.textContent = `${char.exp.current}/${expNeededForLevel}，还需${remainingExp}升级`;
+    }
+  }
   
   // 从武学系统获取激活的武学并更新显示
   const equippedMartialArts = getEquippedMartialArts();

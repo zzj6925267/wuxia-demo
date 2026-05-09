@@ -16,6 +16,9 @@
     </div>
 
     <div class="map-area">
+      <div class="player-stats-display">
+        <span class="stat-item">💰 银两：<span id="goldValue">0</span></span>
+      </div>
       <svg class="map-lines" viewBox="0 0 800 720" preserveAspectRatio="xMidYMid meet">
         <defs>
           <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -391,7 +394,10 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       initPlayerData();
-      
+
+      // 处理待处理的战斗奖励
+      applyPendingBattleRewards();
+
       // 检查 localStorage 是否需要自动打开角色面板
       const shouldOpenCharacter = localStorage.getItem('openCharacterOnLoad');
       if (shouldOpenCharacter === '1') {
@@ -404,11 +410,17 @@
           }
         }, 100);
       }
-      
+
       const mapData = {
         locations: MAP_LOCATIONS,
         connections: ALL_CONNECTIONS
       };
+
+      // 从 localStorage 读取当前位置，如果没有则使用默认位置
+      const savedLocation = localStorage.getItem('currentLocation');
+      const currentLocation = savedLocation || 'yuelai_inn';
+      // 清除保存的位置，避免下次加载时仍然使用
+      localStorage.removeItem('currentLocation');
       
       const playerData = {
         name: '少侠',
@@ -418,11 +430,120 @@
         mp: 50,
         maxMp: 50,
         gold: 50,
-        currentLocation: 'yuelai_inn'
+        currentLocation: currentLocation
       };
-      
+
       initMapUI(mapData, playerData);
+
+      // 从localStorage读取存档数据更新银两显示
+      const saveData = localStorage.getItem('game_save_0');
+      if (saveData) {
+        try {
+          const save = JSON.parse(saveData);
+          const gold = save.player ? (save.player.gold || 0) : 0;
+          const goldEl = document.getElementById('goldValue');
+          if (goldEl) goldEl.textContent = gold;
+        } catch (e) {}
+      }
     });
+
+    // 处理待处理的战斗奖励
+    function applyPendingBattleRewards() {
+      console.log('=== map.html applyPendingBattleRewards 开始 ===');
+      const pendingData = localStorage.getItem('pending_battle_rewards');
+      console.log('pending_battle_rewards:', pendingData);
+      if (!pendingData) {
+        console.log('没有待处理的战斗奖励');
+        return;
+      }
+
+      try {
+        const rewards = JSON.parse(pendingData);
+        console.log('应用战斗奖励:', rewards);
+
+        // 读取存档
+        let saveData = localStorage.getItem('game_save_0');
+        
+        let save;
+        if (!saveData) {
+          // 如果没有存档，创建一个初始存档
+          console.log('没有存档数据，创建初始存档');
+          save = {
+            player: {
+              id: 'player',
+              name: '少侠',
+              level: 1,
+              exp: 0,
+              expToNextLevel: 100,
+              maxHp: 100,
+              hp: 100,
+              maxMp: 50,
+              mp: 50,
+              attack: 10,
+              defense: 5,
+              skills: ['basic_attack', 'healing_palm'],
+              inventory: [{ id: 'potion_small', quantity: 3 }],
+              stats: {
+                strength: 10,
+                agility: 10,
+                vitality: 10,
+                spirit: 10
+              },
+              gold: 50,
+              flags: {}
+            },
+            timestamp: Date.now(),
+            version: '1.0.0'
+          };
+        } else {
+          save = JSON.parse(saveData);
+        }
+
+        // 如果是第一次创建存档，同步角色面板的初始数据
+        if (!saveData && typeof characters !== 'undefined' && characters.length > 0) {
+          const mainChar = characters[0];
+          if (mainChar) {
+            save.player.exp = mainChar.exp.current || save.player.exp;
+            save.player.gold = mainChar.gold || save.player.gold;
+            save.player.level = mainChar.level || save.player.level;
+            save.player.power = mainChar.power || save.player.power;
+            console.log('同步角色面板初始数据到存档:', save.player);
+          }
+        }
+
+        // 应用银两奖励（转换为数字）
+        const goldReward = parseInt(rewards.goldReward) || 0;
+        if (goldReward > 0) {
+          if (!save.player.gold) save.player.gold = 0;
+          save.player.gold += goldReward;
+          console.log(`银两 +${goldReward}, 当前: ${save.player.gold}`);
+        }
+
+        // 应用阅历奖励（转换为数字，注意字段名是 exp，不是 experience）
+        const expReward = parseInt(rewards.expReward) || 0;
+        if (expReward > 0) {
+          if (!save.player.exp) save.player.exp = 0;
+          save.player.exp += expReward;
+          console.log(`阅历 +${rewards.expReward}, 当前: ${save.player.exp}`);
+        }
+
+        // 保存存档
+        localStorage.setItem('game_save_0', JSON.stringify(save));
+        console.log('存档已更新');
+
+        // 更新地图上的银两显示
+        const goldEl = document.getElementById('goldValue');
+        if (goldEl && save.player.gold !== undefined) {
+          goldEl.textContent = save.player.gold;
+        }
+
+        // 清除待处理奖励
+        localStorage.removeItem('pending_battle_rewards');
+        console.log('战斗奖励已应用');
+      } catch (error) {
+        console.error('应用战斗奖励失败:', error);
+      }
+    }
   </script>
 </body>
 </html>

@@ -36,6 +36,9 @@ class Game {
     // 创建存档管理器
     this.saveManager = new SaveManager(this.playerSystem);
 
+    // 自动加载存档（如果有）
+    this._autoLoadSave();
+
     // 创建地图系统
     this.mapSystem = new MapSystem(
       this.playerSystem,
@@ -58,7 +61,7 @@ class Game {
       (player, enemy) => this._onBattleStart(player, enemy),
       (result) => this._onBattleEnd(result),
       (turn, isPlayerTurn) => this._onTurn(turn, isPlayerTurn),
-      (attacker, skillName, damage, isCritical, isDodge, isDead) => 
+      (attacker, skillName, damage, isCritical, isDodge, isDead) =>
         this._onDamage(attacker, skillName, damage, isCritical, isDodge, isDead)
     );
 
@@ -77,12 +80,62 @@ class Game {
   }
 
   /**
+   * 自动加载存档
+   */
+  _autoLoadSave() {
+    // 检查slot 0是否有存档
+    const saveInfo = this.saveManager.getSaveInfo(0);
+    if (saveInfo) {
+      // 自动加载存档
+      this.saveManager.load(0);
+      console.log('自动加载存档成功');
+
+      // 应用待处理的战斗奖励
+      this._applyPendingBattleRewards();
+    }
+  }
+
+  /**
+   * 应用待处理的战斗奖励
+   */
+  _applyPendingBattleRewards() {
+    const pendingData = localStorage.getItem('pending_battle_rewards');
+    if (!pendingData) return;
+
+    try {
+      const rewards = JSON.parse(pendingData);
+
+      // 应用阅历奖励
+      if (rewards.expReward > 0) {
+        this.playerSystem.addExperience(rewards.expReward);
+        console.log(`应用阅历奖励: +${rewards.expReward}`);
+      }
+
+      // 应用银两奖励
+      if (rewards.goldReward > 0) {
+        this.playerSystem.addGold(rewards.goldReward);
+        console.log(`应用银两奖励: +${rewards.goldReward}`);
+      }
+
+      // 清除待处理奖励
+      localStorage.removeItem('pending_battle_rewards');
+      console.log('战斗奖励已应用');
+
+      // 立即保存存档
+      this.save(0);
+      console.log('存档已保存');
+    } catch (error) {
+      console.error('应用战斗奖励失败:', error);
+    }
+  }
+
+  /**
    * 初始化AI文案系统
    */
   _initAI() {
     try {
       this.aiWriter = new AIWriter();
-      
+
       // 加载保存的配置
       const config = localStorage.getItem('ai_config');
       if (config) {
@@ -90,7 +143,7 @@ class Game {
         this.aiWriter.setProvider(data.provider || 'WENXIN_YIYAN');
         this.aiWriter.setApiKey(data.apiKey || '', data.secretKey || '');
       }
-      
+
       console.log('AI文案系统初始化完成');
     } catch (error) {
       console.warn('AI文案系统初始化失败:', error.message);

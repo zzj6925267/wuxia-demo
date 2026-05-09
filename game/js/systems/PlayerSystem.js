@@ -53,19 +53,68 @@ class PlayerSystem {
   }
 
   /**
+   * 从外部数据加载玩家数据
+   * @param {object} data - 玩家数据对象
+   */
+  loadFromData(data) {
+    if (!data) return;
+
+    Object.keys(data).forEach(key => {
+      if (key === 'stats') {
+        Object.keys(data.stats).forEach(statKey => {
+          if (this.player.stats[statKey] !== undefined) {
+            this.player.stats[statKey] = data.stats[statKey];
+          }
+        });
+      } else if (this.player.hasOwnProperty(key)) {
+        this.player[key] = data[key];
+      }
+    });
+
+    this._updateDerivedStats();
+  }
+
+  /**
+   * 获取完整玩家数据（用于存档）
+   * @returns {object} 玩家数据副本
+   */
+  getPlayerData() {
+    return window.deepClone(this.player);
+  }
+
+  /**
+   * 添加阅历值
+   * @param {number} amount - 阅历值数量
+   */
+  addExperience(amount) {
+    if (!this.player.exp) {
+      this.player.exp = 0;
+    }
+    this.player.exp += amount;
+  }
+
+  /**
+   * 获取阅历值
+   * @returns {number} 阅历值
+   */
+  getExperience() {
+    return this.player.exp || 0;
+  }
+
+  /**
    * 添加经验值
    * @param {number} amount - 经验值数量
    * @returns {boolean} 是否升级
    */
   addExp(amount) {
     this.player.exp += amount;
-    
+
     while (this.player.exp >= this.player.expToNextLevel) {
       this.player.exp -= this.player.expToNextLevel;
       this.levelUp();
       return true;
     }
-    
+
     return false;
   }
 
@@ -75,7 +124,7 @@ class PlayerSystem {
   levelUp() {
     this.player.level++;
     this.player.expToNextLevel = Math.floor(
-      window.GAME_CONFIG.INITIAL_STATS.expToNextLevel * 
+      window.GAME_CONFIG.INITIAL_STATS.expToNextLevel *
       Math.pow(window.GAME_CONFIG.EXP_MULTIPLIER, this.player.level - 1)
     );
 
