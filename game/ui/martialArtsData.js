@@ -32,9 +32,9 @@ const MARTIAL_ARTS_LIBRARY = [
     baseBonus: { sword: 5 },
     stats: { attack: 25, hit: 10 },
     skills: [
-      { id: 1, name: '直刺', type: '主动', unlockLevel: 1, icon: '🗡️', description: '基础剑招，直刺敌人' },
-      { id: 2, name: '横斩', type: '被动', unlockLevel: 4, icon: '⚔️', description: '增加10%攻击' },
-      { id: 3, name: '剑影', type: '主动', unlockLevel: 7, icon: '✨', description: '连续三刺' }
+      { id: 1, name: '直刺', type: '主动', unlockLevel: 1, icon: '🗡️', mpCost: 20, description: '基础剑招，直刺敌人', effect: { type: 'damage', value: 1.2, bonusAttr: 'qi', bonusPerPoint: 0.005 } },
+      { id: 2, name: '阳刚', type: '被动', unlockLevel: 4, icon: '☀️', description: '增加10%攻击', effect: { type: 'buff', stat: 'attack', value: 0.1, bonusAttr: 'qi', bonusPerPoint: 0.003 } },
+      { id: 3, name: '剑影', type: '被动', unlockLevel: 7, icon: '✨', description: '直刺后有20%概率跟随一剑，身法越高触发概率越高', effect: { type: 'followAttack', baseChance: 0.2, damage: 0.8, chanceAttr: 'agility', chancePerPoint: 0.01 } }
     ]
   },
   {
@@ -73,9 +73,9 @@ const MARTIAL_ARTS_LIBRARY = [
     baseBonus: { innerSkill: 5 },
     stats: { hp: 50, defense: 10, innerSkill: 15 },
     skills: [
-      { id: 1, name: '调息', type: '主动', unlockLevel: 1, icon: '🧘', description: '恢复少量气血' },
-      { id: 2, name: '固本', type: '被动', unlockLevel: 4, icon: '💪', description: '增加10%气血上限' },
-      { id: 3, name: '培元', type: '被动', unlockLevel: 7, icon: '🔋', description: '增加内力' }
+      { id: 1, name: '调息', type: '主动', unlockLevel: 1, icon: '🧘', mpCost: 0, description: '恢复内力', effect: { type: 'healMp', value: 0.3, bonusAttr: 'qi', bonusPerPoint: 0.01 } },
+      { id: 2, name: '固本', type: '被动', unlockLevel: 4, icon: '💪', description: '增加气血上限', effect: { type: 'maxHpBuff', value: 0.1, bonusAttr: 'qi', bonusPerPoint: 0.005 } },
+      { id: 3, name: '培元', type: '被动', unlockLevel: 7, icon: '🔋', description: '增加内力上限', effect: { type: 'maxMpBuff', value: 0.2, bonusAttr: 'qi', bonusPerPoint: 0.01 } }
     ]
   },
   {
@@ -107,16 +107,16 @@ const MARTIAL_ARTS_LIBRARY = [
     rank: '初阶',
     school: '正阳派',
     description: '脚踏祥云，轻盈飘逸',
-    currentLevel: 0,
+    currentLevel: 1,
     maxLevel: 10,
     practiceTimes: 0,
-    equipped: false,
+    equipped: true,
     baseBonus: { lightSkill: 5 },
     stats: { speed: 30, dodge: 15 },
     skills: [
-      { id: 1, name: '腾跃', type: '主动', unlockLevel: 1, icon: '🦘', description: '快速移动' },
-      { id: 2, name: '乘风', type: '被动', unlockLevel: 4, icon: '🎐', description: '增加10%躲闪' },
-      { id: 3, name: '凌云', type: '被动', unlockLevel: 7, icon: '🌤️', description: '增加速度' }
+      { id: 1, name: '腾跃', type: '主动', unlockLevel: 1, icon: '🦘', mpCost: 15, description: '本回合闪避率提升', effect: { type: 'dodgeBuff', value: 0.5, bonusAttr: 'qi', bonusPerPoint: 0.01 } },
+      { id: 2, name: '乘风', type: '被动', unlockLevel: 4, icon: '🎐', description: '增加闪避率', effect: { type: 'buff', stat: 'dodge', value: 0.1, bonusAttr: 'qi', bonusPerPoint: 0.003 } },
+      { id: 3, name: '凌云', type: '被动', unlockLevel: 7, icon: '🌤️', description: '增加速度', effect: { type: 'buff', stat: 'speed', value: 0.15, bonusAttr: 'qi', bonusPerPoint: 0.005 } }
     ]
   }
 ];
@@ -138,9 +138,9 @@ const INITIAL_PLAYER_MARTIAL_ARTS = [
     baseBonus: { sword: 5 },
     stats: { attack: 25, hit: 10 },
     skills: [
-      { id: 1, name: '直刺', type: '主动', unlockLevel: 1, icon: '🗡️', description: '基础剑招，直刺敌人' },
-      { id: 2, name: '横斩', type: '被动', unlockLevel: 4, icon: '⚔️', description: '增加10%攻击' },
-      { id: 3, name: '剑影', type: '主动', unlockLevel: 7, icon: '✨', description: '连续三刺' }
+      { id: 1, name: '直刺', type: '主动', unlockLevel: 1, icon: '🗡️', mpCost: 20, description: '基础剑招，直刺敌人', effect: { type: 'damage', value: 1.2, bonusAttr: 'qi', bonusPerPoint: 0.005 } },
+      { id: 2, name: '阳刚', type: '被动', unlockLevel: 4, icon: '☀️', description: '增加10%攻击', effect: { type: 'buff', stat: 'attack', value: 0.1, bonusAttr: 'qi', bonusPerPoint: 0.003 } },
+      { id: 3, name: '剑影', type: '被动', unlockLevel: 7, icon: '✨', description: '直刺后有20%概率跟随一剑，身法越高触发概率越高', effect: { type: 'followAttack', baseChance: 0.2, damage: 0.8, chanceAttr: 'agility', chancePerPoint: 0.01 } }
     ]
   },
   {
@@ -158,9 +158,9 @@ const INITIAL_PLAYER_MARTIAL_ARTS = [
     baseBonus: { innerSkill: 5 },
     stats: { hp: 50, defense: 10, innerSkill: 15 },
     skills: [
-      { id: 1, name: '调息', type: '主动', unlockLevel: 1, icon: '🧘', description: '恢复少量气血' },
-      { id: 2, name: '固本', type: '被动', unlockLevel: 4, icon: '💪', description: '增加10%气血上限' },
-      { id: 3, name: '培元', type: '被动', unlockLevel: 7, icon: '🔋', description: '增加内力' }
+      { id: 1, name: '调息', type: '主动', unlockLevel: 1, icon: '🧘', mpCost: 0, description: '恢复内力', effect: { type: 'healMp', value: 0.3, bonusAttr: 'qi', bonusPerPoint: 0.01 } },
+      { id: 2, name: '固本', type: '被动', unlockLevel: 4, icon: '💪', description: '增加气血上限', effect: { type: 'maxHpBuff', value: 0.1, bonusAttr: 'qi', bonusPerPoint: 0.005 } },
+      { id: 3, name: '培元', type: '被动', unlockLevel: 7, icon: '🔋', description: '增加内力上限', effect: { type: 'maxMpBuff', value: 0.2, bonusAttr: 'qi', bonusPerPoint: 0.01 } }
     ]
   },
   {
@@ -178,9 +178,9 @@ const INITIAL_PLAYER_MARTIAL_ARTS = [
     baseBonus: { lightSkill: 5 },
     stats: { speed: 30, dodge: 15 },
     skills: [
-      { id: 1, name: '腾跃', type: '主动', unlockLevel: 1, icon: '🦘', description: '快速移动' },
-      { id: 2, name: '乘风', type: '被动', unlockLevel: 4, icon: '🎐', description: '增加10%躲闪' },
-      { id: 3, name: '凌云', type: '被动', unlockLevel: 7, icon: '🌤️', description: '增加速度' }
+      { id: 1, name: '腾跃', type: '主动', unlockLevel: 1, icon: '🦘', mpCost: 15, description: '本回合闪避率提升', effect: { type: 'dodgeBuff', value: 0.5, bonusAttr: 'qi', bonusPerPoint: 0.01 } },
+      { id: 2, name: '乘风', type: '被动', unlockLevel: 4, icon: '🎐', description: '增加闪避率', effect: { type: 'buff', stat: 'dodge', value: 0.1, bonusAttr: 'qi', bonusPerPoint: 0.003 } },
+      { id: 3, name: '凌云', type: '被动', unlockLevel: 7, icon: '🌤️', description: '增加速度', effect: { type: 'buff', stat: 'speed', value: 0.15, bonusAttr: 'qi', bonusPerPoint: 0.005 } }
     ]
   }
 ];
@@ -193,10 +193,44 @@ const martialCharacters = [
 
 let currentMartialCharacterId = 1;
 
+// 武学数据版本号，用于检测旧数据
+const MARTIAL_DATA_VERSION = 4;
+
 // 玩家武学背包（每个角色单独一份）
 function getPlayerMartialArts(charId) {
-  const saved = localStorage.getItem(`playerMartialArts_${charId}`);
-  if (saved) return JSON.parse(saved);
+  try {
+    // 检查版本号
+    const savedVersion = localStorage.getItem('martialDataVersion');
+    if (!savedVersion || parseInt(savedVersion) < MARTIAL_DATA_VERSION) {
+      console.log('检测到旧版本武学数据，正在清理...');
+      // 清理所有旧武学数据
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.includes('playerMartialArts')) {
+          localStorage.removeItem(key);
+        }
+      }
+      // 更新版本号
+      localStorage.setItem('martialDataVersion', MARTIAL_DATA_VERSION.toString());
+      console.log('武学数据已清理，使用新数据');
+      return [...INITIAL_PLAYER_MARTIAL_ARTS];
+    }
+
+    const saved = localStorage.getItem(`playerMartialArts_${charId}`);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // 验证数据格式，确保每个武学都有skills数组
+      if (Array.isArray(parsed) && parsed.every(martial => 
+        martial && martial.skills && Array.isArray(martial.skills)
+      )) {
+        return parsed;
+      } else {
+        console.warn('武学数据格式错误，使用初始数据');
+      }
+    }
+  } catch (e) {
+    console.warn('解析武学数据失败，使用初始数据', e);
+  }
   // 默认初始武学（只有基础武学）
   return [...INITIAL_PLAYER_MARTIAL_ARTS];
 }

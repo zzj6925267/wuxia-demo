@@ -148,7 +148,8 @@ function createDefaultCharacters() {
       stats: {
         attack: 85, hp: 420, hit: 95, dodge: 45, defense: 52, parry: 38, speed: 72,
         fist: 15, sword: 45, blade: 10, lightSkill: 30, innerSkill: 35,
-        strength: 12, agility: 10, bone: 9, qi: 11
+        strength: 12, agility: 10, bone: 9, qi: 11,
+        mp: 188, maxMp: 188
       },
       remainingPoints: 20,
       gold: 0
@@ -178,7 +179,8 @@ function createDefaultCharacters() {
       stats: {
         attack: 92, hp: 380, hit: 105, dodge: 65, defense: 45, parry: 28, speed: 95,
         fist: 10, sword: 55, blade: 8, lightSkill: 50, innerSkill: 45,
-        strength: 8, agility: 15, bone: 7, qi: 13
+        strength: 8, agility: 15, bone: 7, qi: 13,
+        mp: 284, maxMp: 284
       },
       remainingPoints: 0,
       gold: 0

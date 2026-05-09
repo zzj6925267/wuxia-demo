@@ -433,7 +433,7 @@
             console.log('存档中的 player.exp:', save.player?.exp);
 
             // 应用银两奖励（转换为数字）
-            const goldReward = parseInt(rewards.goldReward) || 0;
+            const goldReward = parseInt(rewards.gold) || 0;
             if (goldReward > 0) {
               if (!save.player.gold) save.player.gold = 0;
               save.player.gold += goldReward;
@@ -444,8 +444,8 @@
               console.log('没有银两奖励或奖励为0');
             }
 
-            // 应用阅历奖励（转换为数字，注意字段名是 exp，不是 experience）
-            const expReward = parseInt(rewards.expReward) || 0;
+            // 应用阅历奖励（转换为数字）
+            const expReward = parseInt(rewards.exp) || 0;
             if (expReward > 0) {
               if (!save.player.exp) save.player.exp = 0;
               save.player.exp += expReward;

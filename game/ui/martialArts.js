@@ -58,13 +58,6 @@ function initPage() {
     window.location.href = 'map.html';
   });
 
-  // 绑定重置阅历按钮
-  document.getElementById('resetExpBtn').addEventListener('click', function() {
-    if (typeof resetPlayerExperience === 'function') {
-      resetPlayerExperience();
-    }
-  });
-
   // 绑定页签切换
   document.querySelectorAll('.type-tab').forEach(tab => {
     tab.addEventListener('click', function() {
@@ -230,16 +223,28 @@ function renderDetail() {
   document.getElementById('detailStats').innerHTML = statsHtml;
 
   // 招式
-  const skillsHtml = m.skills.map(skill => {
-    const isUnlocked = m.currentLevel >= skill.unlockLevel;
+  const skillsHtml = (m.skills || []).map(skill => {
+    if (!skill) return '';
+    const isUnlocked = m.currentLevel >= (skill.unlockLevel || 1);
+    const skillIcon = skill.icon || '❓';
+    const skillName = skill.name || '未知招式';
+    const skillType = skill.type || '被动';
+    
+    // 检查是否是剑影，添加额外的小字说明
+    let extraNote = '';
+    if (skill.name === '剑影' && skill.effect) {
+      extraNote = `<div class="skill-note">基础20%概率，身法影响触发率</div>`;
+    }
+    
     return `
       <div class="skill-item ${!isUnlocked ? 'locked' : ''}" 
            onmouseenter="showSkillTooltip(event, ${JSON.stringify(skill).replace(/"/g, '&quot;')})"
            onmouseleave="hideSkillTooltip()">
-        <div class="skill-icon">${skill.icon}</div>
-        <div class="skill-name">${skill.name}</div>
-        <div class="skill-type ${skill.type === '主动' ? 'active' : 'passive'}">${skill.type}</div>
-        ${!isUnlocked ? `<div class="skill-unlock">${skill.unlockLevel}重解锁</div>` : ''}
+        <div class="skill-icon">${skillIcon}</div>
+        <div class="skill-name">${skillName}</div>
+        <div class="skill-type ${skillType === '主动' ? 'active' : 'passive'}">${skillType}</div>
+        ${!isUnlocked && skill.unlockLevel ? `<div class="skill-unlock">${skill.unlockLevel}重解锁</div>` : ''}
+        ${extraNote}
       </div>
     `;
   }).join('');
