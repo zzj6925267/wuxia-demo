@@ -121,68 +121,83 @@ function getLocalMartialBonuses() {
   return bonuses;
 }
 
-const characters = [
-  {
-    id: 1,
-    name: '少侠',
-    icon: '👨‍🦰',
-    level: 10,
-    gender: '男',
-    faction: '正阳派',
-    power: 580,
-    health: { current: 100, max: 100 },
-    exp: { current: 45, max: 100 },
-    description: '初入江湖的少年侠客，心怀侠义，立志成为一代大侠。加入正阳派后，勤学苦练，剑法日益精进。',
-    equipped: {
-      weapon: { id: 1, name: '青锋剑', type: 'weapon', rarity: 'blue', level: 10, attack: 35, hit: 5, desc: '普通的青钢剑，剑锋锋利，适合初学者使用。' },
-      armor: { id: 2, name: '布袍', type: 'armor', rarity: 'green', level: 5, defense: 12, hp: 30, desc: '普通的棉布长袍，轻便舒适。' },
-      accessory: { id: 3, name: '护心镜', type: 'accessory', rarity: 'green', level: 8, parry: 8, hp: 20, desc: '小巧的护心镜，能抵挡部分伤害。' },
-      shoes: null
+function createDefaultCharacters() {
+  return [
+    {
+      id: 1,
+      name: '少侠',
+      icon: '👨‍🦰',
+      level: 10,
+      gender: '男',
+      faction: '正阳派',
+      power: 580,
+      health: { current: 100, max: 100 },
+      exp: { current: 45, max: 100 },
+      description: '初入江湖的少年侠客，心怀侠义，立志成为一代大侠。加入正阳派后，勤学苦练，剑法日益精进。',
+      equipped: {
+        weapon: { id: 1, name: '青锋剑', type: 'weapon', rarity: 'blue', level: 10, attack: 35, hit: 5, desc: '普通的青钢剑，剑锋锋利，适合初学者使用。' },
+        armor: { id: 2, name: '布袍', type: 'armor', rarity: 'green', level: 5, defense: 12, hp: 30, desc: '普通的棉布长袍，轻便舒适。' },
+        accessory: { id: 3, name: '护心镜', type: 'accessory', rarity: 'green', level: 8, parry: 8, hp: 20, desc: '小巧的护心镜，能抵挡部分伤害。' },
+        shoes: null
+      },
+      skills: {
+        weapon: { name: '正阳基础剑式', level: 3, maxLevel: 10 },
+        inner: { name: '正阳吐纳诀', level: 2, maxLevel: 10 },
+        light: { name: '踏云步', level: 1, maxLevel: 10 }
+      },
+      stats: {
+        attack: 85, hp: 420, hit: 95, dodge: 45, defense: 52, parry: 38, speed: 72,
+        fist: 15, sword: 45, blade: 10, lightSkill: 30, innerSkill: 35,
+        strength: 12, agility: 10, bone: 9, qi: 11
+      },
+      remainingPoints: 20,
+      gold: 0
     },
-    skills: {
-      weapon: { name: '正阳基础剑式', level: 3, maxLevel: 10 },
-      inner: { name: '正阳吐纳诀', level: 2, maxLevel: 10 },
-      light: { name: '踏云步', level: 1, maxLevel: 10 }
-    },
-    stats: {
-      attack: 85, hp: 420, hit: 95, dodge: 45, defense: 52, parry: 38, speed: 72,
-      fist: 15, sword: 45, blade: 10, lightSkill: 30, innerSkill: 35,
-      strength: 12, agility: 10, bone: 9, qi: 11
-    },
-    remainingPoints: 20,
-    gold: 0
-  },
-  {
-    id: 2,
-    name: '苏瑶',
-    icon: '👧',
-    level: 12,
-    gender: '女',
-    faction: '正阳派',
-    power: 620,
-    health: { current: 100, max: 100 },
-    exp: { current: 78, max: 100 },
-    description: '正阳派内门弟子，天资聪颖，剑法出众。性格活泼开朗，乐于助人。',
-    equipped: {
-      weapon: { id: 4, name: '流云剑', type: 'weapon', rarity: 'blue', level: 12, attack: 42, hit: 8, desc: '剑身轻盈，挥舞时如流云般飘逸。' },
-      armor: { id: 5, name: '素纱衣', type: 'armor', rarity: 'blue', level: 10, defense: 18, speed: 10, desc: '轻盈的纱衣，不影响身法施展。' },
-      accessory: { id: 6, name: '玉坠', type: 'accessory', rarity: 'purple', level: 12, innerSkill: 15, hp: 40, desc: '温润的玉佩，能滋养内力。' },
-      shoes: { id: 7, name: '云履', type: 'shoes', rarity: 'green', level: 10, speed: 15, dodge: 8, desc: '轻便的布鞋，适合施展轻功。' }
-    },
-    skills: {
-      weapon: { name: '正阳基础剑式', level: 5, maxLevel: 10 },
-      inner: { name: '正阳吐纳诀', level: 4, maxLevel: 10 },
-      light: { name: '踏云步', level: 3, maxLevel: 10 }
-    },
-    stats: {
-      attack: 92, hp: 380, hit: 105, dodge: 65, defense: 45, parry: 28, speed: 95,
-      fist: 10, sword: 55, blade: 8, lightSkill: 50, innerSkill: 45,
-      strength: 8, agility: 15, bone: 7, qi: 13
-    },
-    remainingPoints: 0,
-    gold: 0
+    {
+      id: 2,
+      name: '苏瑶',
+      icon: '👧',
+      level: 12,
+      gender: '女',
+      faction: '正阳派',
+      power: 620,
+      health: { current: 100, max: 100 },
+      exp: { current: 78, max: 100 },
+      description: '正阳派内门弟子，天资聪颖，剑法出众。性格活泼开朗，乐于助人。',
+      equipped: {
+        weapon: { id: 4, name: '流云剑', type: 'weapon', rarity: 'blue', level: 12, attack: 42, hit: 8, desc: '剑身轻盈，挥舞时如流云般飘逸。' },
+        armor: { id: 5, name: '素纱衣', type: 'armor', rarity: 'blue', level: 10, defense: 18, speed: 10, desc: '轻盈的纱衣，不影响身法施展。' },
+        accessory: { id: 6, name: '玉坠', type: 'accessory', rarity: 'purple', level: 12, innerSkill: 15, hp: 40, desc: '温润的玉佩，能滋养内力。' },
+        shoes: { id: 7, name: '云履', type: 'shoes', rarity: 'green', level: 10, speed: 15, dodge: 8, desc: '轻便的布鞋，适合施展轻功。' }
+      },
+      skills: {
+        weapon: { name: '正阳基础剑式', level: 5, maxLevel: 10 },
+        inner: { name: '正阳吐纳诀', level: 4, maxLevel: 10 },
+        light: { name: '踏云步', level: 3, maxLevel: 10 }
+      },
+      stats: {
+        attack: 92, hp: 380, hit: 105, dodge: 65, defense: 45, parry: 28, speed: 95,
+        fist: 10, sword: 55, blade: 8, lightSkill: 50, innerSkill: 45,
+        strength: 8, agility: 15, bone: 7, qi: 13
+      },
+      remainingPoints: 0,
+      gold: 0
+    }
+  ];
+}
+
+let characters;
+const savedChars = localStorage.getItem('playerCharacters');
+if (savedChars) {
+  try {
+    characters = JSON.parse(savedChars);
+  } catch (e) {
+    console.error('从 localStorage 读取角色数据失败:', e);
+    characters = createDefaultCharacters();
   }
-];
+} else {
+  characters = createDefaultCharacters();
+}
 
 const PLAYER_INVENTORY = {
   weapon: [
@@ -972,6 +987,9 @@ function confirmCharPoint() {
   // 重新加载显示
   loadCharacterData();
   
+  // 保存到 localStorage（用于战斗系统读取）
+  localStorage.setItem('playerCharacters', JSON.stringify(window.characters));
+  
   showCharFloatText('属性分配成功！', '#4caf50');
 }
 
@@ -1052,3 +1070,4 @@ window.showCharEquipment = showCharEquipment;
 window.previewCharPoint = previewCharPoint;
 window.confirmCharPoint = confirmCharPoint;
 window.cancelCharPoint = cancelCharPoint;
+window.characters = characters;

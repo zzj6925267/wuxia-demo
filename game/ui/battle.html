@@ -53,7 +53,7 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 15px;
+      gap: 50px;
     }
     
     .team-left {
@@ -66,20 +66,17 @@
     
     .character-card {
       width: 100%;
-      max-width: 200px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 2px solid #333;
-      border-radius: 10px;
-      padding: 10px;
+      max-width: 120px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      align-items: center;
+      gap: 5px;
       transition: all 0.3s ease;
+      position: relative;
     }
     
     .character-card.active {
-      border-color: #4caf50;
-      box-shadow: 0 0 20px rgba(76, 175, 80, 0.3);
+      transform: scale(1.1);
     }
     
     .character-card.dead {
@@ -87,50 +84,95 @@
       filter: grayscale(100%);
     }
     
-    .character-top {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    
-    .character-icon {
-      font-size: 36px;
-    }
-    
-    .character-info {
-      flex: 1;
-    }
-    
-    .character-name {
-      font-size: 16px;
-      font-weight: bold;
-      margin-bottom: 2px;
-    }
-    
-    .character-level {
-      font-size: 12px;
-      color: #ff9800;
-    }
-    
-    .hp-bar-container {
-      width: 100%;
-      height: 12px;
-      background: #333;
-      border-radius: 6px;
+    .character-avatar-container {
+      width: 80px;
+      height: 80px;
+      border-radius: 8px;
       overflow: hidden;
     }
     
-    .hp-bar {
+    .character-avatar {
+      width: 100%;
       height: 100%;
-      background: linear-gradient(90deg, #4caf50, #8bc34a);
-      transition: width 0.3s ease;
-      border-radius: 6px;
+      object-fit: cover;
+      object-position: center center;
+    }
+    
+    .character-avatar-emoji {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #3d2914 0%, #2a1f14 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 32px;
+      color: #d4c4a8;
+    }
+    
+    .character-name {
+      font-size: 14px;
+      font-weight: bold;
+      color: #d4c4a8;
+      text-align: center;
+      width: 80px;
+      white-space: nowrap;
+    }
+    
+    .character-card:nth-child(1) .character-name {
+      margin-right: 15px;
+    }
+    
+    .team-right .character-name {
+      padding-left: 10px;
+    }
+    
+    .team-left .character-card.attacking {
+      animation: attackMoveRight 0.4s ease-in-out;
+    }
+    
+    .team-right .character-card.attacking {
+      animation: attackMoveLeft 0.4s ease-in-out;
+    }
+    
+    .team-left .character-card.dodging {
+      animation: dodgeMoveLeft 0.3s ease-out;
+    }
+    
+    .team-right .character-card.dodging {
+      animation: dodgeMoveRight 0.3s ease-out;
+    }
+    
+    @keyframes attackMoveRight {
+      0% { transform: translateX(0); }
+      30% { transform: translateX(220px) scale(1.1); }
+      60% { transform: translateX(220px) scale(1.1); }
+      100% { transform: translateX(0); }
+    }
+    
+    @keyframes attackMoveLeft {
+      0% { transform: translateX(0); }
+      30% { transform: translateX(-220px) scale(1.1); }
+      60% { transform: translateX(-220px) scale(1.1); }
+      100% { transform: translateX(0); }
+    }
+    
+    @keyframes dodgeMoveLeft {
+      0% { transform: translateX(0) scale(1); }
+      50% { transform: translateX(-30px) scale(0.9); }
+      100% { transform: translateX(0) scale(1); }
+    }
+    
+    @keyframes dodgeMoveRight {
+      0% { transform: translateX(0) scale(1); }
+      50% { transform: translateX(30px) scale(0.9); }
+      100% { transform: translateX(0) scale(1); }
     }
     
     .hp-text {
       font-size: 12px;
-      color: #aaa;
+      color: #4caf50;
       text-align: center;
+      font-weight: bold;
     }
     
     .battle-log {
@@ -157,17 +199,21 @@
     
     .damage-number {
       position: absolute;
-      font-size: 32px;
+      font-size: 24px;
       font-weight: bold;
       color: #ff5722;
       text-shadow: 0 0 10px #000;
       pointer-events: none;
       animation: floatUp 1s ease-out forwards;
-      z-index: 200;
+      z-index: 9999;
+      top: -25px;
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
     }
     
     .damage-number.critical {
-      font-size: 40px;
+      font-size: 30px;
       color: #ffeb3b;
     }
     
@@ -182,12 +228,52 @@
     @keyframes floatUp {
       0% {
         opacity: 1;
-        transform: translateY(0);
+        transform: translateX(-50%) translateY(0);
       }
       100% {
         opacity: 0;
-        transform: translateY(-60px);
+        transform: translateX(-50%) translateY(-60px);
       }
+    }
+    
+    .reward-text {
+      position: absolute;
+      font-size: 28px;
+      font-weight: bold;
+      color: #4caf50;
+      text-shadow: 0 0 10px #000;
+      pointer-events: none;
+      opacity: 0;
+      z-index: 200;
+    }
+    
+    .reward-text.show {
+      animation: rewardFloat 2s ease-out forwards;
+    }
+    
+    @keyframes rewardFloat {
+      0% {
+        opacity: 0;
+        transform: translateY(20px) scale(0.8);
+      }
+      15% {
+        opacity: 1;
+        transform: translateY(0) scale(1.1);
+      }
+      25% {
+        transform: translateY(0) scale(1);
+      }
+      75% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(-40px);
+      }
+    }
+    
+    .victory-text {
+      color: #ffeb3b;
     }
     
     .battle-footer {
@@ -327,6 +413,8 @@
     </div>
   </div>
 
+  <script src="../js/config.js"></script>
+  <script src="character.js"></script>
   <script src="../js/data/enemies.js"></script>
   <script src="battle.js"></script>
 </body>
