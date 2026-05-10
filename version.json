@@ -1,11 +1,17 @@
 {
-  "version": "0.0.4",
-  "build": 4,
+  "version": "0.0.6",
+  "build": 6,
   "date": "2026-05-11",
-  "description": "补全踏云步技能detail字段",
+  "description": "修复踏云步被动技能不生效的问题",
   "changes": [
-    "为踏云步三个技能添加detail字段",
-    "格式与正阳吐纳诀保持一致",
-    "修复技能描述显示问题"
-  ]
+    "1. 修复 getCharacterInnerSkillBonuses 函数只处理内功的问题",
+    "2. 现在函数处理所有类型的武学（内功、轻功、拳法等）",
+    "3. 添加 attackBonus、dodgeBonus、speedBonus 的计算",
+    "4. 修复 applyCharacterStats 函数，正确应用所有加成到角色属性"
+  ],
+  "bug_fix": {
+    "issue": "踏云步三个被动技能不生效",
+    "cause": "getCharacterInnerSkillBonuses 只处理 martial.type === '内功' 的武学",
+    "solution": "移除类型限制，处理所有已装备武学的被动技能"
+  }
 }

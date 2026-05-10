@@ -91,6 +91,15 @@
   </div>
 
   <div class="section">
+    <h3>踏云步（轻功）</h3>
+    <p>当前等级：<span id="tyb-level">加载中...</span></p>
+    <button class="btn-set" onclick="setMartialLevel('踏云步', 1)">设为1级</button>
+    <button class="btn-set" onclick="setMartialLevel('踏云步', 4)">设为4级</button>
+    <button class="btn-set" onclick="setMartialLevel('踏云步', 7)">设为7级</button>
+    <button class="btn-set" onclick="setMartialLevel('踏云步', 10)">设为10级</button>
+  </div>
+
+  <div class="section">
     <h3>自定义等级</h3>
     <input type="number" id="customLevel" min="1" max="10" placeholder="等级">
     <button class="btn-set" onclick="setCustomLevel()">设置内功等级</button>
@@ -154,9 +163,11 @@
 
       const tlnj = data.find(m => m.name === '正阳吐纳诀');
       const zyjc = data.find(m => m.name === '正阳基础剑诀');
+      const tyb = data.find(m => m.name === '踏云步');
 
       document.getElementById('tlnj-level').textContent = tlnj ? `第${tlnj.currentLevel}重` : '未找到';
       document.getElementById('zyjc-level').textContent = zyjc ? `第${zyjc.currentLevel}重` : '未找到';
+      document.getElementById('tyb-level').textContent = tyb ? `第${tyb.currentLevel}重` : '未找到';
 
       const exp = localStorage.getItem(`playerExperience_${currentCharId}`) || '0';
       document.getElementById('exp-value').textContent = exp;

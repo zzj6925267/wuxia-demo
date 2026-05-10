@@ -247,6 +247,15 @@ function getPlayerCharactersFromSave() {
     console.log('少侠内力 - 基础:', char1MpBase, '四维:', char1MpFourDim, '武学:', char1MpMartial, '装备:', char1MpEquip, '最终:', char1FinalMaxMp);
     console.log('苏瑶内力 - 基础:', char2MpBase, '四维:', char2MpFourDim, '武学:', char2MpMartial, '装备:', char2MpEquip, '最终:', char2FinalMaxMp);
     
+    // 获取武学基础加成
+    const char1MartialAttack = getMartialBonusForChar(window.characters[0], 'attack');
+    const char1MartialSpeed = getMartialBonusForChar(window.characters[0], 'speed');
+    const char1MartialDodge = getMartialBonusForChar(window.characters[0], 'dodge');
+    
+    const char2MartialAttack = getMartialBonusForChar(window.characters[1], 'attack');
+    const char2MartialSpeed = getMartialBonusForChar(window.characters[1], 'speed');
+    const char2MartialDodge = getMartialBonusForChar(window.characters[1], 'dodge');
+    
     return [
       { 
         id: 1, 
@@ -257,11 +266,11 @@ function getPlayerCharactersFromSave() {
         maxHp: char1FinalMaxHp,
         mp: char1FinalMaxMp,
         maxMp: char1FinalMaxMp,
-        attack: Math.floor((50 + window.characters[0].stats.strength * 3) * yangGangBonus), 
+        attack: Math.floor((50 + window.characters[0].stats.strength * 3) * yangGangBonus) + char1MartialAttack + char1InnerBonuses.attackBonus, 
         defense: (window.characters[0].stats.defense || 50) + char1InnerBonuses.defenseBonus, 
-        speed: 50 + window.characters[0].stats.agility * 2,
+        speed: 50 + window.characters[0].stats.agility * 2 + char1MartialSpeed + char1InnerBonuses.speedBonus,
         hit: 70 + window.characters[0].stats.agility, 
-        dodge: 20 + Math.floor(window.characters[0].stats.agility * 0.5), 
+        dodge: 20 + Math.floor(window.characters[0].stats.agility * 0.5) + char1MartialDodge + char1InnerBonuses.dodgeBonus, 
         parry: window.characters[0].stats.parry || 20,
         stats: window.characters[0].stats
       },
@@ -274,11 +283,11 @@ function getPlayerCharactersFromSave() {
         maxHp: char2FinalMaxHp,
         mp: char2FinalMaxMp,
         maxMp: char2FinalMaxMp,
-        attack: Math.floor((50 + window.characters[1].stats.strength * 3) * yangGangBonus), 
+        attack: Math.floor((50 + window.characters[1].stats.strength * 3) * yangGangBonus) + char2MartialAttack + char2InnerBonuses.attackBonus, 
         defense: (window.characters[1].stats.defense || 50) + char2InnerBonuses.defenseBonus, 
-        speed: 50 + window.characters[1].stats.agility * 2,
+        speed: 50 + window.characters[1].stats.agility * 2 + char2MartialSpeed + char2InnerBonuses.speedBonus,
         hit: 70 + window.characters[1].stats.agility, 
-        dodge: 20 + Math.floor(window.characters[1].stats.agility * 0.5), 
+        dodge: 20 + Math.floor(window.characters[1].stats.agility * 0.5) + char2MartialDodge + char2InnerBonuses.dodgeBonus, 
         parry: window.characters[1].stats.parry || 20,
         stats: window.characters[1].stats
       }
@@ -712,49 +721,91 @@ async function showAttackReturn(actor) {
   }
 }
 
-// 获取内功被动属性加成
+// 获取武学技能被动属性加成（包括内功、轻功等所有武学类型）
 function getInnerSkillPassiveBonuses(char) {
   let defenseBonus = 0;
   let maxHpBonus = 0;
+  let attackBonus = 0;
+  let dodgeBonus = 0;
+  let speedBonus = 0;
 
   const stats = char && char.stats ? char.stats : {};
 
   try {
     if (typeof playerMartialArts !== 'undefined') {
       for (const martial of playerMartialArts) {
-        if (martial.equipped && martial.type === '内功' && martial.skills) {
+        if (martial.equipped && martial.skills) {
+          console.log(`处理武学: ${martial.name} (${martial.type}), 等级: ${martial.currentLevel}`);
+          
           for (const skill of martial.skills) {
-            if (skill.name === '培元' && martial.currentLevel >= (skill.unlockLevel || 1)) {
-              const effect = skill.effect;
-              if (effect && effect.type === 'defenseBuff') {
-                let bonus = effect.baseValue || 0;
-                if (effect.bonusAttr) {
-                  bonus += (stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
-                }
-                defenseBonus += Math.ceil(bonus);
-                console.log(`${martial.name} 培元：防御 +${defenseBonus}`);
-              }
+            const unlockLevel = skill.unlockLevel || 1;
+            if (martial.currentLevel < unlockLevel) {
+              console.log(`技能 ${skill.name} 未解锁 (需要${unlockLevel}级，当前${martial.currentLevel}级)`);
+              continue;
             }
-            if (skill.name === '固本' && martial.currentLevel >= (skill.unlockLevel || 4)) {
-              const effect = skill.effect;
-              if (effect && effect.type === 'maxHpBuff') {
-                let bonus = effect.baseValue || 0;
-                if (effect.bonusAttr) {
-                  bonus += (stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+
+            const effect = skill.effect;
+            if (!effect) continue;
+
+            // 根据效果类型处理加成
+            switch (effect.type) {
+              case 'defenseBuff':
+                if (effect.stat === 'defense') {
+                  let bonus = effect.baseValue || 0;
+                  if (effect.bonusAttr) {
+                    bonus += (stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+                  }
+                  defenseBonus += Math.ceil(bonus);
+                  console.log(`${martial.name}-${skill.name} 生效: 防御+${Math.ceil(bonus)}`);
                 }
-                maxHpBonus += Math.ceil(bonus);
-                console.log(`${martial.name} 固本：气血上限 +${maxHpBonus}`);
-              }
+                break;
+
+              case 'maxHpBuff':
+                if (effect.stat === 'hp' || effect.stat === 'maxHp') {
+                  let bonus = effect.baseValue || 0;
+                  if (effect.bonusAttr) {
+                    bonus += (stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+                  }
+                  maxHpBonus += Math.ceil(bonus);
+                  console.log(`${martial.name}-${skill.name} 生效: 气血+${Math.ceil(bonus)}`);
+                }
+                break;
+
+              case 'buff':
+                if (effect.stat === 'attack') {
+                  let bonus = effect.baseValue || 0;
+                  if (effect.bonusAttr) {
+                    bonus += (stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+                  }
+                  attackBonus += Math.ceil(bonus);
+                  console.log(`${martial.name}-${skill.name} 生效: 攻击+${Math.ceil(bonus)}`);
+                } else if (effect.stat === 'dodge') {
+                  let bonus = effect.baseValue || 0;
+                  if (effect.bonusAttr) {
+                    bonus += (stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+                  }
+                  dodgeBonus += Math.ceil(bonus);
+                  console.log(`${martial.name}-${skill.name} 生效: 闪避+${Math.ceil(bonus)}`);
+                } else if (effect.stat === 'speed') {
+                  let bonus = effect.baseValue || 0;
+                  if (effect.bonusAttr) {
+                    bonus += (stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+                  }
+                  speedBonus += Math.ceil(bonus);
+                  console.log(`${martial.name}-${skill.name} 生效: 速度+${Math.ceil(bonus)}`);
+                }
+                break;
             }
           }
         }
       }
     }
+    console.log(`最终武学加成: 防御+${defenseBonus}, 气血+${maxHpBonus}, 攻击+${attackBonus}, 闪避+${dodgeBonus}, 速度+${speedBonus}`);
   } catch (e) {
-    console.warn('获取内功加成失败:', e);
+    console.warn('获取武学技能加成失败:', e);
   }
 
-  return { defenseBonus, maxHpBonus };
+  return { defenseBonus, maxHpBonus, attackBonus, dodgeBonus, speedBonus };
 }
 
 // 检查是否装备了内功

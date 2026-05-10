@@ -563,17 +563,34 @@ function loadFromSave() {
     
     // 如果存档中有完整的角色数据，优先使用
     if (player.characters && Array.isArray(player.characters)) {
-      // 使用 Object.assign 确保更新 window.characters 数组
+      console.log('=== 加载存档角色数据 ===');
       for (let i = 0; i < player.characters.length; i++) {
         if (window.characters[i]) {
-          Object.assign(window.characters[i], player.characters[i]);
+          // 记录加载前的状态
+          const beforeRemaining = window.characters[i].remainingPoints;
+          const beforeBone = window.characters[i].stats?.bone;
+          
+          // 使用安全合并
+          if (window.AttributeHelper) {
+            window.AttributeHelper.safeMerge(window.characters[i], player.characters[i]);
+          } else {
+            // 备用方案
+            const saved = window.characters[i].remainingPoints;
+            Object.assign(window.characters[i], player.characters[i]);
+            window.characters[i].remainingPoints = saved;
+          }
+          
+          // 记录加载后的状态
+          const afterRemaining = window.characters[i].remainingPoints;
+          const afterBone = window.characters[i].stats?.bone;
+          
+          console.log(`角色 ${i}: 剩余点数 ${beforeRemaining} → ${afterRemaining}, 根骨 ${beforeBone} → ${afterBone}`);
         } else {
           window.characters[i] = player.characters[i];
         }
       }
       characters = window.characters;
-      console.log('从存档读取完整角色数据');
-      console.log('当前角色装备:', window.characters[currentCharacterIndex]?.equipped);
+      console.log('存档加载完成');
     }
     
     // 四维属性（力量、敏捷、根骨、内息）不从存档读取，由玩家通过属性点分配获得
@@ -766,6 +783,10 @@ function loadCharacterData() {
   const martialBonuses = getLocalMartialBonuses();
   console.log('武学加成', martialBonuses);
   
+  // 计算武学技能被动加成
+  const skillBonuses = getCharacterInnerSkillBonuses(char);
+  console.log('武学技能加成', skillBonuses);
+  
   // 计算装备加成
   const equipBonuses = getEquipBonuses();
   console.log('装备加成', equipBonuses);
@@ -815,10 +836,19 @@ function loadCharacterData() {
     
     const martialVal = martialBonuses[lowerAttr] || 0;
     const equipVal = equipBonuses[lowerAttr] || 0;
-    const total = baseVal + fourDimBonus + martialVal + equipVal;
+    
+    // 获取对应的技能加成
+    let skillVal = 0;
+    if (lowerAttr === 'attack') skillVal = skillBonuses.attackBonus || 0;
+    else if (lowerAttr === 'hp') skillVal = skillBonuses.maxHpBonus || 0;
+    else if (lowerAttr === 'dodge') skillVal = skillBonuses.dodgeBonus || 0;
+    else if (lowerAttr === 'speed') skillVal = skillBonuses.speedBonus || 0;
+    else if (lowerAttr === 'defense') skillVal = skillBonuses.defenseBonus || 0;
+    
+    const total = baseVal + fourDimBonus + martialVal + skillVal + equipVal;
     
     // 调试输出
-    console.log(`${attr} - 基础:${baseVal} 四维:${fourDimBonus} 武学:${martialVal} 装备:${equipVal} 总计:${total}`);
+    console.log(`${attr} - 基础:${baseVal} 四维:${fourDimBonus} 武学:${martialVal} 技能:${skillVal} 装备:${equipVal} 总计:${total}`);
     
     // 确保显示的是完整属性值（包含武学和装备加成）
     const displayEl = document.getElementById(`stat${attr}Base`);
@@ -829,7 +859,7 @@ function loadCharacterData() {
     // 添加悬浮提示
     const statEl = displayEl ? displayEl.parentElement : null;
     if (statEl) {
-      statEl.onmouseenter = (e) => showStatTooltip(e, attr, baseVal, martialVal, equipVal, fourDimBonus);
+      statEl.onmouseenter = (e) => showStatTooltip(e, attr, baseVal, martialVal, equipVal, fourDimBonus, skillVal);
       statEl.onmouseleave = hideStatTooltip;
     }
   });
@@ -1661,13 +1691,13 @@ function updateStatsFromFour() {
   const innerBonuses = getCharacterInnerSkillBonuses(char);
 
   // 更新战斗中使用的基础属性（包含内功加成）
-  s.attack = s.baseAttack;
+  s.attack = s.baseAttack + innerBonuses.attackBonus;
   s.hp = s.baseHp + innerBonuses.maxHpBonus;
   s.maxHp = s.baseHp + innerBonuses.maxHpBonus;
   s.maxMp = s.baseMaxMp;
-  s.speed = s.baseSpeed;
+  s.speed = s.baseSpeed + innerBonuses.speedBonus;
   s.hit = s.baseHit;
-  s.dodge = s.baseDodge;
+  s.dodge = s.baseDodge + innerBonuses.dodgeBonus;
   s.defense = (s.defense || 10) + innerBonuses.defenseBonus;
 
   // 更新战力（使用基础属性）
@@ -1678,11 +1708,13 @@ function updateStatsFromFour() {
 function getCharacterInnerSkillBonuses(char) {
   let defenseBonus = 0;
   let maxHpBonus = 0;
+  let attackBonus = 0;
+  let dodgeBonus = 0;
+  let speedBonus = 0;
 
   const stats = char && char.stats ? char.stats : {};
   console.log('=== getCharacterInnerSkillBonuses ===');
   console.log('char.stats:', JSON.stringify(stats));
-  console.log('char.stats.bone:', stats.bone);
 
   try {
     const charId = localStorage.getItem('currentMartialCharacterId') || '1';
@@ -1695,44 +1727,83 @@ function getCharacterInnerSkillBonuses(char) {
 
     if (martialArtsData.length > 0) {
       for (const martial of martialArtsData) {
-        if (martial.equipped && martial.type === '内功' && martial.skills) {
+        // 处理所有已装备的武学，不仅仅是内功
+        if (martial.equipped && martial.skills) {
+          console.log(`处理武学: ${martial.name} (${martial.type}), 等级: ${martial.currentLevel}`);
+
           for (const skill of martial.skills) {
-            if (skill.name === '培元' && martial.currentLevel >= (skill.unlockLevel || 1)) {
-              const effect = skill.effect;
-              if (effect && effect.type === 'defenseBuff') {
-                let bonus = effect.baseValue || 0;
-                console.log('培元 effect.bonusAttr:', effect.bonusAttr, 'stats[bonusAttr]:', stats[effect.bonusAttr]);
-                if (effect.bonusAttr) {
-                  bonus += (stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
-                }
-                defenseBonus += Math.ceil(bonus);
-                console.log(`培元生效: 防御+${defenseBonus}`);
-              }
+            // 检查技能是否解锁
+            const unlockLevel = skill.unlockLevel || 1;
+            if (martial.currentLevel < unlockLevel) {
+              console.log(`技能 ${skill.name} 未解锁 (需要${unlockLevel}级，当前${martial.currentLevel}级)`);
+              continue;
             }
-            if (skill.name === '固本' && martial.currentLevel >= (skill.unlockLevel || 4)) {
-              const effect = skill.effect;
-              if (effect && effect.type === 'maxHpBuff') {
-                let bonus = effect.baseValue || 0;
-                console.log('固本 effect.bonusAttr:', effect.bonusAttr, 'stats[bonusAttr]:', stats[effect.bonusAttr]);
-                if (effect.bonusAttr) {
-                  bonus += (stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+
+            const effect = skill.effect;
+            if (!effect) continue;
+
+            // 根据效果类型处理加成
+            switch (effect.type) {
+              case 'defenseBuff':
+                if (effect.stat === 'defense') {
+                  let bonus = effect.baseValue || 0;
+                  if (effect.bonusAttr) {
+                    bonus += (stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+                  }
+                  defenseBonus += Math.ceil(bonus);
+                  console.log(`${martial.name}-${skill.name} 生效: 防御+${Math.ceil(bonus)}`);
                 }
-                maxHpBonus += Math.ceil(bonus);
-                console.log(`固本生效: 气血+${maxHpBonus}`);
-              }
+                break;
+
+              case 'maxHpBuff':
+                if (effect.stat === 'hp' || effect.stat === 'maxHp') {
+                  let bonus = effect.baseValue || 0;
+                  if (effect.bonusAttr) {
+                    bonus += (stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+                  }
+                  maxHpBonus += Math.ceil(bonus);
+                  console.log(`${martial.name}-${skill.name} 生效: 气血+${Math.ceil(bonus)}`);
+                }
+                break;
+
+              case 'buff':
+                // 通用的 buff 处理，支持多种属性
+                if (effect.stat === 'attack') {
+                  let bonus = effect.baseValue || 0;
+                  if (effect.bonusAttr) {
+                    bonus += (stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+                  }
+                  attackBonus += Math.ceil(bonus);
+                  console.log(`${martial.name}-${skill.name} 生效: 攻击+${Math.ceil(bonus)}`);
+                } else if (effect.stat === 'dodge') {
+                  let bonus = effect.baseValue || 0;
+                  if (effect.bonusAttr) {
+                    bonus += (stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+                  }
+                  dodgeBonus += Math.ceil(bonus);
+                  console.log(`${martial.name}-${skill.name} 生效: 闪避+${Math.ceil(bonus)}`);
+                } else if (effect.stat === 'speed') {
+                  let bonus = effect.baseValue || 0;
+                  if (effect.bonusAttr) {
+                    bonus += (stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+                  }
+                  speedBonus += Math.ceil(bonus);
+                  console.log(`${martial.name}-${skill.name} 生效: 速度+${Math.ceil(bonus)}`);
+                }
+                break;
             }
           }
         }
       }
     } else {
-      console.log('没有找到已装备的内功');
+      console.log('没有找到已装备的武学');
     }
   } catch (e) {
-    console.warn('获取内功加成失败:', e);
+    console.warn('获取武学加成失败:', e);
   }
 
-  console.log(`最终内功加成: 防御+${defenseBonus}, 气血+${maxHpBonus}`);
-  return { defenseBonus, maxHpBonus };
+  console.log(`最终武学加成: 防御+${defenseBonus}, 气血+${maxHpBonus}, 攻击+${attackBonus}, 闪避+${dodgeBonus}, 速度+${speedBonus}`);
+  return { defenseBonus, maxHpBonus, attackBonus, dodgeBonus, speedBonus };
 }
 
 function updateAddButtons() {
@@ -1744,7 +1815,7 @@ function updateAddButtons() {
 }
 
 // 属性悬浮提示
-function showStatTooltip(e, attrName, baseVal, martialVal, equipVal, fourDimBonusFromCaller) {
+function showStatTooltip(e, attrName, baseVal, martialVal, equipVal, fourDimBonusFromCaller, skillValFromCaller) {
   const attrMap = {
     'Attack': '攻击', 'Hp': '气血', 'Mp': '内力', 'Hit': '命中', 'Dodge': '闪避',
     'Defense': '防御', 'Parry': '招架', 'Speed': '速度',
@@ -1812,8 +1883,11 @@ function showStatTooltip(e, attrName, baseVal, martialVal, equipVal, fourDimBonu
     }
   }
   
-  // 计算总值（基础值 + 四维加成 + 武学加成 + 装备加成）
-  const total = baseVal + fourDimBonus + martialVal + equipVal;
+  // 获取技能加成
+  const skillVal = skillValFromCaller !== undefined ? skillValFromCaller : 0;
+  
+  // 计算总值（基础值 + 四维加成 + 武学加成 + 技能加成 + 装备加成）
+  const total = baseVal + fourDimBonus + martialVal + skillVal + equipVal;
   
   let tooltipHtml = `
     <div class="tooltip-header">${displayName}: ${total}</div>
@@ -1839,6 +1913,15 @@ function showStatTooltip(e, attrName, baseVal, martialVal, equipVal, fourDimBonu
       <div class="tooltip-item">
         <span class="tooltip-label">武学加成</span>
         <span class="tooltip-value" style="color: #4caf50">+${martialVal}</span>
+      </div>
+    `;
+  }
+  
+  if (skillVal !== 0) {
+    tooltipHtml += `
+      <div class="tooltip-item">
+        <span class="tooltip-label">武学技能加成</span>
+        <span class="tooltip-value" style="color: #9c27b0">+${skillVal}</span>
       </div>
     `;
   }
