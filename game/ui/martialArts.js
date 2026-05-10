@@ -199,7 +199,7 @@ function renderDetail() {
   const m = selectedMartialArt;
 
   // 获取玩家的四维属性（用于计算具体加成数值）
-  let playerStats = { strength: 10, agility: 10, vitality: 10, spirit: 10, level: 1 };
+  let playerStats = { strength: 10, agility: 10, bone: 10, qi: 10, level: 1 };
   try {
     const saveData = localStorage.getItem('game_save_0');
     if (saveData) {
@@ -443,11 +443,12 @@ function showSkillTooltip(event, skill, playerStats) {
 
       // 如果有bonusAttr和bonusPerPoint，添加玩家当前属性加成
       if (skill.effect.bonusAttr && skill.effect.bonusPerPoint && playerStats) {
+        const attrs = window.ATTRIBUTES || { STRENGTH: 'strength', AGILITY: 'agility', BONE: 'bone', QI: 'qi' };
         const attrName = {
-          'strength': '臂力',
-          'agility': '身法',
-          'vitality': '根骨',
-          'spirit': '内息'
+          [attrs.STRENGTH]: '臂力',
+          [attrs.AGILITY]: '身法',
+          [attrs.BONE]: '根骨',
+          [attrs.QI]: '内息'
         }[skill.effect.bonusAttr] || skill.effect.bonusAttr;
 
         const attrValue = playerStats[skill.effect.bonusAttr] || 0;

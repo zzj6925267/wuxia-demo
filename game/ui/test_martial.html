@@ -36,6 +36,10 @@
       background: #3498db;
       color: white;
     }
+    .btn-primary {
+      background: #27ae60;
+      color: white;
+    }
     input {
       padding: 8px;
       border-radius: 4px;
@@ -47,6 +51,10 @@
     .info {
       color: #aaa;
       margin-top: 10px;
+    }
+    .warning {
+      color: #f39c12;
+      font-weight: bold;
     }
   </style>
 </head>
@@ -83,26 +91,32 @@
   </div>
 
   <div class="section">
-    <h3>自定义设置等级</h3>
-    <input type="number" id="customLevel" value="1" min="1" max="10">
-    <button class="btn-set" onclick="setCustomLevel()">应用到正阳吐纳诀</button>
-    <button class="btn-set" onclick="setCustomLevel剑法()">应用到正阳基础剑诀</button>
+    <h3>自定义等级</h3>
+    <input type="number" id="customLevel" min="1" max="10" placeholder="等级">
+    <button class="btn-set" onclick="setCustomLevel()">设置内功等级</button>
+    <button class="btn-set" onclick="setCustomLevel剑法()">设置剑法等级</button>
   </div>
 
   <div class="section">
     <h3>阅历设置</h3>
-    <p>当前阅历：<span id="exp-value">加载中...</span></p>
+    <p>当前阅历：<span id="exp-value">0</span></p>
+    <button class="btn-set" onclick="setExp(500)">设为500</button>
     <button class="btn-set" onclick="setExp(1000)">设为1000</button>
     <button class="btn-set" onclick="setExp(5000)">设为5000</button>
-    <button class="btn-set" onclick="setExp(10000)">设为10000</button>
-    <input type="number" id="customExp" value="1000">
-    <button class="btn-set" onclick="setCustomExp()">应用自定义阅历</button>
+    <input type="number" id="customExp" placeholder="阅历值">
+    <button class="btn-set" onclick="setCustomExp()">设置</button>
+  </div>
+
+  <div class="section">
+    <h3>测试功能</h3>
+    <button class="btn-primary" onclick="testInnerSkillBonuses()">测试内功加成计算</button>
+    <button class="btn-primary" onclick="fixOldData()">修复旧数据（vitality→bone）</button>
   </div>
 
   <div class="info">
-    <p>注意：修改后需要刷新页面或重新进入武学系统才能看到效果</p>
+    <p class="warning">⚠️ 注意：修改后建议刷新页面再测试</p>
     <button onclick="location.reload()" style="background:#27ae60;color:white;">刷新页面</button>
-    <button onclick="openMartialArts()" style="background:#9b59b6;color:white;">打开武学系统</button>
+    <button onclick="openMap()" style="background:#9b59b6;color:white;">返回大地图</button>
   </div>
 
   <script src="martialArtsData.js"></script>
@@ -183,32 +197,76 @@
     }
 
     function resetCurrentCharacterMartial() {
-      localStorage.setItem(storageKey, JSON.stringify(MARTIAL_ARTS_LIBRARY));
-      localStorage.setItem(`playerExperience_${currentCharId}`, '500');
-      updateDisplay();
-      alert(`${getCharacterName(currentCharId)}的武学已重置为初始状态`);
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(MARTIAL_ARTS_LIBRARY));
+        localStorage.setItem(`playerExperience_${currentCharId}`, '500');
+        updateDisplay();
+        alert(`${getCharacterName(currentCharId)}的武学已重置为初始状态`);
+      } catch (e) {
+        console.error('重置失败:', e);
+        alert('重置失败，请检查浏览器控制台');
+      }
     }
 
     function resetMartialArts() {
-      localStorage.setItem(`playerMartialArts_1`, JSON.stringify(MARTIAL_ARTS_LIBRARY));
-      localStorage.setItem(`playerMartialArts_2`, JSON.stringify(MARTIAL_ARTS_LIBRARY));
-      localStorage.setItem('playerExperience_1', '500');
-      localStorage.setItem('playerExperience_2', '500');
-      updateDisplay();
-      alert('所有角色的武学已重置为初始状态');
+      try {
+        localStorage.setItem(`playerMartialArts_1`, JSON.stringify(MARTIAL_ARTS_LIBRARY));
+        localStorage.setItem(`playerMartialArts_2`, JSON.stringify(MARTIAL_ARTS_LIBRARY));
+        localStorage.setItem('playerExperience_1', '500');
+        localStorage.setItem('playerExperience_2', '500');
+        updateDisplay();
+        alert('所有角色的武学已重置为初始状态');
+      } catch (e) {
+        console.error('重置失败:', e);
+        alert('重置失败，请检查浏览器控制台');
+      }
     }
 
-    function openMartialArts() {
-      window.open('martialArts.html', '_blank');
+    function testInnerSkillBonuses() {
+      const data = loadData();
+      const neigong = data.find(m => m.type === '内功');
+      
+      let result = '内功加成测试结果:\n\n';
+      
+      if (neigong && neigong.skills) {
+        neigong.skills.forEach(skill => {
+          if (skill.effect) {
+            let bonus = skill.effect.baseValue || 0;
+            if (skill.effect.bonusAttr) {
+              const attrValue = 10; // 默认测试值
+              bonus += attrValue * (skill.effect.bonusPerPoint || 0);
+            }
+            result += `${skill.name}: ${Math.ceil(bonus)}\n`;
+          }
+        });
+      }
+      
+      alert(result);
     }
 
-    function init() {
-      document.getElementById('characterSelect').value = currentCharId;
-      document.getElementById('currentCharacter').textContent = getCharacterName(currentCharId);
-      updateDisplay();
+    function fixOldData() {
+      try {
+        ['1', '2'].forEach(charId => {
+          const key = `playerMartialArts_${charId}`;
+          let data = localStorage.getItem(key);
+          if (data) {
+            data = data.replace(/"bonusAttr":\s*"vitality"/g, '"bonusAttr": "bone"');
+            data = data.replace(/"bonusAttr":\s*"spirit"/g, '"bonusAttr": "qi"');
+            localStorage.setItem(key, data);
+          }
+        });
+        alert('数据修复完成！');
+      } catch (e) {
+        console.error('修复失败:', e);
+        alert('修复失败，请检查浏览器控制台');
+      }
     }
 
-    init();
+    function openMap() {
+      window.location.href = 'map.html';
+    }
+
+    updateDisplay();
   </script>
 </body>
 </html>

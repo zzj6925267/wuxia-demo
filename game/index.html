@@ -188,6 +188,7 @@
   
   <!-- 数据层 -->
   <script src="js/config.js"></script>
+  <script src="js/data/attributeNames.js"></script>
   <script src="js/data/maps.js"></script>
   <script src="js/data/characters.js"></script>
   <script src="js/data/skills.js"></script>
@@ -198,6 +199,9 @@
   <script src="js/utils/helpers.js"></script>
   <script src="js/utils/statCalculator.js"></script>
   <script src="js/utils/effects.js"></script>
+  <script src="js/utils/attributeHelper.js"></script>
+  <script src="js/utils/dataMigration.js"></script>
+  <script src="js/utils/validator.js"></script>
   
   <!-- 存储层 -->
   <script src="js/save/StorageLayer.js"></script>
@@ -227,6 +231,10 @@
      * 初始化
      */
     function init() {
+      // 执行数据迁移（处理版本升级兼容性）
+      if (window.DataMigration) {
+        window.DataMigration.init();
+      }
       window.game.init();
       bindEvents();
     }

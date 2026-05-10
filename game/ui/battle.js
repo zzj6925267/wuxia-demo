@@ -717,30 +717,30 @@ function getInnerSkillPassiveBonuses(char) {
   let defenseBonus = 0;
   let maxHpBonus = 0;
 
+  const stats = char && char.stats ? char.stats : {};
+
   try {
     if (typeof playerMartialArts !== 'undefined') {
       for (const martial of playerMartialArts) {
         if (martial.equipped && martial.type === '内功' && martial.skills) {
           for (const skill of martial.skills) {
-            // 培元技能：增加防御（受根骨影响）
             if (skill.name === '培元' && martial.currentLevel >= (skill.unlockLevel || 1)) {
               const effect = skill.effect;
               if (effect && effect.type === 'defenseBuff') {
                 let bonus = effect.baseValue || 0;
-                if (effect.bonusAttr && char.stats) {
-                  bonus += (char.stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+                if (effect.bonusAttr) {
+                  bonus += (stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
                 }
                 defenseBonus += Math.ceil(bonus);
                 console.log(`${martial.name} 培元：防御 +${defenseBonus}`);
               }
             }
-            // 固本技能：增加气血上限（受根骨影响）
             if (skill.name === '固本' && martial.currentLevel >= (skill.unlockLevel || 4)) {
               const effect = skill.effect;
               if (effect && effect.type === 'maxHpBuff') {
                 let bonus = effect.baseValue || 0;
-                if (effect.bonusAttr && char.stats) {
-                  bonus += (char.stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+                if (effect.bonusAttr) {
+                  bonus += (stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
                 }
                 maxHpBonus += Math.ceil(bonus);
                 console.log(`${martial.name} 固本：气血上限 +${maxHpBonus}`);
