@@ -114,9 +114,9 @@ const MARTIAL_ARTS_LIBRARY = [
     baseBonus: { lightSkill: 5 },
     stats: { speed: 25, dodge: 20, attack: 10 },
     skills: [
-      { id: 1, name: '踏云', type: '被动', unlockLevel: 1, icon: '☁️', description: '脚踏祥云，增加闪避', effect: { type: 'buff', stat: 'dodge', baseValue: 15, bonusAttr: 'agility', bonusPerPoint: 0.5 } },
-      { id: 2, name: '逐日', type: '被动', unlockLevel: 4, icon: '☀️', description: '追逐烈日，增加攻击', effect: { type: 'buff', stat: 'attack', baseValue: 10, bonusAttr: 'strength', bonusPerPoint: 0.5 } },
-      { id: 3, name: '凌虚', type: '被动', unlockLevel: 7, icon: '✨', description: '凌空虚步，增加速度', effect: { type: 'buff', stat: 'speed', baseValue: 15, bonusAttr: 'agility', bonusPerPoint: 0.6 } }
+      { id: 1, name: '踏云', type: '被动', unlockLevel: 1, icon: '☁️', description: '脚踏祥云，增加闪避', effect: { type: 'buff', stat: 'dodge', baseValue: 15, bonusAttr: 'agility', bonusPerPoint: 0.5 }, detail: '基础闪避+15，每点身法额外+0.5' },
+      { id: 2, name: '逐日', type: '被动', unlockLevel: 4, icon: '☀️', description: '追逐烈日，增加攻击', effect: { type: 'buff', stat: 'attack', baseValue: 10, bonusAttr: 'strength', bonusPerPoint: 0.5 }, detail: '基础攻击+10，每点臂力额外+0.5' },
+      { id: 3, name: '凌虚', type: '被动', unlockLevel: 7, icon: '✨', description: '凌空虚步，增加速度', effect: { type: 'buff', stat: 'speed', baseValue: 15, bonusAttr: 'agility', bonusPerPoint: 0.6 }, detail: '基础速度+15，每点身法额外+0.6' }
     ]
   }
 ];
@@ -178,9 +178,9 @@ const INITIAL_PLAYER_MARTIAL_ARTS = [
     baseBonus: { lightSkill: 5 },
     stats: { speed: 25, dodge: 20, attack: 10 },
     skills: [
-      { id: 1, name: '踏云', type: '被动', unlockLevel: 1, icon: '☁️', description: '脚踏祥云，增加闪避', effect: { type: 'buff', stat: 'dodge', baseValue: 15, bonusAttr: 'agility', bonusPerPoint: 0.5 } },
-      { id: 2, name: '逐日', type: '被动', unlockLevel: 4, icon: '☀️', description: '追逐烈日，增加攻击', effect: { type: 'buff', stat: 'attack', baseValue: 10, bonusAttr: 'strength', bonusPerPoint: 0.5 } },
-      { id: 3, name: '凌虚', type: '被动', unlockLevel: 7, icon: '✨', description: '凌空虚步，增加速度', effect: { type: 'buff', stat: 'speed', baseValue: 15, bonusAttr: 'agility', bonusPerPoint: 0.6 } }
+      { id: 1, name: '踏云', type: '被动', unlockLevel: 1, icon: '☁️', description: '脚踏祥云，增加闪避', effect: { type: 'buff', stat: 'dodge', baseValue: 15, bonusAttr: 'agility', bonusPerPoint: 0.5 }, detail: '基础闪避+15，每点身法额外+0.5' },
+      { id: 2, name: '逐日', type: '被动', unlockLevel: 4, icon: '☀️', description: '追逐烈日，增加攻击', effect: { type: 'buff', stat: 'attack', baseValue: 10, bonusAttr: 'strength', bonusPerPoint: 0.5 }, detail: '基础攻击+10，每点臂力额外+0.5' },
+      { id: 3, name: '凌虚', type: '被动', unlockLevel: 7, icon: '✨', description: '凌空虚步，增加速度', effect: { type: 'buff', stat: 'speed', baseValue: 15, bonusAttr: 'agility', bonusPerPoint: 0.6 }, detail: '基础速度+15，每点身法额外+0.6' }
     ]
   }
 ];
