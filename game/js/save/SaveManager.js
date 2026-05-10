@@ -3,25 +3,16 @@
  * @module SaveManager
  */
 
-// 使用全局变量（浏览器环境，已在config.js和characters.js中定义）
-
-/**
- * 存档管理类
- */
 class SaveManager {
-  /**
-   * 构造函数
-   * @param {PlayerSystem} playerSystem - 玩家系统
-   */
   constructor(playerSystem) {
     this.playerSystem = playerSystem;
     this.autoSaveTimer = null;
+    this.storage = window.StorageFactory ? 
+      window.StorageFactory.getBestStorage() : 
+      new window.LocalStorageLayer();
     this._startAutoSave();
   }
 
-  /**
-   * 开始自动存档
-   */
   _startAutoSave() {
     if (this.autoSaveTimer) {
       clearInterval(this.autoSaveTimer);
@@ -32,19 +23,11 @@ class SaveManager {
     }, window.GAME_CONFIG.SAVE.AUTO_SAVE_INTERVAL);
   }
 
-  /**
-   * 自动存档
-   */
   autoSave() {
-    this.save(0); // 使用第一个存档槽位进行自动存档
+    this.save(0);
   }
 
-  /**
-   * 保存游戏
-   * @param {number} slot - 存档槽位（0-4）
-   * @returns {boolean} 是否成功
-   */
-  save(slot) {
+  async save(slot) {
     if (slot < 0 || slot >= window.GAME_CONFIG.SAVE.MAX_SAVE_SLOTS) {
       console.error('Invalid save slot');
       return false;
@@ -57,35 +40,44 @@ class SaveManager {
         version: '1.0.0'
       };
 
-      localStorage.setItem(`game_save_${slot}`, JSON.stringify(saveData));
-      console.log(`Game saved to slot ${slot}`);
-      return true;
+      const key = `game_save_${slot}`;
+      const success = await this.storage.save(key, saveData);
+      
+      if (success) {
+        console.log(`Game saved to slot ${slot}`);
+      } else {
+        console.warn('Falling back to localStorage');
+        localStorage.setItem(key, JSON.stringify(saveData));
+      }
+      return success;
     } catch (error) {
       console.error('Failed to save game:', error);
       return false;
     }
   }
 
-  /**
-   * 加载游戏
-   * @param {number} slot - 存档槽位（0-4）
-   * @returns {boolean} 是否成功
-   */
-  load(slot) {
+  async load(slot) {
     if (slot < 0 || slot >= window.GAME_CONFIG.SAVE.MAX_SAVE_SLOTS) {
       console.error('Invalid save slot');
       return false;
     }
 
     try {
-      const saveData = localStorage.getItem(`game_save_${slot}`);
-      if (!saveData) {
-        console.log('No save data found in slot', slot);
-        return false;
+      const key = `game_save_${slot}`;
+      let data = await this.storage.load(key);
+      
+      if (!data) {
+        data = localStorage.getItem(key);
+        if (data) {
+          data = JSON.parse(data);
+          console.log('Loaded from localStorage fallback');
+        } else {
+          console.log('No save data found in slot', slot);
+          return false;
+        }
       }
 
-      const data = JSON.parse(saveData);
-      this.playerSystem.player = deepClone(data.player);
+      this.playerSystem.player = window.deepClone(data.player);
       console.log(`Game loaded from slot ${slot}`);
       return true;
     } catch (error) {
@@ -94,23 +86,24 @@ class SaveManager {
     }
   }
 
-  /**
-   * 获取存档信息
-   * @param {number} slot - 存档槽位（0-4）
-   * @returns {object|null} 存档信息
-   */
-  getSaveInfo(slot) {
+  async getSaveInfo(slot) {
     if (slot < 0 || slot >= window.GAME_CONFIG.SAVE.MAX_SAVE_SLOTS) {
       return null;
     }
 
     try {
-      const saveData = localStorage.getItem(`game_save_${slot}`);
-      if (!saveData) {
-        return null;
+      const key = `game_save_${slot}`;
+      let data = await this.storage.load(key);
+      
+      if (!data) {
+        const localStorageData = localStorage.getItem(key);
+        if (localStorageData) {
+          data = JSON.parse(localStorageData);
+        } else {
+          return null;
+        }
       }
 
-      const data = JSON.parse(saveData);
       return {
         slot,
         timestamp: data.timestamp,
@@ -124,14 +117,10 @@ class SaveManager {
     }
   }
 
-  /**
-   * 获取所有存档信息
-   * @returns {Array} 存档信息数组
-   */
-  getAllSaveInfo() {
+  async getAllSaveInfo() {
     const saves = [];
     for (let i = 0; i < window.GAME_CONFIG.SAVE.MAX_SAVE_SLOTS; i++) {
-      const info = this.getSaveInfo(i);
+      const info = await this.getSaveInfo(i);
       if (info) {
         saves.push(info);
       }
@@ -139,37 +128,31 @@ class SaveManager {
     return saves;
   }
 
-  /**
-   * 删除存档
-   * @param {number} slot - 存档槽位（0-4）
-   * @returns {boolean} 是否成功
-   */
-  deleteSave(slot) {
+  async deleteSave(slot) {
     if (slot < 0 || slot >= window.GAME_CONFIG.SAVE.MAX_SAVE_SLOTS) {
       return false;
     }
 
     try {
-      localStorage.removeItem(`game_save_${slot}`);
-      console.log(`Save deleted from slot ${slot}`);
-      return true;
+      const key = `game_save_${slot}`;
+      const success = await this.storage.delete(key);
+      localStorage.removeItem(key);
+      
+      if (success) {
+        console.log(`Save deleted from slot ${slot}`);
+      }
+      return success;
     } catch (error) {
       console.error('Failed to delete save:', error);
       return false;
     }
   }
 
-  /**
-   * 重置游戏
-   */
   resetGame() {
     this.playerSystem.player = window.deepClone(window.PLAYER_INITIAL);
     console.log('Game reset to initial state');
   }
 
-  /**
-   * 停止自动存档
-   */
   stopAutoSave() {
     if (this.autoSaveTimer) {
       clearInterval(this.autoSaveTimer);
@@ -178,5 +161,4 @@ class SaveManager {
   }
 }
 
-// 暴露到全局
 window.SaveManager = SaveManager;

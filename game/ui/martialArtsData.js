@@ -32,8 +32,8 @@ const MARTIAL_ARTS_LIBRARY = [
     baseBonus: { sword: 5 },
     stats: { attack: 25, hit: 10 },
     skills: [
-      { id: 1, name: '直刺', type: '主动', unlockLevel: 1, icon: '🗡️', mpCost: 20, description: '基础剑招，直刺敌人', effect: { type: 'damage', value: 1.2, bonusAttr: 'qi', bonusPerPoint: 0.005 } },
-      { id: 2, name: '阳刚', type: '被动', unlockLevel: 4, icon: '☀️', description: '增加10%攻击', effect: { type: 'buff', stat: 'attack', value: 0.1, bonusAttr: 'qi', bonusPerPoint: 0.003 } },
+      { id: 1, name: '直刺', type: '主动', unlockLevel: 1, icon: '🗡️', mpCost: 20, description: '基础剑招，直刺敌人，臂力越高伤害越高', effect: { type: 'damage', value: 1.2, bonusAttr: 'strength', bonusPerPoint: 0.02 }, detail: '基础伤害120%，每点臂力额外+2%伤害' },
+      { id: 2, name: '阳刚', type: '被动', unlockLevel: 4, icon: '☀️', description: '被动增加攻击，臂力越高加成越多', effect: { type: 'buff', stat: 'attack', value: 0.1, bonusAttr: 'strength', bonusPerPoint: 0.03 }, detail: '基础攻击+10%，每点臂力额外+3%' },
       { id: 3, name: '剑影', type: '被动', unlockLevel: 7, icon: '✨', description: '直刺后有20%概率跟随一剑，身法越高触发概率越高', effect: { type: 'followAttack', baseChance: 0.2, damage: 0.8, chanceAttr: 'agility', chancePerPoint: 0.01 } }
     ]
   },
@@ -66,16 +66,16 @@ const MARTIAL_ARTS_LIBRARY = [
     rank: '初阶',
     school: '正阳派',
     description: '正阳派入门吐纳法，调养内息',
-    currentLevel: 2,
+    currentLevel: 7,
     maxLevel: 10,
     practiceTimes: 1,
     equipped: true,
     baseBonus: { innerSkill: 5 },
     stats: { hp: 50, defense: 10, innerSkill: 15 },
     skills: [
-      { id: 1, name: '调息', type: '主动', unlockLevel: 1, icon: '🧘', mpCost: 0, description: '恢复内力', effect: { type: 'healMp', value: 0.3, bonusAttr: 'qi', bonusPerPoint: 0.01 } },
-      { id: 2, name: '固本', type: '被动', unlockLevel: 4, icon: '💪', description: '增加气血上限', effect: { type: 'maxHpBuff', value: 0.1, bonusAttr: 'qi', bonusPerPoint: 0.005 } },
-      { id: 3, name: '培元', type: '被动', unlockLevel: 7, icon: '🔋', description: '增加内力上限', effect: { type: 'maxMpBuff', value: 0.2, bonusAttr: 'qi', bonusPerPoint: 0.01 } }
+      { id: 1, name: '培元', type: '被动', unlockLevel: 1, icon: '🔋', description: '固本培元，增加防御力', effect: { type: 'defenseBuff', baseValue: 30, bonusAttr: 'bone', bonusPerPoint: 0.5 }, detail: '基础防御+30，每点根骨额外+0.5' },
+      { id: 2, name: '固本', type: '被动', unlockLevel: 4, icon: '💪', description: '稳固根基，增加气血上限', effect: { type: 'maxHpBuff', baseValue: 50, bonusAttr: 'bone', bonusPerPoint: 0.5 }, detail: '气血上限+50，每点根骨额外+0.5' },
+      { id: 3, name: '调息', type: '被动', unlockLevel: 7, icon: '🧘', description: '吐纳调息，每回合自动恢复气血', effect: { type: 'autoHeal', baseValue: 5, levelMultiplier: 3, bonusAttr: 'qi', bonusPerPoint: 0.8 }, detail: '每回合恢复5+等级×3+内息×0.8点气血' }
     ]
   },
   {
@@ -138,8 +138,8 @@ const INITIAL_PLAYER_MARTIAL_ARTS = [
     baseBonus: { sword: 5 },
     stats: { attack: 25, hit: 10 },
     skills: [
-      { id: 1, name: '直刺', type: '主动', unlockLevel: 1, icon: '🗡️', mpCost: 20, description: '基础剑招，直刺敌人', effect: { type: 'damage', value: 1.2, bonusAttr: 'qi', bonusPerPoint: 0.005 } },
-      { id: 2, name: '阳刚', type: '被动', unlockLevel: 4, icon: '☀️', description: '增加10%攻击', effect: { type: 'buff', stat: 'attack', value: 0.1, bonusAttr: 'qi', bonusPerPoint: 0.003 } },
+      { id: 1, name: '直刺', type: '主动', unlockLevel: 1, icon: '🗡️', mpCost: 20, description: '基础剑招，直刺敌人，臂力越高伤害越高', effect: { type: 'damage', value: 1.2, bonusAttr: 'strength', bonusPerPoint: 0.02 }, detail: '基础伤害120%，每点臂力额外+2%伤害' },
+      { id: 2, name: '阳刚', type: '被动', unlockLevel: 4, icon: '☀️', description: '被动增加攻击，臂力越高加成越多', effect: { type: 'buff', stat: 'attack', value: 0.1, bonusAttr: 'strength', bonusPerPoint: 0.03 }, detail: '基础攻击+10%，每点臂力额外+3%' },
       { id: 3, name: '剑影', type: '被动', unlockLevel: 7, icon: '✨', description: '直刺后有20%概率跟随一剑，身法越高触发概率越高', effect: { type: 'followAttack', baseChance: 0.2, damage: 0.8, chanceAttr: 'agility', chancePerPoint: 0.01 } }
     ]
   },
@@ -151,16 +151,16 @@ const INITIAL_PLAYER_MARTIAL_ARTS = [
     rank: '初阶',
     school: '正阳派',
     description: '正阳派入门吐纳法，调养内息',
-    currentLevel: 2,
+    currentLevel: 7,
     maxLevel: 10,
     practiceTimes: 1,
     equipped: true,
     baseBonus: { innerSkill: 5 },
     stats: { hp: 50, defense: 10, innerSkill: 15 },
     skills: [
-      { id: 1, name: '调息', type: '主动', unlockLevel: 1, icon: '🧘', mpCost: 0, description: '恢复内力', effect: { type: 'healMp', value: 0.3, bonusAttr: 'qi', bonusPerPoint: 0.01 } },
-      { id: 2, name: '固本', type: '被动', unlockLevel: 4, icon: '💪', description: '增加气血上限', effect: { type: 'maxHpBuff', value: 0.1, bonusAttr: 'qi', bonusPerPoint: 0.005 } },
-      { id: 3, name: '培元', type: '被动', unlockLevel: 7, icon: '🔋', description: '增加内力上限', effect: { type: 'maxMpBuff', value: 0.2, bonusAttr: 'qi', bonusPerPoint: 0.01 } }
+      { id: 1, name: '培元', type: '被动', unlockLevel: 1, icon: '🔋', description: '固本培元，增加防御力', effect: { type: 'defenseBuff', baseValue: 30, bonusAttr: 'bone', bonusPerPoint: 0.5 }, detail: '基础防御+30，每点根骨额外+0.5' },
+      { id: 2, name: '固本', type: '被动', unlockLevel: 4, icon: '💪', description: '稳固根基，增加气血上限', effect: { type: 'maxHpBuff', baseValue: 50, bonusAttr: 'bone', bonusPerPoint: 0.5 }, detail: '气血上限+50，每点根骨额外+0.5' },
+      { id: 3, name: '调息', type: '被动', unlockLevel: 7, icon: '🧘', description: '吐纳调息，每回合自动恢复气血', effect: { type: 'autoHeal', baseValue: 5, levelMultiplier: 3, bonusAttr: 'qi', bonusPerPoint: 0.8 }, detail: '每回合恢复5+等级×3+内息×0.8点气血' }
     ]
   },
   {

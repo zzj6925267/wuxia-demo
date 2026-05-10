@@ -216,7 +216,8 @@ function getPlayerCharactersFromSave() {
     const char1HpFourDim = char1Bone * 5;
     const char1HpMartial = getMartialBonusForChar(window.characters[0], 'hp');
     const char1HpEquip = getEquipBonusForChar(window.characters[0], 'hp');
-    const char1FinalMaxHp = char1HpBase + char1HpFourDim + char1HpMartial + char1HpEquip;
+    const char1InnerBonuses = getInnerSkillPassiveBonuses(window.characters[0]);
+    const char1FinalMaxHp = char1HpBase + char1HpFourDim + char1HpMartial + char1HpEquip + char1InnerBonuses.maxHpBonus;
     
     const char1MpBase = 50 + char1Level * 5;
     const char1MpFourDim = char1Qi * 2;
@@ -232,7 +233,8 @@ function getPlayerCharactersFromSave() {
     const char2HpFourDim = char2Bone * 5;
     const char2HpMartial = getMartialBonusForChar(window.characters[1], 'hp');
     const char2HpEquip = getEquipBonusForChar(window.characters[1], 'hp');
-    const char2FinalMaxHp = char2HpBase + char2HpFourDim + char2HpMartial + char2HpEquip;
+    const char2InnerBonuses = getInnerSkillPassiveBonuses(window.characters[1]);
+    const char2FinalMaxHp = char2HpBase + char2HpFourDim + char2HpMartial + char2HpEquip + char2InnerBonuses.maxHpBonus;
     
     const char2MpBase = 50 + char2Level * 5;
     const char2MpFourDim = char2Qi * 2;
@@ -240,8 +242,8 @@ function getPlayerCharactersFromSave() {
     const char2MpEquip = getEquipBonusForChar(window.characters[1], 'mp');
     const char2FinalMaxMp = char2MpBase + char2MpFourDim + char2MpMartial + char2MpEquip;
     
-    console.log('少侠血量 - 基础:', char1HpBase, '四维:', char1HpFourDim, '武学:', char1HpMartial, '装备:', char1HpEquip, '最终:', char1FinalMaxHp);
-    console.log('苏瑶血量 - 基础:', char2HpBase, '四维:', char2HpFourDim, '武学:', char2HpMartial, '装备:', char2HpEquip, '最终:', char2FinalMaxHp);
+    console.log('少侠血量 - 基础:', char1HpBase, '四维:', char1HpFourDim, '武学:', char1HpMartial, '装备:', char1HpEquip, '内功:', char1InnerBonuses.maxHpBonus, '最终:', char1FinalMaxHp);
+    console.log('苏瑶血量 - 基础:', char2HpBase, '四维:', char2HpFourDim, '武学:', char2HpMartial, '装备:', char2HpEquip, '内功:', char2InnerBonuses.maxHpBonus, '最终:', char2FinalMaxHp);
     console.log('少侠内力 - 基础:', char1MpBase, '四维:', char1MpFourDim, '武学:', char1MpMartial, '装备:', char1MpEquip, '最终:', char1FinalMaxMp);
     console.log('苏瑶内力 - 基础:', char2MpBase, '四维:', char2MpFourDim, '武学:', char2MpMartial, '装备:', char2MpEquip, '最终:', char2FinalMaxMp);
     
@@ -256,7 +258,7 @@ function getPlayerCharactersFromSave() {
         mp: char1FinalMaxMp,
         maxMp: char1FinalMaxMp,
         attack: Math.floor((50 + window.characters[0].stats.strength * 3) * yangGangBonus), 
-        defense: window.characters[0].stats.defense || 50, 
+        defense: (window.characters[0].stats.defense || 50) + char1InnerBonuses.defenseBonus, 
         speed: 50 + window.characters[0].stats.agility * 2,
         hit: 70 + window.characters[0].stats.agility, 
         dodge: 20 + Math.floor(window.characters[0].stats.agility * 0.5), 
@@ -273,7 +275,7 @@ function getPlayerCharactersFromSave() {
         mp: char2FinalMaxMp,
         maxMp: char2FinalMaxMp,
         attack: Math.floor((50 + window.characters[1].stats.strength * 3) * yangGangBonus), 
-        defense: window.characters[1].stats.defense || 50, 
+        defense: (window.characters[1].stats.defense || 50) + char2InnerBonuses.defenseBonus, 
         speed: 50 + window.characters[1].stats.agility * 2,
         hit: 70 + window.characters[1].stats.agility, 
         dodge: 20 + Math.floor(window.characters[1].stats.agility * 0.5), 
@@ -299,7 +301,8 @@ function getPlayerCharactersFromSave() {
         const char1HpFourDim = char1Bone * 5;
         const char1HpMartial = getMartialBonusForChar(chars[0], 'hp');
         const char1HpEquip = getEquipBonusForChar(chars[0], 'hp');
-        const char1FinalMaxHp = char1HpBase + char1HpFourDim + char1HpMartial + char1HpEquip;
+        const char1InnerBonuses = getInnerSkillPassiveBonuses(chars[0]);
+        const char1FinalMaxHp = char1HpBase + char1HpFourDim + char1HpMartial + char1HpEquip + char1InnerBonuses.maxHpBonus;
         
         const char1MpBase = 50 + char1Level * 5;
         const char1MpFourDim = char1Qi * 2;
@@ -317,7 +320,8 @@ function getPlayerCharactersFromSave() {
         const char2HpFourDim = char2Bone * 5;
         const char2HpMartial = getMartialBonusForChar(chars[1], 'hp');
         const char2HpEquip = getEquipBonusForChar(chars[1], 'hp');
-        const char2FinalMaxHp = char2HpBase + char2HpFourDim + char2HpMartial + char2HpEquip;
+        const char2InnerBonuses = getInnerSkillPassiveBonuses(chars[1]);
+        const char2FinalMaxHp = char2HpBase + char2HpFourDim + char2HpMartial + char2HpEquip + char2InnerBonuses.maxHpBonus;
         
         const char2MpBase = 50 + char2Level * 5;
         const char2MpFourDim = char2Qi * 2;
@@ -336,7 +340,7 @@ function getPlayerCharactersFromSave() {
             mp: char1FinalMaxMp,
             maxMp: char1FinalMaxMp,
             attack: Math.floor((50 + char1Str * 3) * yangGangBonus), 
-            defense: chars[0].stats.defense || 50, 
+            defense: (chars[0].stats.defense || 50) + char1InnerBonuses.defenseBonus, 
             speed: 50 + char1Agi * 2,
             hit: 70 + char1Agi, 
             dodge: 20 + Math.floor(char1Agi * 0.5), 
@@ -353,7 +357,7 @@ function getPlayerCharactersFromSave() {
             mp: char2FinalMaxMp,
             maxMp: char2FinalMaxMp,
             attack: Math.floor((50 + char2Str * 3) * yangGangBonus), 
-            defense: chars[1].stats.defense || 50, 
+            defense: (chars[1].stats.defense || 50) + char2InnerBonuses.defenseBonus, 
             speed: 50 + char2Agi * 2,
             hit: 70 + char2Agi, 
             dodge: 20 + Math.floor(char2Agi * 0.5), 
@@ -495,7 +499,7 @@ function getPlayerCharactersFromSave() {
 /**
  * 初始化战斗
  */
-function initBattle() {
+async function initBattle() {
   // 每次战斗开始时重新获取角色数据（确保等级是最新的）
   console.log('=== initBattle 开始 ===');
   const currentPlayerCharacters = getPlayerCharactersFromSave();
@@ -534,6 +538,7 @@ function initBattle() {
   renderTeams();
   updateTurnDisplay();
   addBattleLog('战斗开始！');
+  // 第一回合不回血，从第二回合开始
 }
 
 function calculateTurnOrder() {
@@ -707,6 +712,51 @@ async function showAttackReturn(actor) {
   }
 }
 
+// 获取内功被动属性加成
+function getInnerSkillPassiveBonuses(char) {
+  let defenseBonus = 0;
+  let maxHpBonus = 0;
+
+  try {
+    if (typeof playerMartialArts !== 'undefined') {
+      for (const martial of playerMartialArts) {
+        if (martial.equipped && martial.type === '内功' && martial.skills) {
+          for (const skill of martial.skills) {
+            // 培元技能：增加防御（受根骨影响）
+            if (skill.name === '培元' && martial.currentLevel >= (skill.unlockLevel || 1)) {
+              const effect = skill.effect;
+              if (effect && effect.type === 'defenseBuff') {
+                let bonus = effect.baseValue || 0;
+                if (effect.bonusAttr && char.stats) {
+                  bonus += (char.stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+                }
+                defenseBonus += Math.ceil(bonus);
+                console.log(`${martial.name} 培元：防御 +${defenseBonus}`);
+              }
+            }
+            // 固本技能：增加气血上限（受根骨影响）
+            if (skill.name === '固本' && martial.currentLevel >= (skill.unlockLevel || 4)) {
+              const effect = skill.effect;
+              if (effect && effect.type === 'maxHpBuff') {
+                let bonus = effect.baseValue || 0;
+                if (effect.bonusAttr && char.stats) {
+                  bonus += (char.stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+                }
+                maxHpBonus += Math.ceil(bonus);
+                console.log(`${martial.name} 固本：气血上限 +${maxHpBonus}`);
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('获取内功加成失败:', e);
+  }
+
+  return { defenseBonus, maxHpBonus };
+}
+
 // 检查是否装备了内功
 function hasInnerSkillEquipped() {
   try {
@@ -739,6 +789,149 @@ function recoverMp(char) {
   char.mp = Math.min(char.maxMp, char.mp + recover);
   console.log(`${innerSkill.name}(${innerSkill.level}级) 恢复内力: +${recover}`);
   updateMpDisplay(char.id, char.mp, true);
+}
+
+// 计算内功自动回血量
+function calculateInnerSkillHeal(char) {
+  let healAmount = 0;
+  let martialArtsData = [];
+  
+  try {
+    console.log('=== 开始计算内功回血 ===');
+    
+    // 获取用户实际的武学等级（从 localStorage）
+    let savedMartialArts = [];
+    const charId = char.id || 1;
+    const saved = localStorage.getItem('playerMartialArts_' + charId);
+    if (saved) {
+      savedMartialArts = JSON.parse(saved);
+      console.log('从 localStorage 获取到用户武学数据');
+    }
+    
+    // 使用 MARTIAL_ARTS_LIBRARY 的技能数据，但合并用户的等级
+    if (typeof MARTIAL_ARTS_LIBRARY !== 'undefined') {
+      martialArtsData = MARTIAL_ARTS_LIBRARY.map(martial => {
+        // 找到对应的保存数据
+        const savedMartial = savedMartialArts.find(m => m.id === martial.id);
+        if (savedMartial) {
+          // 使用用户保存的等级
+          return { ...martial, currentLevel: savedMartial.currentLevel, equipped: savedMartial.equipped };
+        }
+        return martial;
+      });
+      console.log('使用 MARTIAL_ARTS_LIBRARY 的技能数据 + localStorage 的等级');
+      
+      const zhengyang = martialArtsData.find(m => m.name === '正阳吐纳诀');
+      if (zhengyang) {
+        console.log('正阳吐纳诀技能顺序:', zhengyang.skills.map(s => s.name));
+        console.log('正阳吐纳诀当前等级:', zhengyang.currentLevel);
+      }
+    } else if (typeof playerMartialArts !== 'undefined') {
+      martialArtsData = playerMartialArts;
+      console.log('使用 playerMartialArts');
+    } else if (savedMartialArts.length > 0) {
+      martialArtsData = savedMartialArts;
+      console.log('使用 localStorage');
+    }
+    
+    console.log('武学数据:', martialArtsData);
+    
+    for (const martial of martialArtsData) {
+      if (martial.equipped && martial.type === '内功' && martial.skills) {
+        console.log('装备的内功:', martial.name, '等级:', martial.currentLevel);
+        console.log('技能数组:', martial.skills);
+        
+        for (const skill of martial.skills) {
+          console.log('技能:', skill.name, '解锁等级:', skill.unlockLevel);
+          
+          if (skill.name === '调息' && martial.currentLevel >= (skill.unlockLevel || 7)) {
+            const effect = skill.effect;
+            if (effect && effect.type === 'autoHeal') {
+              const base = effect.baseValue || 5;
+              const levelBonus = martial.currentLevel * (effect.levelMultiplier || 3);
+              const spiritBonus = (char.stats && char.stats.spirit || 0) * (effect.bonusPerPoint || 0.8);
+              healAmount = Math.floor(base + levelBonus + spiritBonus);
+              console.log(`${martial.name}(${martial.currentLevel}级) 调息回血量: ${healAmount}`);
+              break;
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('计算内功回血失败:', e);
+  }
+  
+  return healAmount;
+}
+
+// 显示内功回血特效
+function showInnerSkillHealEffect(charId, healAmount) {
+  console.log('=== showInnerSkillHealEffect 被调用 ===');
+  console.log('角色ID:', charId);
+  console.log('回血量:', healAmount);
+  
+  const card = document.getElementById(`char-${charId}`);
+  console.log('卡片元素:', card);
+  
+  if (!card) {
+    console.log('卡片不存在');
+    return;
+  }
+  
+  if (!window.BattleEffects) {
+    console.log('BattleEffects 未定义');
+    return;
+  }
+  
+  const container = card.querySelector('.character-avatar-container');
+  console.log('容器元素:', container);
+  
+  if (!container) {
+    // 尝试其他选择器
+    const avatar = card.querySelector('.avatar');
+    console.log('头像元素:', avatar);
+    if (avatar) {
+      window.BattleEffects.showInnerSkillHeal(avatar, healAmount, true);
+      return;
+    }
+    console.log('容器不存在');
+    return;
+  }
+  
+  window.BattleEffects.showInnerSkillHeal(container, healAmount, true);
+}
+
+// 应用内功自动回血
+function applyInnerSkillHeal(char) {
+  console.log('=== applyInnerSkillHeal 被调用 ===');
+  console.log('角色:', char.name);
+  
+  const healAmount = calculateInnerSkillHeal(char);
+  console.log('计算回血量:', healAmount);
+  console.log('healAmount > 0 ?', healAmount > 0);
+  console.log('typeof healAmount:', typeof healAmount);
+  
+  if (healAmount > 0) {
+    console.log('进入回血逻辑');
+    const oldHp = char.hp;
+    char.hp = Math.min(char.maxHp, char.hp + healAmount);
+    const actualHeal = char.hp - oldHp;
+    
+    // 显示回血特效（即使血量已满也显示）
+    console.log(`${char.name} 内功自动回血: +${healAmount}`);
+    console.log('调用 showInnerSkillHealEffect');
+    showInnerSkillHealEffect(char.id, healAmount);
+    console.log('showInnerSkillHealEffect 调用完成');
+    
+    // 始终显示飘字
+    showDamageNumber(char.id, healAmount, true);
+    
+    if (actualHeal > 0) {
+      updateHpDisplay(char.id, char.hp);
+      addBattleLog(`${char.name} 内功调息，恢复 ${actualHeal} 点生命！`);
+    }
+  }
 }
 
 // 更新内力显示
@@ -856,13 +1049,26 @@ async function runBattleLoop() {
     }
 
     battleState.currentTurnIndex++;
-    if (battleState.currentTurnIndex >= battleState.turnOrder.length) {
-      battleState.currentTurnIndex = 0;
-      battleState.turnCount++;
-      if (battleState.turnCount > 99) battleState.turnCount = 99;
-      updateTurnDisplay();
-      calculateTurnOrder();
-    }
+      if (battleState.currentTurnIndex >= battleState.turnOrder.length) {
+        battleState.currentTurnIndex = 0;
+        battleState.turnCount++;
+        if (battleState.turnCount > 99) battleState.turnCount = 99;
+        updateTurnDisplay();
+        calculateTurnOrder();
+        
+        // 从第二回合开始回血（第一回合不回血）
+        if (battleState.turnCount >= 2) {
+          console.log('=== 新回合开始，应用内功回血 ===');
+          console.log('当前回合:', battleState.turnCount);
+          await sleep(300);
+          battleState.allyTeam.forEach(char => {
+            if (!char.isDead) {
+              applyInnerSkillHeal(char);
+            }
+          });
+          await sleep(500);
+        }
+      }
 
     // 只更新高亮状态，不重新渲染卡片
     updateActiveHighlight();
@@ -892,12 +1098,12 @@ async function performAction(actor) {
   const target = aliveTargets[0];
 
   if (actor.isAlly) {
-    // 我方角色使用技能
-    const skills = getAvailableSkills(actor);
-    let usedSkill = false;
-    
-    // 恢复内力
-    recoverMp(actor);
+      // 我方角色使用技能
+      const skills = getAvailableSkills(actor);
+      let usedSkill = false;
+      
+      // 恢复内力
+      recoverMp(actor);
     
     for (const skill of skills) {
       if (actor.mp >= skill.mpCost) {
@@ -1015,7 +1221,7 @@ async function showAttackAnimation(actor) {
   }
 }
 
-function showDamageNumber(charId, damage, isCritical = false) {
+function showDamageNumber(charId, damage, isHeal = false, isCritical = false) {
   const card = document.getElementById(`char-${charId}`);
   if (!card) return;
 
@@ -1023,8 +1229,17 @@ function showDamageNumber(charId, damage, isCritical = false) {
   const container = document.querySelector('.battle-container');
   
   const damageDiv = document.createElement('div');
-  damageDiv.className = `damage-number ${isCritical ? 'critical' : ''}`;
-  damageDiv.textContent = damage;
+  
+  let className = 'damage-number';
+  if (isHeal) {
+    className += ' heal';
+    damageDiv.textContent = `+${damage}`;
+  } else {
+    className += isCritical ? ' critical' : ' damage';
+    damageDiv.textContent = damage;
+  }
+  
+  damageDiv.className = className;
   damageDiv.style.left = `${cardRect.left + cardRect.width / 2}px`;
   damageDiv.style.top = `${cardRect.top - 30}px`;
   damageDiv.style.position = 'fixed';
@@ -1170,15 +1385,6 @@ function toggleAutoBattle() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  // 引用武学数据
-  try {
-    const script = document.createElement('script');
-    script.src = 'martialArtsData.js';
-    document.head.appendChild(script);
-  } catch (e) {
-    console.warn('加载武学数据失败');
-  }
-  
   setTimeout(() => {
     initBattle();
   }, 200);

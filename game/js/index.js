@@ -20,7 +20,7 @@ class Game {
     this.aiWriter = null;
 
     // 游戏状态
-    this.currentState = GAME_STATE.MENU;
+    this.currentState = window.GAME_STATE ? window.GAME_STATE.MENU : 'menu';
 
     // 回调函数
     this.callbacks = {};
@@ -174,7 +174,7 @@ class Game {
     this.playerSystem = new PlayerSystem();
     this.saveManager = new SaveManager(this.playerSystem);
     this.mapSystem.init('yuelai_inn');
-    this.currentState = GAME_STATE.MAP;
+    this.currentState = window.GAME_STATE.MAP;
     this._fireCallback('gameStart');
     console.log('新游戏开始');
   }
@@ -188,7 +188,7 @@ class Game {
     if (this.saveManager.load(slot)) {
       const location = this.playerSystem.getFlag('current_location');
       this.mapSystem.init(location || 'yuelai_inn');
-      this.currentState = GAME_STATE.MAP;
+      this.currentState = window.GAME_STATE.MAP;
       this._fireCallback('gameLoad', { slot });
       console.log(`从存档槽位 ${slot} 加载游戏`);
       return true;
@@ -258,12 +258,12 @@ class Game {
   }
 
   _onDialogStart(dialog) {
-    this.currentState = GAME_STATE.DIALOG;
+    this.currentState = window.GAME_STATE.DIALOG;
     this._fireCallback('dialogStart', dialog);
   }
 
   _onDialogEnd(dialog) {
-    this.currentState = GAME_STATE.MAP;
+    this.currentState = window.GAME_STATE.MAP;
     this._fireCallback('dialogEnd', dialog);
   }
 
@@ -272,12 +272,12 @@ class Game {
   }
 
   _onBattleStart(player, enemy) {
-    this.currentState = GAME_STATE.BATTLE;
+    this.currentState = window.GAME_STATE.BATTLE;
     this._fireCallback('battleStart', { player, enemy });
   }
 
   _onBattleEnd(result) {
-    this.currentState = GAME_STATE.MAP;
+    this.currentState = window.GAME_STATE.MAP;
     this._fireCallback('battleEnd', result);
   }
 

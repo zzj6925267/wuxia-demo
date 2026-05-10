@@ -118,6 +118,92 @@ function getEquipBonuses() {
 }
 
 // 从localStorage读取武学数据并计算加成（包括修为和属性）
+/**
+ * 获取内功被动效果（接口预留，方便后续扩展）
+ * @param {Object} martial - 内功武学数据
+ * @param {Object} char - 角色数据
+ * @returns {Object} 被动效果（defense, maxHp 等）
+ * 
+ * 生效条件：
+ * 1. 内功必须已装备（martial.equipped === true）
+ * 2. 必须达到技能解锁等级（martial.currentLevel >= skill.unlockLevel）
+ * 3. 卸下内功后，被动效果失效
+ * 
+ * 注意：修为（innerSkill）是永久的，不会因为卸下内功而扣除
+ */
+function getInnerSkillPassiveEffects(martial, char) {
+  const effects = {
+    defense: 0,
+    maxHp: 0,
+    attack: 0,
+    speed: 0,
+    hit: 0,
+    dodge: 0
+  };
+
+  // 检查是否已装备
+  if (!martial.equipped) {
+    console.log(`${martial.name} 未装备，被动效果不生效`);
+    return effects;
+  }
+
+  // 检查是否有技能
+  if (!martial.skills || martial.skills.length === 0) {
+    return effects;
+  }
+
+  martial.skills.forEach(skill => {
+    // 检查是否达到解锁等级
+    if (martial.currentLevel < (skill.unlockLevel || 1)) {
+      return;
+    }
+
+    const effect = skill.effect;
+    if (!effect) return;
+
+    // 根据效果类型计算加成
+    switch (effect.type) {
+      case 'defenseBuff': {
+        let bonus = effect.baseValue || 0;
+        if (effect.bonusAttr && char.stats) {
+          bonus += (char.stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+        }
+        effects.defense += Math.ceil(bonus);
+        break;
+      }
+      case 'maxHpBuff': {
+        let bonus = effect.baseValue || 0;
+        if (effect.bonusAttr && char.stats) {
+          bonus += (char.stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+        }
+        effects.maxHp += Math.ceil(bonus);
+        break;
+      }
+      case 'attackBuff': {
+        let bonus = effect.baseValue || 0;
+        if (effect.bonusAttr && char.stats) {
+          bonus += (char.stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+        }
+        effects.attack += Math.ceil(bonus);
+        break;
+      }
+      case 'speedBuff': {
+        let bonus = effect.baseValue || 0;
+        if (effect.bonusAttr && char.stats) {
+          bonus += (char.stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+        }
+        effects.speed += Math.ceil(bonus);
+        break;
+      }
+      // 后续可以添加更多效果类型
+      default:
+        console.log(`未知效果类型: ${effect.type}`);
+    }
+  });
+
+  return effects;
+}
+
 function getLocalMartialBonuses() {
   const bonuses = {
     fist: 0,
@@ -181,6 +267,23 @@ function getLocalMartialBonuses() {
           bonuses.mp += val;
         }
       });
+    }
+    
+    // 计算内功被动技能效果（只有装备且达到解锁等级才生效）
+    // 注意：修为（innerSkill）是永久的，不会因为卸下内功而扣除
+    if (martial.type === '内功' && martial.skills && martial.currentLevel > 0) {
+      // 获取内功被动效果（接口预留，方便后续扩展）
+      const passiveEffects = getInnerSkillPassiveEffects(martial, getCurrentCharacter());
+      
+      // 应用被动效果
+      if (passiveEffects.defense > 0) {
+        bonuses.defense += passiveEffects.defense;
+        console.log(`${martial.name}(${martial.currentLevel}级) 被动效果: 防御+${passiveEffects.defense}`);
+      }
+      if (passiveEffects.maxHp > 0) {
+        bonuses.hp += passiveEffects.maxHp;
+        console.log(`${martial.name}(${martial.currentLevel}级) 被动效果: 气血+${passiveEffects.maxHp}`);
+      }
     }
   });
 
@@ -1545,7 +1648,9 @@ function cancelCharPoint() {
 function updateStatsFromFour() {
   const char = getCurrentCharacter();
   const s = char.stats;
-  
+
+  console.log('=== updateStatsFromFour 被调用 ===');
+
   // 使用正确的公式计算基础属性（基础值+四维）
   // 使用 baseAttack, baseHp, baseMaxMp 存储基础属性，避免覆盖包含武学和装备加成的最终值
   s.baseAttack = 50 + s.strength * 3;
@@ -1554,17 +1659,76 @@ function updateStatsFromFour() {
   s.baseSpeed = 50 + s.agility * 2;
   s.baseHit = 70 + s.agility;
   s.baseDodge = 20 + Math.floor(s.agility * 0.5);
-  
-  // 更新战斗中使用的基础属性（不包含武学和装备加成）
+
+  // 获取内功被动加成（防御和气血上限）
+  const innerBonuses = getCharacterInnerSkillBonuses(char);
+
+  // 更新战斗中使用的基础属性（包含内功加成）
   s.attack = s.baseAttack;
-  s.hp = s.baseHp;
+  s.hp = s.baseHp + innerBonuses.maxHpBonus;
+  s.maxHp = s.baseHp + innerBonuses.maxHpBonus;
   s.maxMp = s.baseMaxMp;
   s.speed = s.baseSpeed;
   s.hit = s.baseHit;
   s.dodge = s.baseDodge;
-  
+  s.defense = (s.defense || 10) + innerBonuses.defenseBonus;
+
   // 更新战力（使用基础属性）
   char.power = Math.floor(s.attack * 2 + s.defense + s.hp / 10 + s.speed);
+}
+
+// 获取角色内功被动加成
+function getCharacterInnerSkillBonuses(char) {
+  let defenseBonus = 0;
+  let maxHpBonus = 0;
+
+  try {
+    // 从localStorage加载武学数据（因为character.js没有引用martialArtsData.js）
+    const charId = localStorage.getItem('currentMartialCharacterId') || '1';
+    const storageKey = `playerMartialArts_${charId}`;
+    const saved = localStorage.getItem(storageKey);
+    let martialArtsData = saved ? JSON.parse(saved) : [];
+
+    if (martialArtsData.length > 0) {
+      for (const martial of martialArtsData) {
+        if (martial.equipped && martial.type === '内功' && martial.skills) {
+          for (const skill of martial.skills) {
+            // 培元技能：增加防御（受根骨影响）
+            if (skill.name === '培元' && martial.currentLevel >= (skill.unlockLevel || 1)) {
+              const effect = skill.effect;
+              if (effect && effect.type === 'defenseBuff') {
+                let bonus = effect.baseValue || 0;
+                if (effect.bonusAttr && char.stats) {
+                  bonus += (char.stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+                }
+                defenseBonus += Math.ceil(bonus);
+                console.log(`培元生效: 防御+${defenseBonus}`);
+              }
+            }
+            // 固本技能：增加气血上限（受根骨影响）
+            if (skill.name === '固本' && martial.currentLevel >= (skill.unlockLevel || 4)) {
+              const effect = skill.effect;
+              if (effect && effect.type === 'maxHpBuff') {
+                let bonus = effect.baseValue || 0;
+                if (effect.bonusAttr && char.stats) {
+                  bonus += (char.stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+                }
+                maxHpBonus += Math.ceil(bonus);
+                console.log(`固本生效: 气血+${maxHpBonus}`);
+              }
+            }
+          }
+        }
+      }
+    } else {
+      console.log('没有找到已装备的内功');
+    }
+  } catch (e) {
+    console.warn('获取内功加成失败:', e);
+  }
+
+  console.log(`最终内功加成: 防御+${defenseBonus}, 气血+${maxHpBonus}`);
+  return { defenseBonus, maxHpBonus };
 }
 
 function updateAddButtons() {

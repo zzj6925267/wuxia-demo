@@ -198,6 +198,23 @@ function renderDetail() {
   if (!selectedMartialArt) return;
   const m = selectedMartialArt;
 
+  // 获取玩家的四维属性（用于计算具体加成数值）
+  let playerStats = { strength: 10, agility: 10, vitality: 10, spirit: 10, level: 1 };
+  try {
+    const saveData = localStorage.getItem('game_save_0');
+    if (saveData) {
+      const data = JSON.parse(saveData);
+      if (data.player && data.player.stats) {
+        playerStats = { ...playerStats, ...data.player.stats };
+      }
+      if (data.player && data.player.level) {
+        playerStats.level = data.player.level;
+      }
+    }
+  } catch (e) {
+    console.warn('获取玩家属性失败:', e);
+  }
+
   // 基础信息
   document.getElementById('detailIcon').textContent = TYPE_ICONS[m.type];
   document.getElementById('detailName').textContent = m.name;
@@ -265,7 +282,7 @@ function renderDetail() {
     
     return `
       <div class="skill-item ${!isUnlocked ? 'locked' : ''}" 
-           onmouseenter="showSkillTooltip(event, ${JSON.stringify(skill).replace(/"/g, '&quot;')})"
+           onmouseenter="showSkillTooltip(event, ${JSON.stringify(skill).replace(/"/g, '&quot;')}, ${JSON.stringify(playerStats).replace(/"/g, '&quot;')})"
            onmouseleave="hideSkillTooltip()">
         <div class="skill-icon">${skillIcon}</div>
         <div class="skill-name">${skillName}</div>
@@ -394,12 +411,60 @@ function createSkillTooltip() {
 }
 
 // 显示技能tooltip
-function showSkillTooltip(event, skill) {
+function showSkillTooltip(event, skill, playerStats) {
   const tooltip = document.getElementById('skillTooltip');
   
   let effectDesc = '';
+  
+  // 剑影技能特殊效果说明
   if (skill.name === '剑影' && skill.effect) {
-    effectDesc = `<div class="skill-tooltip-effect">基础${skill.effect.baseChance * 100}%概率，身法越高触发概率越高</div>`;
+    const agilityBonus = playerStats ? Math.ceil((skill.effect.chancePerPoint || 0.01) * playerStats.agility * 100) : 0;
+    effectDesc = `<div class="skill-tooltip-effect">基础${skill.effect.baseChance * 100}%概率，身法越高触发概率越高（当前额外+${agilityBonus}%）</div>`;
+  }
+  
+  // 其他技能的详细说明（使用detail字段，并根据玩家属性计算具体数值）
+  if (skill.detail && skill.effect) {
+    let calculatedDetail = skill.detail;
+    
+    // 如果有baseValue或具体效果类型，只显示计算后的结果，不使用detail
+    if (skill.effect.baseValue || (skill.effect.type && ['defenseBuff', 'maxHpBuff', 'autoHeal', 'damage', 'buff'].indexOf(skill.effect.type) !== -1)) {
+      let baseText = '';
+      if (skill.effect.type === 'defenseBuff') {
+        baseText = `基础防御+${skill.effect.baseValue}`;
+      } else if (skill.effect.type === 'maxHpBuff') {
+        baseText = `基础气血上限+${skill.effect.baseValue}`;
+      } else if (skill.effect.type === 'autoHeal') {
+        baseText = `每回合恢复${skill.effect.baseValue}`;
+      } else if (skill.effect.type === 'damage') {
+        baseText = `基础伤害${skill.effect.value * 100}%`;
+      } else if (skill.effect.type === 'buff') {
+        baseText = `基础攻击+${Math.ceil(skill.effect.value * 100)}%`;
+      }
+
+      // 如果有bonusAttr和bonusPerPoint，添加玩家当前属性加成
+      if (skill.effect.bonusAttr && skill.effect.bonusPerPoint && playerStats) {
+        const attrName = {
+          'strength': '臂力',
+          'agility': '身法',
+          'vitality': '根骨',
+          'spirit': '内息'
+        }[skill.effect.bonusAttr] || skill.effect.bonusAttr;
+
+        const attrValue = playerStats[skill.effect.bonusAttr] || 0;
+        const bonusPercent = Math.ceil(attrValue * skill.effect.bonusPerPoint * 100);
+
+        calculatedDetail = baseText + `（当前${attrName}${attrValue}点，额外+${bonusPercent}%）`;
+      } else {
+        calculatedDetail = baseText;
+      }
+    } else if (skill.detail) {
+      // 其他情况使用detail字段
+      calculatedDetail = skill.detail;
+    }
+    
+    effectDesc = `<div class="skill-tooltip-effect">${calculatedDetail}</div>`;
+  } else if (skill.detail) {
+    effectDesc = `<div class="skill-tooltip-effect">${skill.detail}</div>`;
   }
   
   tooltip.innerHTML = `
