@@ -429,6 +429,14 @@ function showSkillTooltip(event, skill, playerStats) {
     // 如果有baseValue或具体效果类型，只显示计算后的结果，不使用detail
     if (skill.effect.baseValue || (skill.effect.type && ['defenseBuff', 'maxHpBuff', 'autoHeal', 'damage', 'buff'].indexOf(skill.effect.type) !== -1)) {
       let baseText = '';
+      const statNames = {
+        attack: '攻击',
+        defense: '防御',
+        dodge: '闪避',
+        speed: '速度',
+        maxHp: '气血上限',
+        maxMp: '内力上限'
+      };
       if (skill.effect.type === 'defenseBuff') {
         baseText = `基础防御+${skill.effect.baseValue}`;
       } else if (skill.effect.type === 'maxHpBuff') {
@@ -438,7 +446,8 @@ function showSkillTooltip(event, skill, playerStats) {
       } else if (skill.effect.type === 'damage') {
         baseText = `基础伤害${skill.effect.value * 100}%`;
       } else if (skill.effect.type === 'buff') {
-        baseText = `基础攻击+${Math.ceil(skill.effect.value * 100)}%`;
+        const statName = statNames[skill.effect.stat] || skill.effect.stat;
+        baseText = `基础${statName}+${skill.effect.baseValue || Math.ceil(skill.effect.value * 100)}`;
       }
 
       // 如果有bonusAttr和bonusPerPoint，添加玩家当前属性加成
@@ -452,9 +461,17 @@ function showSkillTooltip(event, skill, playerStats) {
         }[skill.effect.bonusAttr] || skill.effect.bonusAttr;
 
         const attrValue = playerStats[skill.effect.bonusAttr] || 0;
-        const bonusPercent = Math.ceil(attrValue * skill.effect.bonusPerPoint * 100);
-
-        calculatedDetail = baseText + `（当前${attrName}${attrValue}点，额外+${bonusPercent}%）`;
+        
+        // 根据配置类型决定显示格式
+        if (skill.effect.baseValue !== undefined) {
+          // 数值加成类型：显示具体数值
+          const bonusValue = Math.ceil(attrValue * skill.effect.bonusPerPoint);
+          calculatedDetail = baseText + `（${attrName}${attrValue}点，额外+${bonusValue}）`;
+        } else {
+          // 百分比加成类型：显示百分比
+          const bonusPercent = Math.ceil(attrValue * skill.effect.bonusPerPoint * 100);
+          calculatedDetail = baseText + `（当前${attrName}${attrValue}点，额外+${bonusPercent}%）`;
+        }
       } else {
         calculatedDetail = baseText;
       }
