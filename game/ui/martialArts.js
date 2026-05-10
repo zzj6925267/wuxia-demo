@@ -3,6 +3,39 @@
 let currentType = '武功';
 let selectedMartialArt = null;
 
+/**
+ * 测试重置阅历（仅供测试用）
+ */
+function testResetExp() {
+  try {
+    // playerExperience 存在 localStorage.playerExperience 里
+    const currentExp = parseInt(localStorage.getItem('playerExperience') || '0');
+    const newExp = currentExp + 2000;
+    localStorage.setItem('playerExperience', newExp);
+
+    // 刷新显示
+    const expElement = document.getElementById('playerExp');
+    if (expElement) {
+      expElement.textContent = newExp;
+    }
+
+    // 同时更新全局变量
+    if (typeof playerExperience !== 'undefined') {
+      playerExperience = newExp;
+    }
+
+    // 刷新详情面板的按钮状态
+    if (typeof renderDetail === 'function') {
+      renderDetail();
+    }
+
+    alert(`已添加2000阅历！当前阅历：${newExp}`);
+  } catch (e) {
+    console.error('添加阅历失败:', e);
+    alert('添加阅历失败！');
+  }
+}
+
 // 图标映射
 const TYPE_ICONS = {
   '武功': '⚔️',
@@ -230,12 +263,6 @@ function renderDetail() {
     const skillName = skill.name || '未知招式';
     const skillType = skill.type || '被动';
     
-    // 检查是否是剑影，添加额外的小字说明
-    let extraNote = '';
-    if (skill.name === '剑影' && skill.effect) {
-      extraNote = `<div class="skill-note">基础20%概率，身法影响触发率</div>`;
-    }
-    
     return `
       <div class="skill-item ${!isUnlocked ? 'locked' : ''}" 
            onmouseenter="showSkillTooltip(event, ${JSON.stringify(skill).replace(/"/g, '&quot;')})"
@@ -244,7 +271,6 @@ function renderDetail() {
         <div class="skill-name">${skillName}</div>
         <div class="skill-type ${skillType === '主动' ? 'active' : 'passive'}">${skillType}</div>
         ${!isUnlocked && skill.unlockLevel ? `<div class="skill-unlock">${skill.unlockLevel}重解锁</div>` : ''}
-        ${extraNote}
       </div>
     `;
   }).join('');
@@ -370,10 +396,17 @@ function createSkillTooltip() {
 // 显示技能tooltip
 function showSkillTooltip(event, skill) {
   const tooltip = document.getElementById('skillTooltip');
+  
+  let effectDesc = '';
+  if (skill.name === '剑影' && skill.effect) {
+    effectDesc = `<div class="skill-tooltip-effect">基础${skill.effect.baseChance * 100}%概率，身法越高触发概率越高</div>`;
+  }
+  
   tooltip.innerHTML = `
     <div class="skill-tooltip-name">${skill.name}</div>
     <div class="skill-tooltip-type">${skill.type}</div>
     <div class="skill-tooltip-desc">${skill.description}</div>
+    ${effectDesc}
   `;
   tooltip.style.display = 'block';
   

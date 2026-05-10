@@ -79,32 +79,88 @@ const LOCAL_MARTIAL_ARTS = [
   }
 ];
 
-// 从localStorage读取武学数据并计算加成
+// 计算装备属性加成
+function getEquipBonuses() {
+  const bonuses = {
+    attack: 0,
+    hp: 0,
+    hit: 0,
+    dodge: 0,
+    defense: 0,
+    parry: 0,
+    speed: 0,
+    sword: 0,
+    fist: 0,
+    blade: 0,
+    lightSkill: 0,
+    mp: 0
+  };
+  
+  const char = getCurrentCharacter();
+  const slots = ['weapon', 'armor', 'accessory', 'shoes'];
+  
+  slots.forEach(slot => {
+    const equip = char.equipped[slot];
+    if (equip) {
+      Object.entries(equip).forEach(([key, val]) => {
+        if (bonuses.hasOwnProperty(key) && typeof val === 'number') {
+          bonuses[key] += val;
+        }
+      });
+      // 装备的 innerSkill 加到内力(mp)上，而不是内功修为
+      if (equip.innerSkill && typeof equip.innerSkill === 'number') {
+        bonuses.mp += equip.innerSkill;
+      }
+    }
+  });
+  
+  return bonuses;
+}
+
+// 从localStorage读取武学数据并计算加成（包括修为和属性）
 function getLocalMartialBonuses() {
   const bonuses = {
     fist: 0,
     sword: 0,
     blade: 0,
     lightSkill: 0,
-    innerSkill: 0
+    innerSkill: 0,
+    attack: 0,
+    hit: 0,
+    defense: 0,
+    speed: 0,
+    dodge: 0,
+    parry: 0,
+    hp: 0,
+    mp: 0
   };
 
-  let arts = LOCAL_MARTIAL_ARTS;
+  let arts = [];
   
   // 获取当前角色ID
   const currentCharId = getCurrentCharacter().id;
   
-  // 尝试从localStorage加载（多角色支持）
+  // 优先从localStorage加载（多角色支持）
   try {
     const saved = localStorage.getItem('playerMartialArts_' + currentCharId);
     if (saved) {
       arts = JSON.parse(saved);
+      console.log(`角色${currentCharId}从localStorage加载武学数据:`, arts);
+    } else {
+      // 如果没有保存的数据，使用默认数据
+      arts = LOCAL_MARTIAL_ARTS;
+      console.log(`角色${currentCharId}使用默认武学数据`);
     }
   } catch (e) {
     arts = LOCAL_MARTIAL_ARTS;
+    console.warn('从localStorage加载武学数据失败，使用默认数据:', e);
   }
 
   arts.forEach(martial => {
+    // 只有已装备的武学才生效
+    if (!martial.equipped) return;
+    
+    // 计算基础加成（修为）
     if (martial.baseBonus && martial.currentLevel > 0) {
       Object.entries(martial.baseBonus).forEach(([key, val]) => {
         if (bonuses.hasOwnProperty(key)) {
@@ -112,10 +168,26 @@ function getLocalMartialBonuses() {
         }
       });
     }
+    
+    // 计算属性加成（attack, hit等）
+    if (martial.stats && martial.currentLevel > 0) {
+      Object.entries(martial.stats).forEach(([key, val]) => {
+        if (bonuses.hasOwnProperty(key)) {
+          bonuses[key] += val;
+        }
+        // 把武学的 innerSkill（内功修为）加到 mp（内力）上
+        // 注意：武学的 innerSkill 也会转化为内力加成
+        if (key === 'innerSkill') {
+          bonuses.mp += val;
+        }
+      });
+    }
   });
 
   Object.keys(bonuses).forEach(key => {
-    if (bonuses[key] > 100) bonuses[key] = 100;
+    if (bonuses[key] > 100 && ['fist', 'sword', 'blade', 'lightSkill', 'innerSkill'].includes(key)) {
+      bonuses[key] = 100;
+    }
   });
 
   return bonuses;
@@ -146,12 +218,12 @@ function createDefaultCharacters() {
         light: { name: '踏云步', level: 1, maxLevel: 10 }
       },
       stats: {
-        attack: 85, hp: 420, hit: 95, dodge: 45, defense: 52, parry: 38, speed: 72,
+        attack: 85, hp: 250, hit: 95, dodge: 45, defense: 52, parry: 38, speed: 72,
         fist: 15, sword: 45, blade: 10, lightSkill: 30, innerSkill: 35,
-        strength: 12, agility: 10, bone: 9, qi: 11,
-        mp: 188, maxMp: 188
+        strength: 10, agility: 10, bone: 10, qi: 10,
+        mp: 120, maxMp: 120
       },
-      remainingPoints: 20,
+      remainingPoints: 50,
       gold: 0
     },
     {
@@ -177,15 +249,43 @@ function createDefaultCharacters() {
         light: { name: '踏云步', level: 3, maxLevel: 10 }
       },
       stats: {
-        attack: 92, hp: 380, hit: 105, dodge: 65, defense: 45, parry: 28, speed: 95,
+        attack: 80, hp: 270, hit: 90, dodge: 45, defense: 45, parry: 28, speed: 72,
         fist: 10, sword: 55, blade: 8, lightSkill: 50, innerSkill: 45,
-        strength: 8, agility: 15, bone: 7, qi: 13,
-        mp: 284, maxMp: 284
+        strength: 10, agility: 10, bone: 10, qi: 10,
+        mp: 130, maxMp: 130
       },
-      remainingPoints: 0,
+      remainingPoints: 50,
       gold: 0
     }
   ];
+}
+
+// 计算内力上限的辅助函数
+function calculateMaxMp(spirit, level) {
+  return Math.floor(50 + spirit * 2 + level * 5);
+}
+
+// 实时计算基础属性的辅助函数
+function refreshBaseStats(char) {
+  const level = char.level || 10;
+  const vitality = char.stats.bone || char.stats.vitality || 10;
+  const spirit = char.stats.qi || char.stats.spirit || 10;
+  
+  // 只在首次初始化时计算基础属性，不覆盖已分配的属性点效果
+  // 如果已经有计算好的属性值，不重新计算
+  if (!char.stats.hp || char.stats.hp === 0) {
+    char.stats.hp = 100 + vitality * 5 + level * 10;
+    char.health.max = char.stats.hp;
+    char.health.current = char.stats.hp;
+  }
+  
+  // 如果内力还未设置，则计算
+  if (!char.stats.maxMp || char.stats.maxMp === 0) {
+    char.stats.maxMp = calculateMaxMp(spirit, level);
+    char.stats.mp = char.stats.maxMp;
+  }
+  
+  console.log(`刷新角色 ${char.name} 的基础属性 - 血量: ${char.stats.hp}, 内力: ${char.stats.maxMp}`);
 }
 
 let characters;
@@ -193,6 +293,17 @@ const savedChars = localStorage.getItem('playerCharacters');
 if (savedChars) {
   try {
     characters = JSON.parse(savedChars);
+    // 实时刷新所有角色的基础属性，确保数据最新
+    characters.forEach(char => {
+      if (!char.stats) char.stats = {};
+      if (!char.health) char.health = { current: 100, max: 100 };
+      // 确保有剩余属性点
+      if (char.remainingPoints === undefined || char.remainingPoints === null) {
+        char.remainingPoints = 50; // 默认给50点属性点
+        console.log(`为角色 ${char.name} 设置默认剩余属性点: 50`);
+      }
+      refreshBaseStats(char);
+    });
   } catch (e) {
     console.error('从 localStorage 读取角色数据失败:', e);
     characters = createDefaultCharacters();
@@ -335,6 +446,45 @@ function loadFromSave() {
     if (player.maxHp !== undefined) {
       char.health.max = player.maxHp;
     }
+    
+    // 更新内力（如果存档中有）
+    if (player.mp !== undefined) {
+      char.stats.mp = player.mp;
+    }
+    if (player.maxMp !== undefined) {
+      char.stats.maxMp = player.maxMp;
+    }
+    
+    // 从存档读取装备数据（如果有）
+    if (player.equipped !== undefined) {
+      char.equipped = player.equipped;
+      console.log('从存档读取装备数据:', char.equipped);
+    }
+    
+    // 如果存档中有完整的角色数据，优先使用
+    if (player.characters && Array.isArray(player.characters)) {
+      // 使用 Object.assign 确保更新 window.characters 数组
+      for (let i = 0; i < player.characters.length; i++) {
+        if (window.characters[i]) {
+          Object.assign(window.characters[i], player.characters[i]);
+        } else {
+          window.characters[i] = player.characters[i];
+        }
+      }
+      characters = window.characters;
+      console.log('从存档读取完整角色数据');
+      console.log('当前角色装备:', window.characters[currentCharacterIndex]?.equipped);
+    }
+    
+    // 四维属性（力量、敏捷、根骨、内息）不从存档读取，由玩家通过属性点分配获得
+    // 保留这段代码但不执行任何操作，避免覆盖玩家分配的属性点
+    console.log('四维属性保持玩家分配的值，不从存档读取');
+    
+    // 实时刷新基础属性（确保数据最新）
+    refreshBaseStats(char);
+    
+    // 根据四维属性重新计算派生属性，确保不覆盖玩家分配的属性点效果
+    updateStatsFromFour();
 
     console.log('角色数据已从存档更新:', {
       gold: char.gold,
@@ -432,6 +582,12 @@ function loadCharacterData() {
   loadFromSave();
 
   const char = getCurrentCharacter();
+  
+  // 调试输出：检查当前角色数据
+  console.log('=== 角色面板加载数据 ===');
+  console.log('当前角色:', char.name, '等级:', char.level);
+  console.log('角色装备:', char.equipped);
+  console.log('角色四维:', { strength: char.stats.strength, agility: char.stats.agility, bone: char.stats.bone, qi: char.stats.qi });
 
   // 调试输出
   if (typeof calculateMartialArtsBonuses === 'function') {
@@ -506,34 +662,101 @@ function loadCharacterData() {
       equippedMartialArts['轻功'].currentLevel + '/' + equippedMartialArts['轻功'].maxLevel + '重';
   }
   
-  // 更新基础属性（原始值）
-  document.getElementById('statAttackBase').textContent = char.stats.attack;
-  document.getElementById('statHpBase').textContent = char.stats.hp;
-  document.getElementById('statHitBase').textContent = char.stats.hit;
-  document.getElementById('statDodgeBase').textContent = char.stats.dodge;
-  document.getElementById('statDefenseBase').textContent = char.stats.defense;
-  document.getElementById('statParryBase').textContent = char.stats.parry;
-  document.getElementById('statSpeedBase').textContent = char.stats.speed;
-  
-  // 计算武学修为加成
+  // 计算武学加成（包括修为和属性）
   const martialBonuses = getLocalMartialBonuses();
   console.log('武学加成', martialBonuses);
+  
+  // 计算装备加成
+  const equipBonuses = getEquipBonuses();
+  console.log('装备加成', equipBonuses);
+  
+  // 更新基础属性（基础值+四维+武学+装备）
+  // 使用与战斗系统完全一致的计算逻辑
+  const attrKeys = ['Attack', 'Hp', 'Mp', 'Hit', 'Dodge', 'Defense', 'Parry', 'Speed'];
+  attrKeys.forEach(attr => {
+    const lowerAttr = attr.toLowerCase();
+    
+    // 计算各部分加成
+    let baseVal = 0;
+    let fourDimBonus = 0;
+    
+    switch(attr) {
+      case 'Attack':
+        baseVal = 50;
+        fourDimBonus = char.stats.strength * 3;
+        break;
+      case 'Hp':
+        baseVal = 100 + char.level * 10;
+        fourDimBonus = char.stats.bone * 5;
+        break;
+      case 'Mp':
+        baseVal = 50 + char.level * 5;
+        fourDimBonus = char.stats.qi * 2;
+        break;
+      case 'Speed':
+        baseVal = 50;
+        fourDimBonus = char.stats.agility * 2;
+        break;
+      case 'Hit':
+        baseVal = 70;
+        fourDimBonus = char.stats.agility;
+        break;
+      case 'Dodge':
+        baseVal = 20;
+        fourDimBonus = Math.floor(char.stats.agility * 0.5);
+        break;
+      case 'Defense':
+        baseVal = char.stats.defense || 0;
+        break;
+      case 'Parry':
+        baseVal = char.stats.parry || 0;
+        break;
+    }
+    
+    const martialVal = martialBonuses[lowerAttr] || 0;
+    const equipVal = equipBonuses[lowerAttr] || 0;
+    const total = baseVal + fourDimBonus + martialVal + equipVal;
+    
+    // 调试输出
+    console.log(`${attr} - 基础:${baseVal} 四维:${fourDimBonus} 武学:${martialVal} 装备:${equipVal} 总计:${total}`);
+    
+    // 确保显示的是完整属性值（包含武学和装备加成）
+    const displayEl = document.getElementById(`stat${attr}Base`);
+    if (displayEl) {
+      displayEl.textContent = total;
+    }
+    
+    // 添加悬浮提示
+    const statEl = displayEl ? displayEl.parentElement : null;
+    if (statEl) {
+      statEl.onmouseenter = (e) => showStatTooltip(e, attr, baseVal, martialVal, equipVal, fourDimBonus);
+      statEl.onmouseleave = hideStatTooltip;
+    }
+  });
 
   // 显示修为（基础值+武学加成，直接显示最终值）
-  document.getElementById('statFistBase').textContent = char.stats.fist + martialBonuses.fist;
-  document.getElementById('statFistPreview').style.display = 'none';
+  // 注意：修为目前只有一个途径：学习武学，装备的 innerSkill 加到内力上，不是内功修为
+  const skillKeys = ['Fist', 'Sword', 'Blade', 'Light', 'Inner'];
+  const skillMap = { Fist: 'fist', Sword: 'sword', Blade: 'blade', Light: 'lightSkill', Inner: 'innerSkill' };
   
-  document.getElementById('statSwordBase').textContent = char.stats.sword + martialBonuses.sword;
-  document.getElementById('statSwordPreview').style.display = 'none';
+  skillKeys.forEach(skill => {
+    const lowerSkill = skillMap[skill];
+    const baseVal = char.stats[lowerSkill] || 0;
+    const martialVal = martialBonuses[lowerSkill] || 0;
+    // 修为不包含装备加成，装备的属性只加到基础属性上
+    const total = baseVal + martialVal;
+    
+    document.getElementById(`stat${skill}Base`).textContent = total;
+    document.getElementById(`stat${skill}Preview`).style.display = 'none';
+    
+    // 添加悬浮提示
+    const statEl = document.getElementById(`stat${skill}Base`).parentElement;
+    if (statEl) {
+      statEl.onmouseenter = (e) => showStatTooltip(e, skill, baseVal, martialVal, 0);
+      statEl.onmouseleave = hideStatTooltip;
+    }
+  });
   
-  document.getElementById('statBladeBase').textContent = char.stats.blade + martialBonuses.blade;
-  document.getElementById('statBladePreview').style.display = 'none';
-  
-  document.getElementById('statLightBase').textContent = char.stats.lightSkill + martialBonuses.lightSkill;
-  document.getElementById('statLightPreview').style.display = 'none';
-  
-  document.getElementById('statInnerBase').textContent = char.stats.innerSkill + martialBonuses.innerSkill;
-  document.getElementById('statInnerPreview').style.display = 'none';
   CHAR_UI.remainingPoints.textContent = char.remainingPoints;
   
   // 重置预览状态
@@ -591,11 +814,13 @@ function resetPointPreview() {
   document.getElementById('cancelPointBtn').style.display = 'none';
   document.getElementById('previewHint').textContent = '';
   
-  // 重置基础属性预览
-  const attrs = ['Attack', 'Hp', 'Hit', 'Dodge', 'Defense', 'Parry', 'Speed'];
+  // 重置基础属性预览（包含内力Mp）
+  const attrs = ['Attack', 'Hp', 'Mp', 'Hit', 'Dodge', 'Defense', 'Parry', 'Speed'];
   attrs.forEach(attr => {
     const el = document.getElementById(`stat${attr}Preview`);
-    el.style.display = 'none';
+    if (el) {
+      el.style.display = 'none';
+    }
   });
 }
 
@@ -785,9 +1010,26 @@ function openMartialArts(type) {
  * 显示装备选择弹窗
  */
 function showCharEquipment(type) {
+  console.log('=== showCharEquipment 被调用 ===');
+  console.log('类型:', type);
+  
   const char = getCurrentCharacter();
+  console.log('当前角色:', char?.name);
+  console.log('角色装备状态:', char?.equipped);
+  
+  // 重新获取装备数据，确保是最新的
   const currentEquip = char.equipped[type];
+  console.log('当前装备:', currentEquip);
+  console.log('当前装备是否存在:', !!currentEquip);
+  
+  // 如果有已装备的物品，先显示已装备的状态
+  if (currentEquip) {
+    console.log('=== 已有装备，显示已装备状态 ===');
+  }
+  
   const invItems = PLAYER_INVENTORY[type] || [];
+  console.log('背包中该类型物品:', invItems);
+  console.log('背包物品数量:', invItems.length);
   
   CHAR_UI.modalTitle.textContent = `选择${getTypeName(type)}`;
   
@@ -804,7 +1046,7 @@ function showCharEquipment(type) {
         <div class="detail-stats">
           ${renderEquipStats(currentEquip)}
         </div>
-        <button class="unequip-btn" onclick="unequipCharItem('${type}')">点击卸下</button>
+        <button class="unequip-btn" data-type="${type}">点击卸下</button>
       </div>
     `;
   }
@@ -816,7 +1058,7 @@ function showCharEquipment(type) {
       const itemJson = encodeURIComponent(JSON.stringify(item));
       html += `
         <div class="equip-item ${!canEquip ? 'disabled' : ''}" 
-             onclick="${canEquip ? `equipCharItem('${type}', ${item.id})` : ''}"
+             data-type="${type}" data-itemid="${item.id}"
              onmouseenter="showModalEquipTooltip(event, '${itemJson}', '${type}')"
              onmouseleave="hideEquipTooltip()">
           <span style="color: ${getRarityColor(item.rarity)}">${item.name}</span>
@@ -830,8 +1072,163 @@ function showCharEquipment(type) {
   }
   html += '</div>';
   
+  console.log('生成的弹窗HTML:', html);
+  console.log('当前装备是否存在:', !!currentEquip);
+  console.log('HTML中是否包含卸下按钮:', html.includes('unequip-btn'));
+  
   CHAR_UI.charModalBody.innerHTML = html;
   CHAR_UI.charModal.style.display = 'flex';
+  
+  // 验证HTML是否正确更新
+  setTimeout(() => {
+    const bodyHtml = CHAR_UI.charModalBody.innerHTML;
+    console.log('弹窗HTML更新后:', bodyHtml);
+    console.log('更新后是否包含卸下按钮:', bodyHtml.includes('unequip-btn'));
+  }, 50);
+  
+  // 直接绑定事件
+  bindEquipmentEventsDirect();
+}
+
+/**
+ * 添加全局点击事件监听器来排查问题
+ */
+function addGlobalClickListener() {
+  console.log('=== 添加全局点击事件监听器 ===');
+  
+  document.addEventListener('click', function(e) {
+    console.log('=== 全局点击事件 ===');
+    console.log('点击目标:', e.target);
+    console.log('目标类名:', e.target.className);
+    console.log('目标标签:', e.target.tagName);
+    
+    // 检查是否点击了装备项
+    const equipItem = e.target.closest('.equip-item');
+    if (equipItem) {
+      console.log('点击了装备项:', equipItem.textContent);
+      console.log('装备项 data-type:', equipItem.getAttribute('data-type'));
+      console.log('装备项 data-itemid:', equipItem.getAttribute('data-itemid'));
+    }
+  }, true); // 使用捕获阶段
+}
+
+// 页面加载时添加全局监听器
+addGlobalClickListener();
+
+/**
+ * 使用事件委托绑定装备操作事件
+ */
+function bindEquipmentEvents() {
+  console.log('=== bindEquipmentEvents 被调用 ===');
+  console.log('CHAR_UI.charModalBody:', CHAR_UI.charModalBody);
+  
+  if (!CHAR_UI.charModalBody) {
+    console.error('CHAR_UI.charModalBody 为空！');
+    return;
+  }
+  
+  // 先移除之前的事件监听，避免重复绑定
+  CHAR_UI.charModalBody.removeEventListener('click', handleEquipmentClick);
+  
+  // 添加事件委托
+  CHAR_UI.charModalBody.addEventListener('click', handleEquipmentClick);
+  console.log('事件委托已绑定');
+}
+
+/**
+ * 直接绑定装备操作事件（在DOM更新后立即绑定）
+ */
+function bindEquipmentEventsDirect() {
+  console.log('=== bindEquipmentEventsDirect 被调用 ===');
+  
+  // 使用 setTimeout 确保 DOM 已经更新
+  setTimeout(() => {
+    // 绑定卸下按钮事件
+    const unequipBtn = CHAR_UI.charModalBody.querySelector('.unequip-btn');
+    if (unequipBtn) {
+      unequipBtn.onclick = function() {
+        const type = this.getAttribute('data-type');
+        console.log('卸下按钮点击，类型:', type);
+        if (type) {
+          unequipCharItem(type);
+        }
+      };
+      console.log('卸下按钮事件已绑定');
+    }
+    
+    // 绑定装备项事件
+    const equipItems = CHAR_UI.charModalBody.querySelectorAll('.equip-item:not(.disabled)');
+    equipItems.forEach((item, index) => {
+      console.log('装备项', index, ':', item);
+      console.log('装备项内容:', item.textContent);
+      
+      // 确保元素可以被点击
+      item.style.cursor = 'pointer';
+      item.style.pointerEvents = 'auto';
+      
+      // 添加多个事件监听器来确保事件被触发
+      item.addEventListener('click', function(e) {
+        e.stopPropagation();
+        console.log('=== 装备项被点击 (addEventListener) ===');
+        console.log('点击事件:', e);
+        const type = this.getAttribute('data-type');
+        const itemId = parseInt(this.getAttribute('data-itemid'));
+        console.log('装备项点击，类型:', type, '物品ID:', itemId);
+        if (type && itemId) {
+          equipCharItem(type, itemId);
+        }
+      });
+      
+      // 也尝试直接绑定 onclick
+      item.onclick = function(e) {
+        e.stopPropagation();
+        console.log('=== 装备项被点击 (onclick) ===');
+        console.log('点击事件:', e);
+        const type = this.getAttribute('data-type');
+        const itemId = parseInt(this.getAttribute('data-itemid'));
+        console.log('装备项点击，类型:', type, '物品ID:', itemId);
+        if (type && itemId) {
+          equipCharItem(type, itemId);
+        }
+      };
+    });
+    console.log('装备项事件已绑定，数量:', equipItems.length);
+  }, 0);
+}
+
+/**
+ * 处理装备弹窗的点击事件
+ */
+function handleEquipmentClick(e) {
+  console.log('=== handleEquipmentClick 被调用 ===');
+  console.log('点击的元素:', e.target);
+  
+  // 处理卸下按钮
+  const unequipBtn = e.target.closest('.unequip-btn');
+  if (unequipBtn) {
+    console.log('点击了卸下按钮');
+    // 从 data-type 属性获取装备类型
+    const type = unequipBtn.getAttribute('data-type');
+    console.log('卸下装备类型:', type);
+    if (type) {
+      unequipCharItem(type);
+    }
+    return;
+  }
+  
+  // 处理装备项
+  const equipItem = e.target.closest('.equip-item:not(.disabled)');
+  if (equipItem) {
+    console.log('点击了装备项');
+    // 从 data-* 属性获取装备类型和物品ID
+    const type = equipItem.getAttribute('data-type');
+    const itemId = parseInt(equipItem.getAttribute('data-itemid'));
+    console.log('穿戴装备类型:', type, '物品ID:', itemId);
+    if (type && itemId) {
+      equipCharItem(type, itemId);
+    }
+    return;
+  }
 }
 
 /**
@@ -856,21 +1253,97 @@ function renderEquipStats(equip) {
 }
 
 function equipCharItem(type, itemId) {
+  console.log('=== equipCharItem 被调用 ===');
+  console.log('类型:', type);
+  console.log('物品ID:', itemId);
+  
   const char = getCurrentCharacter();
+  console.log('当前角色:', char?.name);
+  console.log('角色对象:', char);
+  
   const item = PLAYER_INVENTORY[type].find(i => i.id === itemId);
+  console.log('找到的物品:', item);
   
   if (item) {
+    // 检查等级限制
+    if (item.level > char.level) {
+      console.log('等级不足，无法穿戴');
+      return;
+    }
+    
+    // 如果当前有装备，先卸下
+    if (char.equipped[type]) {
+      console.log('先卸下当前装备:', char.equipped[type].name);
+    }
+    
     char.equipped[type] = { ...item };
+    console.log('装备已更新:', char.equipped);
+    console.log('装备后角色装备状态:', char.equipped);
+    
+    // 保存装备状态到 localStorage
+    saveCharactersToLocalStorage();
+    console.log('装备穿戴成功');
+    
+    // 刷新角色数据并关闭弹窗
     loadCharacterData();
     closeCharModal();
+  } else {
+    console.log('未找到物品，无法穿戴');
   }
 }
 
 function unequipCharItem(type) {
+  console.log('=== unequipCharItem 被调用 ===');
+  console.log('类型:', type);
+  
   const char = getCurrentCharacter();
+  console.log('当前角色:', char?.name);
+  console.log('当前装备:', char.equipped[type]);
+  
   char.equipped[type] = null;
+  console.log('装备已卸下:', char.equipped);
+  
+  // 保存装备状态到 localStorage
+  saveCharactersToLocalStorage();
+  console.log('装备卸下成功');
+  
+  // 刷新角色数据并关闭弹窗
   loadCharacterData();
   closeCharModal();
+}
+
+/**
+ * 保存角色数据到 localStorage
+ */
+function saveCharactersToLocalStorage() {
+  console.log('=== saveCharactersToLocalStorage 开始 ===');
+  console.log('保存前 window.characters:', window.characters);
+  
+  localStorage.setItem('playerCharacters', JSON.stringify(window.characters));
+  console.log('角色数据已保存到 localStorage');
+  
+  // 同步保存到 game_save_0，确保下次加载时不会被覆盖
+  try {
+    const saveData = localStorage.getItem('game_save_0');
+    if (saveData) {
+      const save = JSON.parse(saveData);
+      if (save.player) {
+        // 同步所有角色的数据（包括装备）
+        save.player.characters = window.characters;
+        localStorage.setItem('game_save_0', JSON.stringify(save));
+        console.log('所有角色数据已同步到 game_save_0');
+        
+        // 验证保存是否成功
+        const savedData = localStorage.getItem('game_save_0');
+        if (savedData) {
+          const saved = JSON.parse(savedData);
+          console.log('验证保存的数据:', saved.player.characters[currentCharacterIndex]?.equipped);
+        }
+      }
+    }
+  } catch (e) {
+    console.error('同步到 game_save_0 失败:', e);
+  }
 }
 
 function closeCharModal() {
@@ -896,31 +1369,37 @@ function calculatePreviewStats(char) {
   const strAdd = pointPreview.strength;
   const agiAdd = pointPreview.agility;
   const boneAdd = pointPreview.bone;
+  const qiAdd = pointPreview.qi;
   
   const attackAdd = strAdd * 3;
-  const hpAdd = boneAdd * 20;
+  const hpAdd = boneAdd * 5;  // 与 updateStatsFromFour 保持一致
+  const mpAdd = qiAdd * 2;    // 内力加成
   const speedAdd = agiAdd * 2;
+  const hitAdd = agiAdd;
+  const dodgeAdd = Math.floor(agiAdd * 0.5);
   const parryAdd = Math.floor((s.strength + strAdd) / 5) - Math.floor(s.strength / 5);
   const defenseAdd = Math.floor((s.bone + boneAdd) / 3) - Math.floor(s.bone / 3);
   
   return {
     attack: attackAdd,
     hp: hpAdd,
+    mp: mpAdd,
     speed: speedAdd,
+    hit: hitAdd,
+    dodge: dodgeAdd,
     parry: parryAdd,
-    defense: defenseAdd,
-    hit: 0,
-    dodge: 0
+    defense: defenseAdd
   };
 }
 
 function updatePreviewStats(char) {
   const preview = calculatePreviewStats(char);
-  const attrs = ['Attack', 'Hp', 'Hit', 'Dodge', 'Defense', 'Parry', 'Speed'];
+  const attrs = ['Attack', 'Hp', 'Mp', 'Hit', 'Dodge', 'Defense', 'Parry', 'Speed'];
   
   attrs.forEach(attr => {
     const el = document.getElementById(`stat${attr}Preview`);
     const add = preview[attr.toLowerCase()];
+    
     if (add > 0) {
       el.textContent = ` +${add}`;
       el.style.display = 'inline';
@@ -974,14 +1453,40 @@ function previewCharPoint(attr, delta) {
 function confirmCharPoint() {
   const char = getCurrentCharacter();
   
+  console.log('=== 确认属性点分配 ===');
+  console.log('分配前:', {
+    strength: char.stats.strength,
+    agility: char.stats.agility,
+    bone: char.stats.bone,
+    qi: char.stats.qi,
+    remainingPoints: char.remainingPoints
+  });
+  console.log('预览点:', pointPreview);
+  
   // 应用预览点到角色属性
   char.stats.strength += pointPreview.strength;
   char.stats.agility += pointPreview.agility;
   char.stats.bone += pointPreview.bone;
   char.stats.qi += pointPreview.qi;
   
+  console.log('分配后:', {
+    strength: char.stats.strength,
+    agility: char.stats.agility,
+    bone: char.stats.bone,
+    qi: char.stats.qi
+  });
+  
   // 更新衍生属性
   updateStatsFromFour();
+  
+  console.log('更新后基础属性:', {
+    attack: char.stats.attack,
+    hp: char.stats.hp,
+    maxMp: char.stats.maxMp,
+    speed: char.stats.speed,
+    hit: char.stats.hit,
+    dodge: char.stats.dodge
+  });
   
   // 重置预览
   resetPointPreview();
@@ -991,6 +1496,31 @@ function confirmCharPoint() {
   
   // 保存到 localStorage（用于战斗系统读取）
   localStorage.setItem('playerCharacters', JSON.stringify(window.characters));
+  
+  // 同步保存到 game_save_0，确保下次加载时不会被覆盖
+  try {
+    const saveData = localStorage.getItem('game_save_0');
+    if (saveData) {
+      const save = JSON.parse(saveData);
+      if (save.player) {
+        save.player.strength = char.stats.strength;
+        save.player.agility = char.stats.agility;
+        save.player.bone = char.stats.bone;
+        save.player.qi = char.stats.qi;
+        save.player.remainingPoints = char.remainingPoints;
+        save.player.hp = char.health.current;
+        save.player.maxHp = char.health.max;
+        save.player.mp = char.stats.mp;
+        save.player.maxMp = char.stats.maxMp;
+        // 同步装备数据
+        save.player.equipped = char.equipped;
+        localStorage.setItem('game_save_0', JSON.stringify(save));
+        console.log('属性点已同步到 game_save_0');
+      }
+    }
+  } catch (e) {
+    console.error('保存到 game_save_0 失败:', e);
+  }
   
   showCharFloatText('属性分配成功！', '#4caf50');
 }
@@ -1016,12 +1546,24 @@ function updateStatsFromFour() {
   const char = getCurrentCharacter();
   const s = char.stats;
   
-  s.attack = 50 + s.strength * 3;
-  s.hp = 200 + s.bone * 20;
-  s.speed = 50 + s.agility * 2;
-  s.parry += Math.floor(s.strength / 5);
-  s.defense += Math.floor(s.bone / 3);
+  // 使用正确的公式计算基础属性（基础值+四维）
+  // 使用 baseAttack, baseHp, baseMaxMp 存储基础属性，避免覆盖包含武学和装备加成的最终值
+  s.baseAttack = 50 + s.strength * 3;
+  s.baseHp = 100 + s.bone * 5 + char.level * 10;  // 基础血量 = 100 + 根骨×5 + 等级×10
+  s.baseMaxMp = calculateMaxMp(s.qi || s.spirit || 10, char.level);
+  s.baseSpeed = 50 + s.agility * 2;
+  s.baseHit = 70 + s.agility;
+  s.baseDodge = 20 + Math.floor(s.agility * 0.5);
   
+  // 更新战斗中使用的基础属性（不包含武学和装备加成）
+  s.attack = s.baseAttack;
+  s.hp = s.baseHp;
+  s.maxMp = s.baseMaxMp;
+  s.speed = s.baseSpeed;
+  s.hit = s.baseHit;
+  s.dodge = s.baseDodge;
+  
+  // 更新战力（使用基础属性）
   char.power = Math.floor(s.attack * 2 + s.defense + s.hp / 10 + s.speed);
 }
 
@@ -1031,6 +1573,157 @@ function updateAddButtons() {
   buttons.forEach(btn => {
     btn.disabled = char.remainingPoints <= 0;
   });
+}
+
+// 属性悬浮提示
+function showStatTooltip(e, attrName, baseVal, martialVal, equipVal, fourDimBonusFromCaller) {
+  const attrMap = {
+    'Attack': '攻击', 'Hp': '气血', 'Mp': '内力', 'Hit': '命中', 'Dodge': '闪避',
+    'Defense': '防御', 'Parry': '招架', 'Speed': '速度',
+    'Fist': '拳掌', 'Sword': '剑法', 'Blade': '刀法',
+    'Light': '轻功', 'Inner': '内功'
+  };
+  
+  const displayName = attrMap[attrName] || attrName;
+  
+  // 计算四维属性贡献
+  const char = getCurrentCharacter();
+  const s = char.stats;
+  let fourDimBonus = fourDimBonusFromCaller !== undefined ? fourDimBonusFromCaller : 0;
+  let fourDimDesc = '';
+  
+  if (fourDimBonus === 0) {
+    // 如果调用方没有传入四维加成，自行计算
+    switch(attrName) {
+      case 'Hp':
+        fourDimBonus = s.bone * 5;
+        fourDimDesc = `根骨(${s.bone}) × 5`;
+        break;
+      case 'Mp':
+        fourDimBonus = (s.qi || s.spirit) * 2;
+        fourDimDesc = `内息(${s.qi || s.spirit}) × 2`;
+        break;
+      case 'Attack':
+        fourDimBonus = s.strength * 3;
+        fourDimDesc = `臂力(${s.strength}) × 3`;
+        break;
+      case 'Speed':
+        fourDimBonus = s.agility * 2;
+        fourDimDesc = `身法(${s.agility}) × 2`;
+        break;
+      case 'Hit':
+        fourDimBonus = s.agility;
+        fourDimDesc = `身法(${s.agility})`;
+        break;
+      case 'Dodge':
+        fourDimBonus = Math.floor(s.agility * 0.5);
+        fourDimDesc = `身法(${s.agility}) × 0.5`;
+        break;
+    }
+  } else {
+    // 如果调用方传入了四维加成，生成描述
+    switch(attrName) {
+      case 'Hp':
+        fourDimDesc = `根骨(${s.bone}) × 5`;
+        break;
+      case 'Mp':
+        fourDimDesc = `内息(${s.qi || s.spirit}) × 2`;
+        break;
+      case 'Attack':
+        fourDimDesc = `臂力(${s.strength}) × 3`;
+        break;
+      case 'Speed':
+        fourDimDesc = `身法(${s.agility}) × 2`;
+        break;
+      case 'Hit':
+        fourDimDesc = `身法(${s.agility})`;
+        break;
+      case 'Dodge':
+        fourDimDesc = `身法(${s.agility}) × 0.5`;
+        break;
+    }
+  }
+  
+  // 计算总值（基础值 + 四维加成 + 武学加成 + 装备加成）
+  const total = baseVal + fourDimBonus + martialVal + equipVal;
+  
+  let tooltipHtml = `
+    <div class="tooltip-header">${displayName}: ${total}</div>
+    <div class="tooltip-content">
+      <div class="tooltip-item">
+        <span class="tooltip-label">基础值</span>
+        <span class="tooltip-value">${baseVal}</span>
+      </div>
+  `;
+  
+  // 显示四维贡献
+  if (fourDimBonus > 0) {
+    tooltipHtml += `
+      <div class="tooltip-item">
+        <span class="tooltip-label">四维加成</span>
+        <span class="tooltip-value" style="color: #ff9800">+${fourDimBonus} (${fourDimDesc})</span>
+      </div>
+    `;
+  }
+  
+  if (martialVal !== 0) {
+    tooltipHtml += `
+      <div class="tooltip-item">
+        <span class="tooltip-label">武学加成</span>
+        <span class="tooltip-value" style="color: #4caf50">+${martialVal}</span>
+      </div>
+    `;
+  }
+  
+  if (equipVal !== 0) {
+    tooltipHtml += `
+      <div class="tooltip-item">
+        <span class="tooltip-label">装备加成</span>
+        <span class="tooltip-value" style="color: #2196f3">+${equipVal}</span>
+      </div>
+    `;
+  }
+  
+  tooltipHtml += '</div>';
+  
+  const tooltip = document.createElement('div');
+  tooltip.id = 'statTooltip';
+  tooltip.className = 'stat-tooltip';
+  tooltip.innerHTML = tooltipHtml;
+  tooltip.style.cssText = `
+    position: fixed;
+    background: rgba(0, 0, 0, 0.9);
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 14px;
+    color: #fff;
+    z-index: 9999;
+    pointer-events: none;
+    min-width: 150px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  `;
+  
+  document.body.appendChild(tooltip);
+  
+  // 定位
+  const rect = e.currentTarget.getBoundingClientRect();
+  let left = rect.right + 10;
+  let top = rect.top;
+  
+  if (left + tooltip.offsetWidth > window.innerWidth) {
+    left = rect.left - tooltip.offsetWidth - 10;
+  }
+  
+  tooltip.style.left = left + 'px';
+  tooltip.style.top = top + 'px';
+}
+
+function hideStatTooltip() {
+  const tooltip = document.getElementById('statTooltip');
+  if (tooltip) {
+    document.body.removeChild(tooltip);
+  }
 }
 
 function showCharFloatText(text, color) {
@@ -1057,6 +1750,76 @@ function showCharFloatText(text, color) {
   setTimeout(() => { document.body.removeChild(floatDiv); }, 3000);
 }
 
+/**
+ * 重置四维属性点
+ */
+function resetFourDimPoints() {
+  const char = getCurrentCharacter();
+  
+  console.log('=== 重置四维属性点 ===');
+  console.log('重置前:', {
+    strength: char.stats.strength,
+    agility: char.stats.agility,
+    bone: char.stats.bone,
+    qi: char.stats.qi,
+    remainingPoints: char.remainingPoints
+  });
+  
+  // 重置四维属性为默认值10
+  char.stats.strength = 10;
+  char.stats.agility = 10;
+  char.stats.bone = 10;
+  char.stats.qi = 10;
+  
+  // 恢复50点剩余属性点
+  char.remainingPoints = 50;
+  
+  // 更新衍生属性
+  updateStatsFromFour();
+  
+  console.log('重置后:', {
+    strength: char.stats.strength,
+    agility: char.stats.agility,
+    bone: char.stats.bone,
+    qi: char.stats.qi,
+    remainingPoints: char.remainingPoints
+  });
+  
+  // 重置预览
+  resetPointPreview();
+  
+  // 重新加载显示
+  loadCharacterData();
+  
+  // 保存到 localStorage
+  localStorage.setItem('playerCharacters', JSON.stringify(window.characters));
+  
+  // 同步保存到 game_save_0
+  try {
+    const saveData = localStorage.getItem('game_save_0');
+    if (saveData) {
+      const save = JSON.parse(saveData);
+      if (save.player) {
+        save.player.strength = char.stats.strength;
+        save.player.agility = char.stats.agility;
+        save.player.bone = char.stats.bone;
+        save.player.qi = char.stats.qi;
+        save.player.remainingPoints = char.remainingPoints;
+        save.player.hp = char.health.current;
+        save.player.maxHp = char.health.max;
+        save.player.mp = char.stats.mp;
+        save.player.maxMp = char.stats.maxMp;
+        localStorage.setItem('game_save_0', JSON.stringify(save));
+        console.log('重置属性点已同步到 game_save_0');
+      }
+    }
+  } catch (e) {
+    console.error('保存到 game_save_0 失败:', e);
+  }
+  
+  showCharFloatText('属性点已重置！', '#ff9800');
+}
+
 // 点击弹窗外部关闭
 window.addEventListener('click', (e) => {
   if (e.target === CHAR_UI.charModal) {
@@ -1069,7 +1832,10 @@ window.toggleCharacterPanel = toggleCharacterPanel;
 window.switchCharacter = switchCharacter;
 window.switchCharTab = switchCharTab;
 window.showCharEquipment = showCharEquipment;
+window.equipCharItem = equipCharItem;
+window.unequipCharItem = unequipCharItem;
 window.previewCharPoint = previewCharPoint;
 window.confirmCharPoint = confirmCharPoint;
 window.cancelCharPoint = cancelCharPoint;
+window.resetFourDimPoints = resetFourDimPoints;
 window.characters = characters;

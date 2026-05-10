@@ -65,21 +65,19 @@ body {
   font-weight: bold;
 }
 
-.reset-exp-btn {
-  background: linear-gradient(135deg, #2196f3, #1976d2);
+.test-reset-btn {
+  background: #ff9800;
   border: none;
   color: #fff;
-  padding: 6px 16px;
-  border-radius: 4px;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 3px;
   cursor: pointer;
-  font-size: 13px;
-  font-weight: bold;
   transition: all 0.3s;
 }
 
-.reset-exp-btn:hover {
-  background: linear-gradient(135deg, #64b5f6, #2196f3);
-  transform: scale(1.05);
+.test-reset-btn:hover {
+  background: #f57c00;
 }
 
 /* 角色选择器 */
@@ -630,6 +628,14 @@ body {
 .skill-tooltip-desc {
   color: #ccc;
   line-height: 1.6;
+}
+
+.skill-tooltip-effect {
+  color: #c9a227;
+  font-size: 11px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(201, 162, 39, 0.3);
 }
 
 /* 响应式 */

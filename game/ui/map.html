@@ -190,6 +190,7 @@
           <div class="stats-grid">
             <div class="stat-item"><span class="stat-icon">⚔️</span><span class="stat-name">攻击</span><span class="stat-value"><span id="statAttackBase">85</span><span id="statAttackPreview" style="color:#4caf50;display:none;"></span></span></div>
             <div class="stat-item"><span class="stat-icon">❤️</span><span class="stat-name">气血</span><span class="stat-value"><span id="statHpBase">420</span><span id="statHpPreview" style="color:#4caf50;display:none;"></span></span></div>
+            <div class="stat-item"><span class="stat-icon">💧</span><span class="stat-name">内力</span><span class="stat-value"><span id="statMpBase">188</span><span id="statMpPreview" style="color:#4caf50;display:none;"></span></span></div>
             <div class="stat-item"><span class="stat-icon">🎯</span><span class="stat-name">命中</span><span class="stat-value"><span id="statHitBase">95</span><span id="statHitPreview" style="color:#4caf50;display:none;"></span></span></div>
             <div class="stat-item"><span class="stat-icon">💨</span><span class="stat-name">闪躲</span><span class="stat-value"><span id="statDodgeBase">45</span><span id="statDodgePreview" style="color:#4caf50;display:none;"></span></span></div>
             <div class="stat-item"><span class="stat-icon">🛡️</span><span class="stat-name">防御</span><span class="stat-value"><span id="statDefenseBase">52</span><span id="statDefensePreview" style="color:#4caf50;display:none;"></span></span></div>
@@ -275,11 +276,12 @@
 
           <div class="four-dim-actions">
             <div class="remaining-points">
-              剩余属性点：<span class="highlight" id="remainingPoints">20</span>
+              剩余属性点：<span class="highlight" id="remainingPoints">50</span>
             </div>
             <div class="preview-hint" id="previewHint"></div>
             <button class="confirm-btn" id="confirmPointBtn" onclick="confirmCharPoint()" style="display:none;">确认加点</button>
             <button class="cancel-btn" id="cancelPointBtn" onclick="cancelCharPoint()" style="display:none;">取消</button>
+            <button class="reset-btn" onclick="resetFourDimPoints()">重置属性</button>
           </div>
         </div>
       </div>
