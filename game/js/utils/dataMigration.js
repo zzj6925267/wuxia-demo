@@ -2,7 +2,9 @@
 // 用于处理版本升级时的数据兼容性问题
 
 const DataMigration = {
-  version: '1.0.1',
+  get version() {
+    return (window.GAME_CONFIG && window.GAME_CONFIG.DATA_SCHEMA_VERSION) || '1.0.1';
+  },
   
   // 属性名映射（旧名称 -> 新名称）
   attributeMap: {

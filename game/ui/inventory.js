@@ -78,7 +78,7 @@ const characters = [
 ];
 
 const TAB_CONFIG = {
-  misc: { name: '杂项', filter: item => !['equipment', 'potion', 'skillbook', 'material', 'quest'].includes(item.category) },
+  misc: { name: '杂项', filter: item => (item.id === 'lingzhi_cao') || !['equipment', 'potion', 'skillbook', 'material', 'quest'].includes(item.category) },
   equipment: { name: '装备', filter: item => item.category === 'equipment' },
   potion: { name: '丹药', filter: item => item.category === 'potion' },
   skillbook: { name: '秘籍', filter: item => item.category === 'skillbook' },
@@ -114,7 +114,17 @@ function init() {
 
   console.log('DOM元素检查:', { tabsBar, itemsGrid, btnClose });
 
-  // 确保window.playerData存在
+  // 确保window.playerData存在，优先从localStorage读取
+  const savedPlayerData = localStorage.getItem('playerData');
+  if (savedPlayerData) {
+    try {
+      window.playerData = JSON.parse(savedPlayerData);
+      console.log('从localStorage读取playerData:', window.playerData);
+    } catch (e) {
+      console.error('解析playerData失败:', e);
+    }
+  }
+  
   if (!window.playerData) {
     console.log('window.playerData 不存在，初始化默认值...');
     window.playerData = {
@@ -450,11 +460,25 @@ function addToInventory(itemId, quantity) {
   const player = window.playerData;
   if (!player) return;
   
-  const existingItem = player.inventory.find(item => item.id === itemId);
-  if (existingItem) {
-    existingItem.quantity += quantity;
-  } else {
-    player.inventory.push({ id: itemId, quantity });
+  let remaining = quantity;
+  
+  // 先尝试填满已有的同类型格子（不超过99）
+  for (let item of player.inventory) {
+    if (item.id === itemId && item.quantity < 99) {
+      const canAdd = 99 - item.quantity;
+      const toAdd = Math.min(canAdd, remaining);
+      item.quantity += toAdd;
+      remaining -= toAdd;
+      
+      if (remaining <= 0) break;
+    }
+  }
+  
+  // 如果还有剩余，创建新格子
+  while (remaining > 0) {
+    const toAdd = Math.min(remaining, 99);
+    player.inventory.push({ id: itemId, quantity: toAdd });
+    remaining -= toAdd;
   }
 }
 

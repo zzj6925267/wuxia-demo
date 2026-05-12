@@ -4,6 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>战斗</title>
+  <script>
+    try {
+      if (localStorage.getItem('battle_enter_cinematic') === '1') {
+        document.documentElement.style.background = '#000';
+      }
+    } catch (e) {}
+  </script>
   <style>
     * {
       margin: 0;
@@ -13,21 +20,35 @@
     
     body {
       font-family: 'Microsoft YaHei', sans-serif;
-      background: #1a1a1a;
       color: #fff;
-      height: 100vh;
+      min-height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
       overflow: hidden;
+      /* 外圈Letterbox用纯色；主视觉在 .battle-container 上叠，避免被整块灰蒙死 */
+      background-color: #141018;
     }
     
     .battle-container {
+      /* 冲刺距离：在画卷留白内互冲，不依赖侧栏宽度 */
+      --lunge: clamp(72px, 16vw, 200px);
       width: 100%;
-      max-width: 800px;
+      max-width: min(1240px, calc(100vw - 16px));
       height: 100vh;
-      max-height: 900px;
-      background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+      max-height: none;
+      /* 仅保留底图 + 极轻底部渐隐（压住立轴最底装饰），不再叠整屏灰蒙层 */
+      background-image:
+        linear-gradient(
+          to top,
+          rgba(10, 8, 14, 0.5) 0%,
+          rgba(12, 10, 16, 0.12) 14%,
+          transparent 30%
+        ),
+        url('../assets/images/UI/panel_wuxia_master_bg_only.png');
+      background-size: 100% 100%, auto min(142%, 118vh);
+      background-position: center bottom, center center;
+      background-repeat: no-repeat, no-repeat;
       display: flex;
       flex-direction: column;
       position: relative;
@@ -38,8 +59,9 @@
       text-align: center;
       font-size: 20px;
       font-weight: bold;
-      color: #ff9800;
-      border-bottom: 1px solid #333;
+      color: #f4d03f;
+      background: rgba(18, 14, 22, 0.28);
+      border-bottom: 1px solid rgba(201, 162, 39, 0.35);
       position: relative;
     }
     
@@ -58,16 +80,48 @@
     
     .battle-field {
       flex: 1;
+      min-height: 0;
       display: flex;
-      padding: 20px;
-      gap: 20px;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 12px 4px;
+      /* 不再叠径向蒙层，画卷原图直接作为主战场 */
+      background: none;
+    }
+
+    /* 收窄并居中：角色落在立轴米色「画心」里，不漂在两侧灰边 */
+    .battle-scroll-canvas {
+      flex: 1;
+      width: clamp(300px, 68vw, 760px);
+      max-height: 100%;
+      min-height: 0;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: clamp(18px, 5vw, 56px);
+      padding: min(4vh, 40px) min(8px, 1.5%) min(5vh, 44px);
+      box-sizing: border-box;
+      position: relative;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .battle-scroll-canvas .team-side {
+      pointer-events: auto;
     }
     
     .team-side {
-      flex: 1;
+      position: relative;
+      z-index: 2;
       display: flex;
       flex-direction: column;
-      gap: 50px;
+      /* 出手有位移动画，不能用侧栏 overflow 裁切；每列至多 4 人，靠间距与头像尺寸排布 */
+      gap: clamp(6px, 1.4vh, 16px);
+      overflow: visible;
+      padding: 0;
     }
     
     .team-left {
@@ -79,18 +133,23 @@
     }
     
     .character-card {
-      width: 100%;
-      max-width: 120px;
+      width: auto;
+      max-width: none;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 5px;
-      transition: all 0.3s ease;
+      gap: 4px;
+      transition: transform 0.25s ease, filter 0.25s ease;
       position: relative;
+      padding: 0;
+      border-radius: 0;
+      background: transparent;
+      border: none;
+      box-shadow: none;
     }
     
     .character-card.active {
-      transform: scale(1.1);
+      transform: scale(1.05);
     }
     
     .character-card.dead {
@@ -101,8 +160,11 @@
     .character-avatar-container {
       width: 80px;
       height: 80px;
-      border-radius: 8px;
+      border-radius: 0;
       overflow: hidden;
+      border: none;
+      box-shadow: none;
+      outline: none;
     }
     
     .character-avatar {
@@ -119,25 +181,26 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      font-size: 32px;
+      font-size: 34px;
       color: #d4c4a8;
     }
-    
+
     .character-name {
-      font-size: 14px;
+      font-size: 12px;
       font-weight: bold;
-      color: #d4c4a8;
+      color: #f5eed8;
       text-align: center;
-      width: 80px;
-      white-space: nowrap;
+      max-width: 92px;
+      line-height: 1.25;
+      word-break: break-all;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85), 0 0 8px rgba(0, 0, 0, 0.45);
+      margin-bottom: 2px;
     }
-    
-    .character-card:nth-child(1) .character-name {
-      margin-right: 15px;
-    }
-    
-    .team-right .character-name {
-      padding-left: 10px;
+
+    /* 少侠在己方第一位：名字相对头像略偏右时，向左收一点对齐头顶 */
+    #teamAlly .character-card:first-child .character-name {
+      position: relative;
+      left: -8px;
     }
     
     .team-left .character-card.attack-move {
@@ -166,21 +229,21 @@
     
     @keyframes attackMoveRightOnly {
       0% { transform: translateX(0); }
-      100% { transform: translateX(220px) scale(1.1); }
+      100% { transform: translateX(var(--lunge)) scale(1.05); }
     }
     
     @keyframes attackReturnRight {
-      0% { transform: translateX(220px) scale(1.1); }
+      0% { transform: translateX(var(--lunge)) scale(1.05); }
       100% { transform: translateX(0); }
     }
     
     @keyframes attackMoveLeftOnly {
       0% { transform: translateX(0); }
-      100% { transform: translateX(-220px) scale(1.1); }
+      100% { transform: translateX(calc(-1 * var(--lunge))) scale(1.05); }
     }
     
     @keyframes attackReturnLeft {
-      0% { transform: translateX(-220px) scale(1.1); }
+      0% { transform: translateX(calc(-1 * var(--lunge))) scale(1.05); }
       100% { transform: translateX(0); }
     }
     
@@ -197,18 +260,24 @@
     }
     
     .hp-text {
-      font-size: 12px;
-      color: #4caf50;
+      font-size: 11px;
+      color: #e53935;
       text-align: center;
       font-weight: bold;
+      text-shadow:
+        0 0 2px rgba(0, 0, 0, 0.95),
+        0 1px 3px rgba(0, 0, 0, 0.9);
+      line-height: 1.2;
     }
     
     .mp-text {
-      font-size: 12px;
-      color: #2196f3;
+      font-size: 11px;
+      color: #90caf9;
       text-align: center;
       font-weight: bold;
-      transition: all 0.3s ease;
+      transition: color 0.25s ease, transform 0.25s ease;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+      line-height: 1.2;
     }
     
     .skill-bubble {
@@ -355,26 +424,129 @@
       }
     }
     
-    .battle-log {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      text-align: center;
-      pointer-events: none;
-      z-index: 100;
+    .battle-log-panel {
+      flex-shrink: 0;
+      width: min(96%, 920px);
+      margin: 0 auto 8px;
+      padding: 0 14px;
+      z-index: 5;
+      pointer-events: auto;
     }
-    
-    .battle-log-text {
-      font-size: 28px;
+
+    .battle-log-toggle {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 6px 10px;
+      margin: 0;
+      border: 1px solid rgba(201, 162, 39, 0.35);
+      border-radius: 8px 8px 0 0;
+      background: rgba(14, 11, 18, 0.72);
+      color: #e6cf7a;
+      font-size: 13px;
       font-weight: bold;
-      text-shadow: 0 0 20px #000;
-      opacity: 0;
-      transition: all 0.3s ease;
+      letter-spacing: 0.2em;
+      cursor: pointer;
+      font-family: inherit;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+      transition: background 0.2s ease, color 0.2s ease;
     }
-    
-    .battle-log-text.show {
+
+    .battle-log-toggle:hover {
+      background: rgba(22, 18, 28, 0.85);
+      color: #f5e6a8;
+    }
+
+    .battle-log-toggle:focus-visible {
+      outline: 2px solid rgba(201, 162, 39, 0.65);
+      outline-offset: 2px;
+    }
+
+    .battle-log-toggle-icon {
+      flex-shrink: 0;
+      font-size: 10px;
+      letter-spacing: 0;
+      opacity: 0.9;
+      transition: transform 0.3s ease;
+    }
+
+    .battle-log-panel.collapsed .battle-log-toggle-icon {
+      transform: rotate(-90deg);
+    }
+
+    .battle-log-panel.collapsed .battle-log-toggle {
+      border-radius: 8px;
+    }
+
+    .battle-log-entries-wrap {
+      overflow: hidden;
+      /* 固定高度；略矮，把纵向空间留给多角色列 */
+      height: min(13vh, 120px);
+      max-height: min(13vh, 120px);
       opacity: 1;
+      transition: max-height 0.45s ease, height 0.45s ease, opacity 0.3s ease;
+      border: 1px solid rgba(201, 162, 39, 0.28);
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      background: rgba(10, 8, 12, 0.58);
+    }
+
+    .battle-log-panel.collapsed .battle-log-entries-wrap {
+      height: 0;
+      max-height: 0;
+      opacity: 0;
+      border-width: 0;
+      pointer-events: none;
+    }
+
+    .battle-log-entries {
+      height: 100%;
+      max-height: none;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 6px 8px 8px;
+      font-size: 12px;
+      line-height: 1.45;
+      color: #e8dcc8;
+      text-align: left;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(201, 162, 39, 0.45) rgba(0, 0, 0, 0.2);
+    }
+
+    .battle-log-entries::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .battle-log-entries::-webkit-scrollbar-thumb {
+      background: rgba(201, 162, 39, 0.4);
+      border-radius: 4px;
+    }
+
+    .battle-log-line {
+      margin-bottom: 5px;
+      word-break: break-word;
+    }
+
+    .battle-log-line:last-child {
+      margin-bottom: 0;
+    }
+
+    .battle-log-line.is-round {
+      color: #f0d78c;
+      font-weight: bold;
+      text-align: center;
+      letter-spacing: 0.06em;
+      margin: 8px 0;
+    }
+
+    .battle-log-empty {
+      color: rgba(232, 220, 200, 0.45);
+      font-size: 12px;
+      text-align: center;
+      padding: 12px 0;
     }
     
     .damage-number {
@@ -456,9 +628,104 @@
       color: #ffeb3b;
     }
     
+    /* 底部控件区：轻渐变即可，避免再盖一层厚「蒙布」 */
+    .battle-bottom-deck {
+      flex-shrink: 0;
+      position: relative;
+      z-index: 6;
+      padding-top: 8px;
+      background: linear-gradient(
+        180deg,
+        transparent 0%,
+        rgba(12, 10, 16, 0.55) 40%,
+        rgba(10, 8, 14, 0.82) 100%
+      );
+      border-top: 1px solid rgba(201, 162, 39, 0.2);
+      box-shadow: none;
+    }
+
+    /* 当前行动者气血/内力条（背景图里红蓝条仅为装饰，此处为真实数值） */
+    .battle-actor-bars {
+      flex-shrink: 0;
+      padding: 6px 20px 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .actor-bars-title {
+      font-size: 13px;
+      color: #e8dcc8;
+      letter-spacing: 0.05em;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+    }
+
+    .actor-bars-panel {
+      width: 100%;
+      max-width: min(380px, 92vw);
+      padding: 10px 14px 12px;
+      border-radius: 10px;
+      background: rgba(12, 8, 16, 0.72);
+      border: 1px solid rgba(201, 162, 39, 0.4);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    }
+
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .bar-row:first-of-type {
+      margin-top: 0;
+    }
+
+    .bar-label {
+      flex: 0 0 2em;
+      font-size: 12px;
+      color: #c9a8a0;
+    }
+
+    .bar-track {
+      flex: 1;
+      height: 11px;
+      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      width: 100%;
+      border-radius: 5px;
+      transition: width 0.35s ease;
+    }
+
+    .bar-fill.hp-fill {
+      background: linear-gradient(180deg, #ff8a80 0%, #c62828 45%, #8e0000 100%);
+      box-shadow: 0 0 8px rgba(198, 40, 40, 0.5);
+    }
+
+    .bar-fill.mp-fill {
+      background: linear-gradient(180deg, #82b1ff 0%, #1565c0 50%, #0d47a1 100%);
+      box-shadow: 0 0 8px rgba(21, 101, 192, 0.45);
+    }
+
+    .bar-nums {
+      flex: 0 0 auto;
+      font-size: 11px;
+      color: #d4c4a8;
+      font-variant-numeric: tabular-nums;
+      min-width: 7.5em;
+      text-align: right;
+    }
+
     .battle-footer {
-      padding: 20px;
-      border-top: 1px solid #333;
+      padding: 8px 20px 20px;
+      border-top: none;
       display: flex;
       justify-content: center;
       gap: 15px;
@@ -561,9 +828,77 @@
     .btn-exit:hover {
       transform: scale(1.05);
     }
+
+    @media (max-width: 520px) {
+      .battle-container {
+        --lunge: clamp(56px, 20vw, 140px);
+      }
+
+      .battle-scroll-canvas {
+        width: clamp(260px, 88vw, 520px);
+        gap: min(4vw, 22px);
+        padding: min(3vh, 28px) min(4%, 12px) min(4vh, 40px);
+      }
+
+      .team-side {
+        gap: clamp(5px, 1.2vh, 12px);
+      }
+
+      .character-avatar-container {
+        width: 68px;
+        height: 68px;
+      }
+
+      .character-avatar-emoji {
+        font-size: 28px;
+      }
+
+      .character-name {
+        font-size: 11px;
+        max-width: 76px;
+      }
+
+      #teamAlly .character-card:first-child .character-name {
+        left: -7px;
+      }
+
+      .battle-log-entries-wrap {
+        height: min(11vh, 100px);
+        max-height: min(11vh, 100px);
+      }
+
+      .battle-log-entries {
+        height: 100%;
+        max-height: none;
+        min-height: 0;
+        font-size: 11px;
+        padding: 5px 6px 6px;
+      }
+
+      .battle-log-toggle {
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        padding: 7px 10px;
+      }
+    }
   </style>
 </head>
 <body>
+  <script>
+    try {
+      if (localStorage.getItem('battle_enter_cinematic') === '1') {
+        document.documentElement.style.background = '#000';
+        if (document.body) document.body.style.background = '#000';
+        if (!document.getElementById('battlePageCinematicBlack')) {
+          var __bpre = document.createElement('div');
+          __bpre.id = 'battlePageCinematicBlack';
+          __bpre.setAttribute('aria-hidden', 'true');
+          __bpre.style.cssText = 'position:fixed;inset:0;z-index:2147483000;background:#000;opacity:1;pointer-events:none;';
+          document.body.appendChild(__bpre);
+        }
+      }
+    } catch (e) {}
+  </script>
   <div class="battle-container">
     <div class="battle-header">
       ⚔️ 战斗中
@@ -571,19 +906,48 @@
     </div>
     
     <div class="battle-field">
-      <div class="team-side team-left" id="teamAlly">
-      </div>
-      
-      <div class="team-side team-right" id="teamEnemy">
+      <div class="battle-scroll-canvas">
+        <div class="team-side team-left" id="teamAlly">
+        </div>
+        <div class="team-side team-right" id="teamEnemy">
+        </div>
       </div>
     </div>
-    
-    <div class="battle-log">
-      <div class="battle-log-text" id="battleLog"></div>
+
+    <div class="battle-log-panel" id="battleLogPanel" aria-label="战斗日志">
+      <button type="button" class="battle-log-toggle" id="battleLogToggle" aria-expanded="true" aria-controls="battleLogEntriesWrap">
+        <span>战况实录</span>
+        <span class="battle-log-toggle-icon" aria-hidden="true">▼</span>
+      </button>
+      <div class="battle-log-entries-wrap" id="battleLogEntriesWrap">
+        <div class="battle-log-entries" id="battleLogEntries"></div>
+      </div>
     </div>
-    
-    <div class="battle-footer">
-      <button class="battle-btn btn-auto" id="btnAuto">自动战斗</button>
+
+    <div class="battle-bottom-deck">
+      <div class="battle-actor-bars" id="actorBarsHud" aria-label="当前行动者气血内力">
+        <div class="actor-bars-title" id="actorBarsTitle">—</div>
+        <div class="actor-bars-panel">
+          <div class="bar-row">
+            <span class="bar-label">气血</span>
+            <div class="bar-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-labelledby="actorBarsTitle" id="actorBarHpTrack">
+              <div class="bar-fill hp-fill" id="actorBarHpFill"></div>
+            </div>
+            <span class="bar-nums" id="actorBarHpNums">— / —</span>
+          </div>
+          <div class="bar-row" id="actorBarMpRow" style="display: none;">
+            <span class="bar-label">内力</span>
+            <div class="bar-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="actorBarMpTrack">
+              <div class="bar-fill mp-fill" id="actorBarMpFill"></div>
+            </div>
+            <span class="bar-nums" id="actorBarMpNums">— / —</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="battle-footer">
+        <button class="battle-btn btn-auto" id="btnAuto">自动战斗</button>
+      </div>
     </div>
     
     <div class="settle-panel" id="settlePanel">
@@ -595,7 +959,11 @@
   </div>
 
   <script src="../js/config.js"></script>
+  <script src="../js/utils/battleEntry.js"></script>
+  <script src="../js/utils/battleSettlement.js"></script>
   <script src="../js/utils/statCalculator.js"></script>
+  <script src="../js/utils/BattleHitRoll.js"></script>
+  <script src="../js/utils/battleNarrative.js"></script>
   <script src="../js/utils/effects.js"></script>
   <script src="character.js"></script>
   <script src="../js/data/enemies.js"></script>

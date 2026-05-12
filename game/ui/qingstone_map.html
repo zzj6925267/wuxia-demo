@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>青苍山麓 - 山林地图</title>
+  <title>青石镇 - 小镇地图</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Microsoft YaHei', 'SimHei', sans-serif;
-      background: linear-gradient(135deg, #1a2f1a 0%, #0f1f0f 50%, #0a150a 100%);
+      background: linear-gradient(145deg, #1e2228 0%, #14181c 45%, #0e1114 100%);
       min-height: 100vh;
       overflow-y: auto;
     }
@@ -27,8 +27,8 @@
     }
     .map-title {
       font-size: 28px;
-      color: #4CAF50;
-      text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+      color: #c9a227;
+      text-shadow: 0 0 12px rgba(201, 162, 39, 0.35);
     }
     .map-subtitle {
       font-size: 14px;
@@ -67,7 +67,7 @@
     }
     .back-btn:hover {
       transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+      box-shadow: 0 4px 15px rgba(201, 162, 39, 0.25);
     }
     .map-area {
       position: relative;
@@ -75,7 +75,7 @@
       height: 580px;
       background: rgba(0, 0, 0, 0.4);
       border-radius: 12px;
-      border: 2px solid #2E7D32;
+      border: 2px solid #5d5346;
       overflow: hidden;
       margin: 0 auto;
     }
@@ -84,8 +84,8 @@
       position: absolute;
       top: 0; left: 0; right: 0; bottom: 0;
       background-image: 
-        linear-gradient(rgba(76, 175, 80, 0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(76, 175, 80, 0.03) 1px, transparent 1px);
+        linear-gradient(rgba(188, 170, 143, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(188, 170, 143, 0.06) 1px, transparent 1px);
       background-size: 30px 30px;
     }
     .map-lines {
@@ -97,7 +97,7 @@
       overflow: visible;
     }
     .map-lines line {
-      stroke: #4CAF50;
+      stroke: #8a7f6e;
       stroke-width: 2;
     }
     .map-lines svg {
@@ -122,22 +122,22 @@
       transform: translate(-50%, -50%) scale(1.05);
     }
     .location-node.current .node-inner {
-      box-shadow: 0 0 15px rgba(76, 175, 80, 0.8);
-      border-color: #4CAF50;
-      background: linear-gradient(145deg, #388e3c, #2e7d32);
+      box-shadow: 0 0 15px rgba(201, 162, 39, 0.55);
+      border-color: #c9a227;
+      background: linear-gradient(145deg, #4a4540, #353129);
     }
     .location-node.available .node-inner {
-      box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+      box-shadow: 0 0 8px rgba(201, 162, 39, 0.35);
     }
     .location-node.unavailable {
       opacity: 0.5;
       cursor: not-allowed;
     }
-    .location-node.dungeon .node-inner {
-      border-color: #FF9800;
+    .location-node.notice-spot .node-inner {
+      border-color: #b8860b;
     }
-    .location-node.dungeon .node-name {
-      color: #FF9800;
+    .location-node.notice-spot .node-name {
+      color: #e8c547;
     }
     .node-inner {
       width: 90px;
@@ -146,8 +146,8 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      background: linear-gradient(145deg, #2d442d, #1a2e1a);
-      border: 2px solid #2E7D32;
+      background: linear-gradient(145deg, #3a3834, #252320);
+      border: 2px solid #5d5346;
       transition: all 0.3s ease;
     }
     .node-icon {
@@ -164,9 +164,9 @@
       color: #999;
     }
     .location-panel {
-      background: rgba(26, 46, 26, 0.9);
+      background: rgba(24, 26, 30, 0.92);
       border-radius: 12px;
-      border: 1px solid #2E7D32;
+      border: 1px solid #5d5346;
       padding: 20px;
       width: 100%;
     }
@@ -181,7 +181,7 @@
     }
     .location-name {
       font-size: 22px;
-      color: #4CAF50;
+      color: #d4c4a8;
     }
     .location-description {
       font-size: 14px;
@@ -189,206 +189,75 @@
       line-height: 1.6;
     }
     
-    .enemy-section {
-      margin-top: 15px;
-      padding-top: 15px;
-      border-top: 1px solid #2e7d32;
+    .town-section {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #5d5346;
     }
-    
-    .enemy-title {
-      color: #4caf50;
+    .town-title {
+      color: #c9a227;
       font-size: 16px;
       margin-bottom: 10px;
     }
-    
-    .enemy-list {
+    .town-tips {
       display: flex;
       flex-direction: column;
       gap: 8px;
+      margin-bottom: 12px;
     }
-    
-    .enemy-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px;
-      background: rgba(46, 125, 50, 0.2);
-      border: 1px solid #2e7d32;
+    .town-tip-line {
+      font-size: 13px;
+      color: #b8b0a0;
+      line-height: 1.55;
+      margin: 0;
+      padding: 8px 10px;
+      background: rgba(60, 56, 48, 0.45);
       border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.3s ease;
+      border-left: 3px solid #8a7a5a;
     }
-    
-    .enemy-item:hover {
-      background: rgba(46, 125, 50, 0.4);
-      transform: translateX(5px);
-    }
-    
-    .enemy-icon {
-      font-size: 28px;
-    }
-    
-    .enemy-info {
-      flex: 1;
-    }
-    
-    .enemy-name {
-      color: #fff;
-      font-size: 14px;
-      font-weight: bold;
-    }
-    
-    .enemy-level {
-      color: #ff9800;
-      font-size: 12px;
-    }
-    
-    .enemy-stats {
-      color: #aaa;
-      font-size: 12px;
-      margin-top: 4px;
-    }
-    
-    .herb-section {
-      margin-top: 15px;
-      padding-top: 15px;
-      border-top: 1px solid #2e7d32;
-    }
-    
-    .herb-title {
-      color: #4caf50;
-      font-size: 16px;
-      margin-bottom: 10px;
-    }
-    
-    .herb-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    
-    .herb-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px;
-      background: rgba(46, 125, 50, 0.2);
-      border: 1px solid #2e7d32;
+    .town-chat-btn {
+      width: 100%;
+      padding: 10px 16px;
+      border: 1px solid #8a7a5a;
       border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      position: relative;
-    }
-    
-    .herb-item:hover:not(.collecting) {
-      background: rgba(46, 125, 50, 0.4);
-      transform: translateX(5px);
-    }
-    
-    .herb-item.collecting {
-      opacity: 0.7;
-      cursor: not-allowed;
-    }
-    
-    .herb-icon {
-      font-size: 28px;
-    }
-    
-    .herb-info {
-      flex: 1;
-    }
-    
-    .herb-name {
-      color: #fff;
+      background: linear-gradient(145deg, #4a4238, #353029);
+      color: #e8dcc8;
       font-size: 14px;
-      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s ease;
     }
-    
-    .herb-count {
-      background: #ff9800;
-      color: #000;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-size: 12px;
-      font-weight: bold;
-    }
-    
-    .collect-progress {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      height: 3px;
-      background: #4caf50;
-      width: 0%;
-      transition: width 0.1s linear;
-      border-radius: 0 0 8px 8px;
+    .town-chat-btn:hover {
+      border-color: #c9a227;
+      color: #fff5e0;
+      box-shadow: 0 0 10px rgba(201, 162, 39, 0.25);
     }
 
-    /* 山林 → 战斗：中央「战」字闪烁 + 黑屏切入 */
-    .battle-enter-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      z-index: 2147483000;
-      pointer-events: all;
+    .dojo-npc-section {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid #5d5346;
     }
-    .battle-enter-zhan-layer {
-      position: absolute;
-      inset: 0;
+    .dojo-npc-section .npc-list {
       display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 2;
-      background: rgba(0, 0, 0, 0.25);
+      flex-direction: column;
+      gap: 10px;
     }
-    .battle-enter-zhan-badge {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: min(20vw, 86px);
-      height: min(20vw, 86px);
-      background: #e53935;
-      color: #0d0d0d;
-      font-size: clamp(28px, 6vw, 42px);
-      line-height: 1;
-      font-family: 'KaiTi', 'STKaiti', 'SimKai', 'FangSong', 'Microsoft YaHei', serif;
-      font-weight: 900;
-      clip-path: polygon(10% 4%, 90% 6%, 100% 40%, 70% 96%, 30% 96%, 0% 40%);
-      text-shadow:
-        1px 0 0 #000,
-        -1px 0 0 #000,
-        0 1px 0 #000,
-        0 -1px 0 #000;
-      filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.45));
-      animation: battle-enter-zhan-flash 0.95s linear forwards;
+    .npc-interact-btn {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #6b6254;
+      border-radius: 8px;
+      background: linear-gradient(145deg, #3d3830, #2c2822);
+      color: #e8dcc8;
+      font-size: 14px;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.2s ease;
     }
-    @keyframes battle-enter-zhan-flash {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      5% { opacity: 0.35; transform: scale(1.05); }
-      10% { opacity: 1; transform: scale(1); }
-      15% { opacity: 0.45; transform: scale(1.04); }
-      20% { opacity: 1; transform: scale(1); }
-      25% { opacity: 0.3; transform: scale(1.06); }
-      32% { opacity: 1; transform: scale(1); }
-      40% { opacity: 0.5; transform: scale(1.03); }
-      48% { opacity: 1; transform: scale(1); }
-      55% { opacity: 0.25; transform: scale(1.07); }
-      62% { opacity: 1; transform: scale(1); }
-      70% { opacity: 0.4; transform: scale(1.04); }
-      78% { opacity: 1; transform: scale(1); }
-      86% { opacity: 0.35; transform: scale(1.05); }
-      94% { opacity: 1; transform: scale(1); }
-    }
-    .battle-enter-black {
-      position: absolute;
-      inset: 0;
-      z-index: 3;
-      background: #000;
-      opacity: 0;
-      transition: opacity 0.32s ease-in;
-    }
-    .battle-enter-black.is-on {
-      opacity: 1;
+    .npc-interact-btn:hover {
+      border-color: #c9a227;
+      color: #fff8ec;
+      box-shadow: 0 0 8px rgba(201, 162, 39, 0.2);
     }
   </style>
 </head>
@@ -411,8 +280,8 @@
   <div class="map-container">
     <div class="map-header">
       <button class="back-btn" onclick="goBack()">← 返回大地图</button>
-      <h1 class="map-title">青苍山麓</h1>
-      <p class="map-subtitle">山林地图</p>
+      <h1 class="map-title">青石镇</h1>
+      <p class="map-subtitle">小镇地图 · 街坊与铺面</p>
     </div>
 
     <div class="map-area">
@@ -420,9 +289,9 @@
       <svg class="map-lines" viewBox="0 0 800 580" preserveAspectRatio="xMidYMid meet">
         <defs>
           <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stop-color="#2E7D32" />
-            <stop offset="50%" stop-color="#4CAF50" />
-            <stop offset="100%" stop-color="#2E7D32" />
+            <stop offset="0%" stop-color="#5d4037" />
+            <stop offset="50%" stop-color="#bcaaa4" />
+            <stop offset="100%" stop-color="#5d4037" />
           </linearGradient>
         </defs>
       </svg>
@@ -431,38 +300,36 @@
 
     <div class="location-panel" id="locationPanel">
       <div class="panel-header">
-        <span class="location-icon" id="locationIcon">🚪</span>
-        <h2 class="location-name" id="locationName">青苍山道口</h2>
+        <span class="location-icon" id="locationIcon">🏛️</span>
+        <h2 class="location-name" id="locationName">镇口牌坊</h2>
       </div>
-      <p class="location-description" id="locationDesc">通往青苍山的土路入口，两旁长满齐腰的杂草，林间偶有鸟鸣，越往深处越显昏暗。路边立着半块残破石碑，刻着「山林凶险，独行慎入」。</p>
-      
-      <div class="enemy-section" id="enemySection" style="display: none;">
-        <h3 class="enemy-title">⚔️ 此处敌人</h3>
-        <div class="enemy-list" id="enemyList"></div>
+      <p class="location-description" id="locationDesc">两座石狮蹲守道口，匾额上书「青石镇」三字，笔力浑厚。往来行商在此歇脚，挑夫的号子与卖茶老妪的吆喝混成一片，是江湖里少见的热闹与安稳。</p>
+
+      <div class="town-section" id="townSection">
+        <h3 class="town-title">🏮 街坊见闻</h3>
+        <div id="townTips" class="town-tips"></div>
+        <button type="button" class="town-chat-btn" id="townChatBtn">打听几句闲话</button>
       </div>
-      
-      <div class="herb-section" id="herbSection" style="display: none;">
-        <h3 class="herb-title">🌿 采集区域</h3>
-        <div class="herb-list" id="herbList"></div>
+
+      <div class="dojo-npc-section" id="dojoNpcSection" style="display: none;">
+        <h3 class="town-title">🥋 武馆内</h3>
+        <div class="npc-list">
+          <button type="button" class="npc-interact-btn" data-npc="jiaotou" id="npcBtnJiaotou">👤 教头 — 可交谈</button>
+          <button type="button" class="npc-interact-btn" data-npc="wood_dummy" id="npcBtnWoodDummy">🪵 木人儿 — 可交互</button>
+        </div>
       </div>
-      
+
       <div id="leaveBtnContainer" style="display: none;"></div>
     </div>
   </div>
 
-  <script src="../js/data/enemies.js"></script>
-  <script src="../js/data/items.js"></script>
-  <script src="../js/utils/battleEntry.js"></script>
   <script src="../js/utils/battleSettlement.js"></script>
-  <script src="forestMapData.js"></script>
+  <script src="qingstoneMapData.js"></script>
   <script>
-        const LOCATIONS = window.FOREST_LOCATIONS;
-        const CONNECTIONS = window.FOREST_CONNECTIONS;
+        const LOCATIONS = window.QINGSTONE_LOCATIONS;
+        const CONNECTIONS = window.QINGSTONE_CONNECTIONS;
 
-        let currentLocation = 'qingcang_entrance';
-        
-        // 药草数量
-        let lingzhiCount = 10;
+        let currentLocation = 'qingstone_gate';
         
         // 飘字队列
         let floatTextQueue = [];
@@ -791,6 +658,27 @@
           } else {
             playPostBattleMapRewardFloats();
           }
+
+          const chatBtn = document.getElementById('townChatBtn');
+          if (chatBtn && !chatBtn.dataset.bound) {
+            chatBtn.dataset.bound = '1';
+            chatBtn.addEventListener('click', randomTownRumor);
+          }
+
+          const dojoSec = document.getElementById('dojoNpcSection');
+          if (dojoSec && !dojoSec.dataset.bound) {
+            dojoSec.dataset.bound = '1';
+            dojoSec.addEventListener('click', (ev) => {
+              const btn = ev.target.closest('.npc-interact-btn');
+              if (!btn) return;
+              const npc = btn.dataset.npc;
+              if (npc === 'jiaotou') {
+                showFloatText('教头：「先把桩功三式练熟了，再来跟老子说话。」（功能后续开放）', '#d4af37');
+              } else if (npc === 'wood_dummy') {
+                showFloatText('你在木人儿身上试了两招，木声笃笃，震得虎口微麻。（功能后续开放）', '#bcaaa4');
+              }
+            });
+          }
         }
 
     function renderMap() {
@@ -798,7 +686,7 @@
       const mapLines = document.querySelector('.map-lines');
       
       mapNodes.innerHTML = '';
-      mapLines.innerHTML = `<defs><linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#2E7D32" /><stop offset="50%" stop-color="#4CAF50" /><stop offset="100%" stop-color="#2E7D32" /></linearGradient></defs>`;
+      mapLines.innerHTML = `<defs><linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#5d4037" /><stop offset="50%" stop-color="#bcaaa4" /><stop offset="100%" stop-color="#5d4037" /></linearGradient></defs>`;
 
       const current = LOCATIONS[currentLocation];
       const adjacentIds = current.connections;
@@ -823,10 +711,10 @@
       Object.values(LOCATIONS).forEach(location => {
         const isCurrent = location.id === currentLocation;
         const isAvailable = adjacentIds.includes(location.id);
-        const isDungeon = location.id === 'heifeng_entrance';
+        const isNotice = location.id === 'town_notice';
         
         const node = document.createElement('div');
-        node.className = `location-node ${isCurrent ? 'current' : ''} ${isAvailable ? 'available' : 'unavailable'} ${isDungeon ? 'dungeon' : ''}`;
+        node.className = `location-node ${isCurrent ? 'current' : ''} ${isAvailable ? 'available' : 'unavailable'} ${isNotice ? 'notice-spot' : ''}`;
         node.style.left = `${location.x}px`;
         node.style.top = `${location.y}px`;
         
@@ -857,265 +745,85 @@
       document.getElementById('locationIcon').textContent = location.icon;
       document.getElementById('locationName').textContent = location.name;
       document.getElementById('locationDesc').textContent = location.desc;
-      
-      // 检查是否是青苍山道口，如果是，显示离开按钮
+
+      updateTownTips(currentLocation);
+
+      const dojoNpcSection = document.getElementById('dojoNpcSection');
+      if (dojoNpcSection) {
+        dojoNpcSection.style.display = currentLocation === 'qingstone_dojo' ? 'block' : 'none';
+      }
+
       const leaveBtnContainer = document.getElementById('leaveBtnContainer');
-      if (currentLocation === 'qingcang_entrance') {
-        leaveBtnContainer.innerHTML = '<button class="leave-btn" onclick="goBack()">🚪 离开此地</button>';
+      if (currentLocation === 'qingstone_gate') {
+        leaveBtnContainer.innerHTML = '<button class="leave-btn" onclick="goBack()">🚪 离开青石镇</button>';
         leaveBtnContainer.style.display = 'block';
       } else {
         leaveBtnContainer.style.display = 'none';
       }
-      
-      updateEnemyList();
-      updateHerbList();
     }
 
-function updateEnemyList() {
-  const enemies = getEnemiesAtLocation(currentLocation);
-  const enemySection = document.getElementById('enemySection');
-  const enemyList = document.getElementById('enemyList');
-  
-  if (enemies.length > 0) {
-    enemySection.style.display = 'block';
-    enemyList.innerHTML = enemies.map(enemy => `
-      <div class="enemy-item" onclick="startBattle('${enemy.id}')">
-        <span class="enemy-icon">${enemy.icon}</span>
-        <div class="enemy-info">
-          <div>
-            <span class="enemy-name">${enemy.name}</span>
-            <span class="enemy-level">Lv.${enemy.level}</span>
-          </div>
-        </div>
-      </div>
-    `).join('');
-  } else {
-    enemySection.style.display = 'none';
-  }
-}
-
-function updateHerbList() {
-  const herbSection = document.getElementById('herbSection');
-  const herbList = document.getElementById('herbList');
-  
-  // 只有山涧溪旁才显示采集区域
-  if (currentLocation === 'shanjian_stream') {
-    herbSection.style.display = 'block';
-    herbList.innerHTML = `
-      <div class="herb-item" id="lingzhiItem" onclick="collectHerb()">
-        <span class="herb-icon">🌿</span>
-        <div class="herb-info">
-          <div>
-            <span class="herb-name">灵芝草</span>
-          </div>
-        </div>
-        <span class="herb-count">${lingzhiCount}</span>
-        <div class="collect-progress" id="collectProgress"></div>
-      </div>
-    `;
-  } else {
-    herbSection.style.display = 'none';
-  }
-}
-
-function collectHerb() {
-  // 检查数量
-  if (lingzhiCount <= 0) {
-    lingzhiCount = 10;
-    updateHerbList();
-    showFloatText('灵芝草已刷新！', '#4caf50');
-    return;
-  }
-  
-  const herbItem = document.getElementById('lingzhiItem');
-  const progress = document.getElementById('collectProgress');
-  
-  // 标记正在采集
-  herbItem.classList.add('collecting');
-  let progressValue = 0;
-  
-  // 2秒采集进度
-  const interval = setInterval(() => {
-    progressValue += 5;
-    progress.style.width = progressValue + '%';
-    
-    if (progressValue >= 100) {
-      clearInterval(interval);
-      
-      // 采集成功
-      lingzhiCount--;
-      
-      // 添加灵芝草到背包
-      addToInventory('lingzhi_cao', 1);
-      
-      // 更新任务进度
-      updateCollectTaskProgress();
-      
-      // 显示飘字
-      showFloatText('采集到 1 朵灵芝草！', '#4caf50');
-      
-      // 更新显示
-      updateHerbList();
-      
-      // 如果采完了，自动刷新
-      if (lingzhiCount <= 0) {
-        lingzhiCount = 10;
-        setTimeout(() => {
-          updateHerbList();
-          showFloatText('灵芝草已刷新！', '#4caf50');
-        }, 500);
-      }
-    }
-  }, 100);
-}
-
-// 添加物品到背包（兼容背包系统）
-function addToInventory(itemId, quantity) {
-  // 初始化playerData
-  if (!window.playerData) {
-    window.playerData = {
-      inventory: [],
-      equipment: {
-        weapon: null,
-        armor: null,
-        helmet: null,
-        shoes: null,
-        accessory: null
-      },
-      level: 10
+    const TOWN_TIP_LINES = {
+      qingstone_gate: [
+        '进出镇的行脚商多在此歇担，有人压低声音谈起「黑风寨」最近的劫道。',
+        '石狮底座刻着捐修名录，最旧的一行已经磨得辨认不清。'
+      ],
+      bluestone_street: [
+        '青石板被磨得发亮，雨天也不打滑——老人们说，这是三代人一脚一脚踩出来的。',
+        '街角卖馄饨的小贩与挑柴的汉子争路，又笑着互让，镇上日子大抵如此。'
+      ],
+      town_notice: [
+        '新贴的一张榜文墨迹未干，隐约提到「山贼」「悬赏」字样，围观者指指点点。',
+        '旧告示层层叠叠，有的被雨水泡烂，只余半句「……勿近蛇窟」。'
+      ],
+      qingshi_inn: [
+        '跑堂的抹布甩得飞起，楼上客房传来剑鞘轻碰栏杆的声响——多半是江湖人。',
+        '掌柜拨着算盘，眼角却瞄着门口，谁进来他都先打量鞋底泥色。'
+      ],
+      li_smithy: [
+        '火星溅在淬火桶里，嗤的一声白雾腾起。李师傅哼着小曲，锤声却一下重过一下。',
+        '墙角倚着几柄待取的农具，另有半截断剑用布裹着，不知是谁留下的。'
+      ],
+      qingstone_dojo: [
+        '教头正纠正一名学徒的沉肩坠肘，嗓门大得半个街口都能听见。',
+        '木人儿上深浅不一的拳印，像是有人在这儿熬过许多个清晨。'
+      ],
+      renxin_herbal: [
+        '药香清苦，混着晒干的艾草气。坐堂大夫正给孩童摸脉，母亲一脸紧张。',
+        '柜上小牌写着「义诊半日」，底下又用小字补了「雨雪顺延」。'
+      ],
+      east_market: [
+        '腌菜坛子与粗布堆成小山，卖首饰的摊子支着一块「江南新样」的纸牌，真假难辨。',
+        '两个妇人为一文钱争得面红耳赤，旁边卖糖葫芦的汉子看得直乐。'
+      ],
+      back_lane: [
+        '晾衣绳上衫裤飘摇，灶间传出葱油香。谁家孩子在追一只花猫，笑声撞在青砖上。',
+        '墙角堆着破箩筐，若有若无的酒气——大概是昨夜有人在此躲风饮酒。'
+      ]
     };
-  }
-  
-  const player = window.playerData;
-  let remaining = quantity;
-  
-  // 先尝试填满已有的同类型格子（不超过99）
-  for (let item of player.inventory) {
-    if (item.id === itemId && item.quantity < 99) {
-      const canAdd = 99 - item.quantity;
-      const toAdd = Math.min(canAdd, remaining);
-      item.quantity += toAdd;
-      remaining -= toAdd;
-      
-      if (remaining <= 0) break;
-    }
-  }
-  
-  // 如果还有剩余，创建新格子
-  while (remaining > 0) {
-    const toAdd = Math.min(remaining, 99);
-    player.inventory.push({ id: itemId, quantity: toAdd });
-    remaining -= toAdd;
-  }
-  
-  // 保存到localStorage
-  localStorage.setItem('playerData', JSON.stringify(player));
-}
 
-function updateCollectTaskProgress() {
-  // 从localStorage读取玩家状态
-  let playerState = JSON.parse(localStorage.getItem('playerState') || '{"activeTasks":{}}');
-  
-  // 检查是否有采集任务
-  if (playerState.activeTasks && playerState.activeTasks['collect_herbs']) {
-    const task = playerState.activeTasks['collect_herbs'];
-    
-    // 只有在未完成时才增加计数
-    if (!task.completed) {
-      const oldCount = task.collected || 0;
-      task.collected = oldCount + 1;
-      
-      // 检查是否完成（只有从4变5时才提示）
-      if (oldCount < 5 && task.collected >= 5) {
-        task.completed = true;
-        showFloatText('采集任务完成！', '#ff9800');
-      }
-    }
-    
-    // 保存
-    localStorage.setItem('playerState', JSON.stringify(playerState));
-  }
-}
-
-    function sleepMs(ms) {
-      return new Promise((resolve) => setTimeout(resolve, ms));
+    function updateTownTips(locId) {
+      const el = document.getElementById('townTips');
+      if (!el) return;
+      const lines = TOWN_TIP_LINES[locId] || ['此处行人往来，暂无特别消息。'];
+      el.innerHTML = lines.map((l) => `<p class="town-tip-line">${l}</p>`).join('');
     }
 
-    function ensureBattleEnterOverlay() {
-      let root = document.getElementById('battleEnterOverlay');
-      if (root) return root;
-      root = document.createElement('div');
-      root.id = 'battleEnterOverlay';
-      root.className = 'battle-enter-overlay';
-      root.setAttribute('aria-hidden', 'true');
-      root.innerHTML = `
-        <div class="battle-enter-zhan-layer" id="battleEnterZhanLayer">
-          <div class="battle-enter-zhan-badge">战</div>
-        </div>
-        <div class="battle-enter-black" id="battleEnterBlack"></div>
-      `;
-      document.body.appendChild(root);
-      return root;
-    }
+    const TOWN_RUMORS = [
+      '「听说了吗？东市腌菜张的女儿要许给铁匠铺学徒。」',
+      '「正阳派的弟子昨儿来镇上打酒，说山里蛇窟不太平。」',
+      '「悦来总栈的伙计路过，说天机集市新到了一批胡商货。」',
+      '「血刀门的人没进镇，只在道口晃了晃，里正让人盯紧告示墙。」',
+      '「后巷王婆的孙子又逃学，被她拎着耳朵往回拽呢。」',
+      '「药铺老大夫叹气，说今年暑热伤人，得多备藿香。」'
+    ];
 
-    let battleEnterTransitionLock = false;
-
-    async function startBattle(enemyId) {
-      if (battleEnterTransitionLock) return;
-      battleEnterTransitionLock = true;
-
-      const root = ensureBattleEnterOverlay();
-      const black = document.getElementById('battleEnterBlack');
-      const zhanLayer = document.getElementById('battleEnterZhanLayer');
-      root.style.display = 'block';
-      if (black) {
-        black.classList.remove('is-on');
-        black.style.opacity = '';
-      }
-      if (zhanLayer) {
-        zhanLayer.style.opacity = '1';
-        zhanLayer.style.transition = '';
-        const badge = zhanLayer.querySelector('.battle-enter-zhan-badge');
-        if (badge) {
-          badge.style.animation = 'none';
-          void badge.offsetWidth;
-          badge.style.animation = '';
-        }
-      }
-
-      await sleepMs(950);
-
-      if (zhanLayer) {
-        zhanLayer.style.transition = 'opacity 0.15s ease-out';
-        zhanLayer.style.opacity = '0';
-      }
-      await sleepMs(150);
-      if (black) {
-        black.style.transition = 'none';
-        black.style.opacity = '1';
-      }
-      await sleepMs(120);
-
-      localStorage.setItem(
-        (window.BattleEntry && window.BattleEntry.KEYS && window.BattleEntry.KEYS.battleEnterCinematic) || 'battle_enter_cinematic',
-        '1'
-      );
-      if (window.BattleEntry) {
-        window.BattleEntry.setPartyBattleContext(enemyId, {
-          preBattleLocation: currentLocation,
-          source: 'forest_map'
-        });
-      } else {
-        localStorage.setItem('battleEnemyId', enemyId);
-        localStorage.setItem('preBattleLocation', currentLocation);
-      }
-      window.location.href = 'battle.html';
+    function randomTownRumor() {
+      const t = TOWN_RUMORS[Math.floor(Math.random() * TOWN_RUMORS.length)];
+      showFloatText(t, '#d4af37');
     }
 
     function goBack() {
-      // 保存当前位置到 localStorage，让大地图知道应该显示哪个地点
-      // 返回山林本身的位置，而不是连接的地点
-      localStorage.setItem('currentLocation', 'forest');
+      localStorage.setItem('currentLocation', 'qingstone_town');
       window.location.href = 'map.html';
     }
 

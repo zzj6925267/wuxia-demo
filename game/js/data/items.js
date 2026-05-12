@@ -650,6 +650,16 @@ const ITEMS = {
     price: 50
   },
   
+  lingzhi_cao: {
+    id: 'lingzhi_cao',
+    name: '灵芝草',
+    type: 'material',
+    category: 'material',
+    description: '山林里生长的普通灵芝草，可用于制药',
+    icon: '🌿',
+    price: 10
+  },
+  
   she_dan: {
     id: 'she_dan',
     name: '蛇胆',

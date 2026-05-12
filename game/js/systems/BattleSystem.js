@@ -1,6 +1,10 @@
 /**
  * 战斗系统
  * @module BattleSystem
+ *
+ * 单敌人回合制（与主菜单 `Game` 生命周期一致）。
+ * 大地图队伍战见 `battle.html` + `battle.js`；物理掷骰与 `BattleHitRoll` 的队伍模型不同。
+ * 四阶段改造：阶段 4（单战斗形态）未做——本类仍保留，勿与队伍战混用规则。
  */
 
 class BattleSystem {

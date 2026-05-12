@@ -29,7 +29,7 @@ class Game {
   /**
    * 初始化游戏
    */
-  init() {
+  async init() {
     // 创建玩家系统
     this.playerSystem = new PlayerSystem();
 
@@ -37,7 +37,7 @@ class Game {
     this.saveManager = new SaveManager(this.playerSystem);
 
     // 自动加载存档（如果有）
-    this._autoLoadSave();
+    await this._autoLoadSave();
 
     // 创建地图系统
     this.mapSystem = new MapSystem(
@@ -82,24 +82,24 @@ class Game {
   /**
    * 自动加载存档
    */
-  _autoLoadSave() {
-    // 检查slot 0是否有存档
-    const saveInfo = this.saveManager.getSaveInfo(0);
-    if (saveInfo) {
-      // 自动加载存档
-      this.saveManager.load(0);
-      console.log('自动加载存档成功');
+  async _autoLoadSave() {
+    const saveInfo = await this.saveManager.getSaveInfo(0);
+    if (!saveInfo) return;
 
-      // 应用待处理的战斗奖励
-      this._applyPendingBattleRewards();
-    }
+    const loaded = await this.saveManager.load(0);
+    if (!loaded) return;
+
+    console.log('自动加载存档成功');
+    await this._applyPendingBattleRewards();
   }
 
   /**
    * 应用待处理的战斗奖励
    */
-  _applyPendingBattleRewards() {
-    const pendingData = localStorage.getItem('pending_battle_rewards');
+  async _applyPendingBattleRewards() {
+    const pendingData = window.BattleSettlement
+      ? window.BattleSettlement.getPendingRaw()
+      : localStorage.getItem('pending_battle_rewards');
     if (!pendingData) return;
 
     try {
@@ -118,11 +118,14 @@ class Game {
       }
 
       // 清除待处理奖励
-      localStorage.removeItem('pending_battle_rewards');
+      if (window.BattleSettlement) {
+        window.BattleSettlement.clearPendingRewards();
+      } else {
+        localStorage.removeItem('pending_battle_rewards');
+      }
       console.log('战斗奖励已应用');
 
-      // 立即保存存档
-      this.save(0);
+      await this.saveGame(0);
       console.log('存档已保存');
     } catch (error) {
       console.error('应用战斗奖励失败:', error);
@@ -182,41 +185,41 @@ class Game {
   /**
    * 加载游戏
    * @param {number} slot - 存档槽位
-   * @returns {boolean} 是否成功
+   * @returns {Promise<boolean>} 是否成功
    */
-  loadGame(slot) {
-    if (this.saveManager.load(slot)) {
-      const location = this.playerSystem.getFlag('current_location');
-      this.mapSystem.init(location || 'yuelai_inn');
-      this.currentState = window.GAME_STATE.MAP;
-      this._fireCallback('gameLoad', { slot });
-      console.log(`从存档槽位 ${slot} 加载游戏`);
-      return true;
-    }
-    return false;
+  async loadGame(slot) {
+    const ok = await this.saveManager.load(slot);
+    if (!ok) return false;
+
+    const location = this.playerSystem.getFlag('current_location');
+    this.mapSystem.init(location || 'yuelai_inn');
+    this.currentState = window.GAME_STATE.MAP;
+    this._fireCallback('gameLoad', { slot });
+    console.log(`从存档槽位 ${slot} 加载游戏`);
+    return true;
   }
 
   /**
    * 保存游戏
    * @param {number} slot - 存档槽位
-   * @returns {boolean} 是否成功
+   * @returns {Promise<boolean>} 是否成功
    */
-  saveGame(slot) {
+  async saveGame(slot) {
     return this.saveManager.save(slot);
   }
 
   /**
    * 获取游戏状态
-   * @returns {object} 游戏状态
+   * @returns {Promise<object>} 游戏状态
    */
-  getGameState() {
+  async getGameState() {
     return {
       currentState: this.currentState,
       player: this.playerSystem.getStatusSummary(),
       location: this.mapSystem.getCurrentLocation(),
       isInDialog: this.dialogSystem.isDialogActive(),
       isInBattle: this.battleSystem.isBattleActive(),
-      saves: this.saveManager.getAllSaveInfo()
+      saves: await this.saveManager.getAllSaveInfo()
     };
   }
 

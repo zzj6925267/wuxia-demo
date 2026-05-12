@@ -9,6 +9,11 @@ class PlayerSystem {
     this._updateDerivedStats();
   }
 
+  /** 读档或外部改过 player 后调用，同步攻防血蓝等派生属性 */
+  recalculateDerivedStats() {
+    this._updateDerivedStats();
+  }
+
   _updateDerivedStats() {
     if (window.StatCalculator) {
       const finalStats = window.StatCalculator.calculateFinalStats(this.player);

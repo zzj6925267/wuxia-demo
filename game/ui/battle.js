@@ -1,5 +1,11 @@
 /**
- * 战斗系统核心逻辑
+ * 战斗 UI 与队伍回合流程（多角色、自动战斗等）。
+ *
+ * 架构说明（长期维护）：
+ * - `BattleEntry`：进入战斗的唯一推荐入口（阶段 1）。
+ * - `BattleSettlement`：战后 pending 奖励队列键名（阶段 2）。
+ * - `BattleHitRoll.js`：队伍战「命中/闪避/招架/暴击」唯一实现（阶段 3 之一）。
+ * - `BattleSystem.js`：主菜单 `Game` 单敌回合；阶段 4 再决定是否收敛形态。
  */
 
 // 战斗状态
@@ -11,6 +17,8 @@ let battleState = {
   isAutoFighting: false,
   battleEnded: false,
   turnCount: 1,       // 回合数
+  /** 战后返回的小地图页（在 initBattle 清空 BattleEntry 前根据 battle_entry_source 写入） */
+  returnMapHref: 'forest_map.html',
   rewards: {
     exp: 0,
     gold: 0,
@@ -18,6 +26,19 @@ let battleState = {
     drops: []
   }
 };
+
+/** 队伍战立轴排布按「每侧至多 4 人」设计（常态 2～3），不面向 5+ 做侧栏滚动等扩展。 */
+const BATTLE_PARTY_CAP_PER_SIDE = 4;
+
+function mapBattleSourceToReturnHref(source) {
+  if (!source) return 'forest_map.html';
+  const table = {
+    forest_map: 'forest_map.html',
+    zhengyang_map: 'zhengyang_map.html',
+    qingstone_map: 'qingstone_map.html'
+  };
+  return table[source] || 'forest_map.html';
+}
 
 // 获取指定角色的武学加成
 function getMartialBonusForChar(char, attr) {
@@ -514,16 +535,34 @@ async function initBattle() {
   const currentPlayerCharacters = getPlayerCharactersFromSave();
   console.log('initBattle 获取到的角色:', currentPlayerCharacters.map(c => ({name: c.name, hp: c.hp, attack: c.attack})));
   
-  const enemyId = localStorage.getItem('battleEnemyId');
+  const enemyId = window.BattleEntry
+    ? window.BattleEntry.peekEnemyId()
+    : localStorage.getItem('battleEnemyId');
+
+  const sourceKey = window.BattleEntry && window.BattleEntry.KEYS && window.BattleEntry.KEYS.source;
+  const entrySource = sourceKey ? localStorage.getItem(sourceKey) : null;
+  battleState.returnMapHref = mapBattleSourceToReturnHref(entrySource);
 
   let enemy = ENEMIES.shanze_louluo_1;
   if (enemyId && ENEMIES[enemyId]) {
     enemy = ENEMIES[enemyId];
   }
 
-  localStorage.removeItem('battleEnemyId');
+  if (window.BattleEntry) {
+    window.BattleEntry.clearEnemyLaunchContext();
+  } else {
+    localStorage.removeItem('battleEnemyId');
+  }
 
-  battleState.allyTeam = currentPlayerCharacters.map(char => ({
+  let alliesForBattle = currentPlayerCharacters;
+  if (alliesForBattle.length > BATTLE_PARTY_CAP_PER_SIDE) {
+    console.warn(
+      `initBattle: 我方 ${alliesForBattle.length} 人超过设计上限 ${BATTLE_PARTY_CAP_PER_SIDE}，已取前 ${BATTLE_PARTY_CAP_PER_SIDE} 人参战。`
+    );
+    alliesForBattle = alliesForBattle.slice(0, BATTLE_PARTY_CAP_PER_SIDE);
+  }
+
+  battleState.allyTeam = alliesForBattle.map(char => ({
     ...char,
     hp: char.maxHp,
     mp: char.maxMp,
@@ -544,9 +583,11 @@ async function initBattle() {
   battleState.battleEnded = false;
   battleState.turnCount = 1;
 
+  clearBattleLog();
   renderTeams();
   updateTurnDisplay();
   addBattleLog('战斗开始！');
+  addBattleLog('──────── 第 1 回合 ────────', { round: true });
   // 第一回合不回血，从第二回合开始
 }
 
@@ -560,6 +601,7 @@ function renderTeams() {
 
   allyContainer.innerHTML = battleState.allyTeam.map(char => renderCharacterCard(char)).join('');
   enemyContainer.innerHTML = battleState.enemyTeam.map(char => renderCharacterCard(char)).join('');
+  updateActorBarsHud();
 }
 
 function renderCharacterCard(char) {
@@ -592,9 +634,31 @@ function handleAvatarError(img, fallbackIcon) {
   container.innerHTML = `<div class="character-avatar-emoji">${fallbackIcon}</div>`;
 }
 
-function addBattleLog(text) {
-  const logElement = document.getElementById('battleLog');
-  logElement.innerHTML = text;
+const BATTLE_LOG_MAX_LINES = 150;
+
+function clearBattleLog() {
+  const container = document.getElementById('battleLogEntries');
+  if (!container) return;
+  container.innerHTML = '';
+}
+
+/** 追加一行战斗日志（可滚动，自动卷到底） */
+function addBattleLog(text, options = {}) {
+  const container = document.getElementById('battleLogEntries');
+  if (!container || text == null || text === '') return;
+
+  const line = document.createElement('div');
+  line.className = 'battle-log-line' + (options.round ? ' is-round' : '');
+  line.textContent = text;
+  container.appendChild(line);
+
+  while (container.children.length > BATTLE_LOG_MAX_LINES) {
+    container.removeChild(container.firstChild);
+  }
+
+  requestAnimationFrame(() => {
+    container.scrollTop = container.scrollHeight;
+  });
 }
 
 // 更新回合显示
@@ -602,6 +666,57 @@ function updateTurnDisplay() {
   const display = document.getElementById('turnDisplay');
   if (display) {
     display.textContent = `第 ${battleState.turnCount}/99 回合`;
+  }
+}
+
+/** 底部面板：当前行动者的真实气血/内力条（与立轴背景图里的装饰条区分） */
+function updateActorBarsHud() {
+  const hud = document.getElementById('actorBarsHud');
+  if (!hud || !battleState.turnOrder || battleState.turnOrder.length === 0) return;
+
+  const char = battleState.turnOrder[battleState.currentTurnIndex];
+  if (!char) {
+    hud.style.visibility = 'hidden';
+    return;
+  }
+  hud.style.visibility = 'visible';
+
+  const titleEl = document.getElementById('actorBarsTitle');
+  const hpFill = document.getElementById('actorBarHpFill');
+  const hpNums = document.getElementById('actorBarHpNums');
+  const hpTrack = document.getElementById('actorBarHpTrack');
+  const mpRow = document.getElementById('actorBarMpRow');
+  const mpFill = document.getElementById('actorBarMpFill');
+  const mpNums = document.getElementById('actorBarMpNums');
+  const mpTrack = document.getElementById('actorBarMpTrack');
+  if (!titleEl || !hpFill || !hpNums || !mpRow || !mpFill || !mpNums) return;
+
+  titleEl.textContent = `${char.name} · 行动中`;
+
+  const maxHp = Math.max(1, char.maxHp != null ? char.maxHp : (char.hp != null ? char.hp : 1));
+  const curHp = Math.max(0, char.hp != null ? char.hp : 0);
+  const hRatio = Math.max(0, Math.min(1, curHp / maxHp));
+  hpFill.style.width = `${hRatio * 100}%`;
+  hpNums.textContent = `${curHp} / ${maxHp}`;
+  if (hpTrack) {
+    hpTrack.setAttribute('aria-valuenow', String(Math.round(hRatio * 100)));
+    hpTrack.setAttribute('aria-valuetext', `${curHp} / ${maxHp}`);
+  }
+
+  const hasMp = char.maxMp != null && char.mp != null;
+  if (hasMp) {
+    mpRow.style.display = 'flex';
+    const maxMp = Math.max(1, char.maxMp);
+    const curMp = Math.max(0, char.mp);
+    const mRatio = Math.max(0, Math.min(1, curMp / maxMp));
+    mpFill.style.width = `${mRatio * 100}%`;
+    mpNums.textContent = `${curMp} / ${maxMp}`;
+    if (mpTrack) {
+      mpTrack.setAttribute('aria-valuenow', String(Math.round(mRatio * 100)));
+      mpTrack.setAttribute('aria-valuetext', `${curMp} / ${maxMp}`);
+    }
+  } else {
+    mpRow.style.display = 'none';
   }
 }
 
@@ -900,8 +1015,8 @@ function calculateInnerSkillHeal(char) {
             if (effect && effect.type === 'autoHeal') {
               const base = effect.baseValue || 5;
               const levelBonus = martial.currentLevel * (effect.levelMultiplier || 3);
-              const spiritBonus = (char.stats && char.stats.spirit || 0) * (effect.bonusPerPoint || 0.8);
-              healAmount = Math.floor(base + levelBonus + spiritBonus);
+              const qiBonus = (char.stats && char.stats.qi || 0) * (effect.bonusPerPoint || 0.8);
+              healAmount = Math.floor(base + levelBonus + qiBonus);
               console.log(`${martial.name}(${martial.currentLevel}级) 调息回血量: ${healAmount}`);
               break;
             }
@@ -980,7 +1095,11 @@ function applyInnerSkillHeal(char) {
     
     if (actualHeal > 0) {
       updateHpDisplay(char.id, char.hp);
-      addBattleLog(`${char.name} 内功调息，恢复 ${actualHeal} 点生命！`);
+      addBattleLog(
+        typeof BattleNarrative !== 'undefined'
+          ? BattleNarrative.innerHeal(char, actualHeal)
+          : `${char.name} 内功调息，恢复 ${actualHeal} 点生命！`
+      );
     }
   }
 }
@@ -1000,11 +1119,12 @@ function updateMpDisplay(charId, mp, isRecover = false) {
         mpElement.style.transform = 'scale(1.1)';
       }
       setTimeout(() => {
-        mpElement.style.color = '#2196f3';
+        mpElement.style.color = '#90caf9';
         mpElement.style.transform = 'scale(1)';
       }, 300);
     }
   }
+  updateActorBarsHud();
 }
 
 // 检查剑影
@@ -1025,7 +1145,11 @@ async function checkFollowAttack(actor, target, followSkill) {
     const damage = Math.floor(actor.attack * followSkill.damage);
     showDamageNumber(target.id, -damage, false);
     target.hp = Math.max(0, target.hp - damage);
-    addBattleLog(`${actor.name} 触发剑影，额外造成 ${damage} 点伤害！`);
+    addBattleLog(
+      typeof BattleNarrative !== 'undefined'
+        ? BattleNarrative.followAttack(actor, target, damage)
+        : `${actor.name} 触发剑影，额外造成 ${damage} 点伤害！`
+    );
     
     if (target.hp <= 0) {
       target.isDead = true;
@@ -1059,7 +1183,11 @@ async function useSkill(actor, skill, target) {
     const damage = Math.floor(actor.attack * multiplier);
     showDamageNumber(target.id, -damage);
     target.hp = Math.max(0, target.hp - damage);
-    addBattleLog(`${actor.name} 使用 ${skill.name}，造成 ${damage} 点伤害！`);
+    addBattleLog(
+      typeof BattleNarrative !== 'undefined'
+        ? BattleNarrative.skillUse(actor, skill, target, damage)
+        : `${actor.name} 使用 ${skill.name}，造成 ${damage} 点伤害！`
+    );
     await sleep(300);
     
     // 4. 检查剑影连击（角色还在中间）
@@ -1071,16 +1199,20 @@ async function useSkill(actor, skill, target) {
   if (target.hp <= 0) {
     target.isDead = true;
     target.hp = 0;
-    addBattleLog(`${target.name} 被击败！`);
-    
+    addBattleLog(
+      typeof BattleNarrative !== 'undefined'
+        ? BattleNarrative.defeated(target.name)
+        : `${target.name} 被击败！`
+    );
+
     const targetCard = document.getElementById(`char-${target.id}`);
     if (targetCard) {
       targetCard.classList.add('dead');
     }
   }
-  
+
   updateHpDisplay(target.id, target.hp);
-  
+
   // 5. 角色回到原位
   await showAttackReturn(actor);
 }
@@ -1106,6 +1238,7 @@ async function runBattleLoop() {
         if (battleState.turnCount > 99) battleState.turnCount = 99;
         updateTurnDisplay();
         calculateTurnOrder();
+        addBattleLog(`──────── 第 ${battleState.turnCount} 回合 ────────`, { round: true });
         
         // 从第二回合开始回血（第一回合不回血）
         if (battleState.turnCount >= 2) {
@@ -1173,12 +1306,20 @@ async function performAction(actor) {
       const damage = Math.floor(actor.attack * 0.6);
       showDamageNumber(target.id, -damage);
       target.hp = Math.max(0, target.hp - damage);
-      addBattleLog(`${actor.name} 普通攻击 ${target.name}，造成 ${damage} 点伤害！`);
+      addBattleLog(
+        typeof BattleNarrative !== 'undefined'
+          ? BattleNarrative.allyPlainAttack(actor, target, damage)
+          : `${actor.name} 普通攻击 ${target.name}，造成 ${damage} 点伤害！`
+      );
       
       if (target.hp <= 0) {
         target.isDead = true;
         target.hp = 0;
-        addBattleLog(`${target.name} 被击败！`);
+        addBattleLog(
+          typeof BattleNarrative !== 'undefined'
+            ? BattleNarrative.defeated(target.name)
+            : `${target.name} 被击败！`
+        );
         
         const targetCard = document.getElementById(`char-${target.id}`);
         if (targetCard) {
@@ -1198,28 +1339,44 @@ async function performAction(actor) {
     showSkillBubble(actor.id, '攻击');
     await sleep(400);
     
-    const result = calculateDamage(actor, target);
+    const result = window.BattleHitRoll.resolveDamage(actor, target);
     
     if (result.isDodge) {
       showBattleText(target.id, '闪避', 'miss');
       await showDodgeAnimation(target);
-      addBattleLog(`${actor.name} 攻击 ${target.name}，但被闪避了！`);
+      addBattleLog(
+        typeof BattleNarrative !== 'undefined'
+          ? BattleNarrative.dodge(actor, target)
+          : `${actor.name} 攻击 ${target.name}，但被闪避了！`
+      );
     } else if (result.isParry) {
       showBattleText(target.id, '招架', 'parry');
       showDamageNumber(target.id, -result.damage);
       target.hp = Math.max(0, target.hp - result.damage);
-      addBattleLog(`${actor.name} 攻击 ${target.name}，造成 ${result.damage} 点伤害（被招架）！`);
+      addBattleLog(
+        typeof BattleNarrative !== 'undefined'
+          ? BattleNarrative.parry(actor, target, result.damage)
+          : `${actor.name} 攻击 ${target.name}，造成 ${result.damage} 点伤害（被招架）！`
+      );
     } else {
       const critText = result.isCritical ? '暴击！' : '';
       showDamageNumber(target.id, -result.damage, result.isCritical);
       target.hp = Math.max(0, target.hp - result.damage);
-      addBattleLog(`${actor.name} ${critText}造成 ${result.damage} 点伤害！`);
+      addBattleLog(
+        typeof BattleNarrative !== 'undefined'
+          ? BattleNarrative.enemyHit(actor, target, result.damage, result.isCritical)
+          : `${actor.name} 攻击 ${target.name}，${critText}造成 ${result.damage} 点伤害！`
+      );
     }
 
     if (target.hp <= 0) {
       target.isDead = true;
       target.hp = 0;
-      addBattleLog(`${target.name} 被击败！`);
+      addBattleLog(
+        typeof BattleNarrative !== 'undefined'
+          ? BattleNarrative.defeated(target.name)
+          : `${target.name} 被击败！`
+      );
       
       const targetCard = document.getElementById(`char-${target.id}`);
       if (targetCard) {
@@ -1235,32 +1392,6 @@ async function performAction(actor) {
   }
   
   await sleep(600);
-}
-
-function calculateDamage(attacker, defender) {
-  const hitRoll = Math.random() * 100;
-  const dodgeRoll = Math.random() * 100;
-  const parryRoll = Math.random() * 100;
-
-  if (dodgeRoll < defender.dodge) {
-    return { damage: 0, isDodge: true, isParry: false, isCritical: false };
-  }
-
-  if (parryRoll < defender.parry && hitRoll >= attacker.hit) {
-    const baseDamage = attacker.attack - defender.defense;
-    const damage = Math.max(1, Math.floor(baseDamage * 0.5));
-    return { damage, isDodge: false, isParry: true, isCritical: false };
-  }
-
-  if (hitRoll < attacker.hit) {
-    const critRoll = Math.random() * 100;
-    const isCritical = critRoll < 15;
-    const baseDamage = attacker.attack - defender.defense;
-    const damage = Math.max(1, Math.floor(baseDamage * (isCritical ? 1.5 : 1)));
-    return { damage, isDodge: false, isParry: false, isCritical };
-  }
-
-  return { damage: 0, isDodge: false, isParry: false, isCritical: false };
 }
 
 async function showAttackAnimation(actor) {
@@ -1327,12 +1458,13 @@ function showBattleText(charId, text, type) {
 
 function updateHpDisplay(charId, hp) {
   const card = document.getElementById(`char-${charId}`);
-  if (!card) return;
-  
-  const hpElement = card.querySelector('.hp-text');
-  if (hpElement) {
-    hpElement.textContent = hp;
+  if (card) {
+    const hpElement = card.querySelector('.hp-text');
+    if (hpElement) {
+      hpElement.textContent = hp;
+    }
   }
+  updateActorBarsHud();
 }
 
 function updateActiveHighlight() {
@@ -1349,6 +1481,7 @@ function updateActiveHighlight() {
       currentCard.classList.add('active');
     }
   }
+  updateActorBarsHud();
 }
 
 async function showDodgeAnimation(char) {
@@ -1365,8 +1498,22 @@ async function showDodgeAnimation(char) {
   card.classList.remove('dodging');
 }
 
+/** 战斗结束：立即全黑（不做半透明过渡，避免底下战斗 UI 闪一下） */
+function playBattleExitBlackCover() {
+  return new Promise((resolve) => {
+    const el = document.createElement('div');
+    el.id = 'battleExitBlackCover';
+    el.setAttribute('aria-hidden', 'true');
+    el.style.cssText =
+      'position:fixed;inset:0;z-index:10000000;background:#000;opacity:1;pointer-events:none;';
+    document.body.appendChild(el);
+    requestAnimationFrame(() => resolve());
+  });
+}
+
 async function showSettlement() {
   const isVictory = battleState.enemyTeam.every(char => char.isDead);
+  addBattleLog(isVictory ? '──────── 战斗结束：胜利 ────────' : '──────── 战斗结束：败北 ────────', { round: true });
   const rewards = isVictory ? battleState.rewards : { exp: 0, gold: 0, expReward: 0 };
 
   if (isVictory) {
@@ -1374,28 +1521,94 @@ async function showSettlement() {
     rewards.exp = enemy.expReward || enemy.exp || 25;
     rewards.gold = enemy.goldReward || enemy.gold || 10;
     rewards.expReward = enemy.expReward || 17;
-  }
 
-  await showFloatText('胜利！', '#4caf50');
-  await sleep(50);
-  await showFloatText(`经验 +${rewards.exp}`, '#ffeb3b');
-  await sleep(50);
-  await showFloatText(`银两 +${rewards.gold}`, '#ff9800');
-  await sleep(50);
-  await showFloatText(`阅历 +${rewards.expReward}`, '#9c27b0');
-  await sleep(100);
+    updateBanditTaskProgress(enemy);
+
+    if (window.BattleSettlement) {
+      window.BattleSettlement.setPendingRewards({
+        exp: rewards.exp,
+        gold: rewards.gold,
+        expReward: rewards.expReward,
+        goldReward: rewards.gold
+      });
+      window.BattleSettlement.setPostBattleMapRewardFloats({
+        exp: rewards.exp,
+        gold: rewards.gold,
+        expReward: rewards.expReward
+      });
+    } else {
+      localStorage.setItem('pending_battle_rewards', JSON.stringify({
+        exp: rewards.exp,
+        gold: rewards.gold,
+        expReward: rewards.expReward,
+        goldReward: rewards.gold
+      }));
+      localStorage.setItem('battle_map_reward_floats', JSON.stringify({
+        exp: rewards.exp,
+        gold: rewards.gold,
+        expReward: rewards.expReward
+      }));
+    }
+  }
 
   if (isVictory) {
-    localStorage.setItem('pending_battle_rewards', JSON.stringify({
-      exp: rewards.exp,
-      gold: rewards.gold,
-      expReward: rewards.expReward
-    }));
+    await showFloatText('胜利！', '#4caf50');
+    await sleep(380);
+  } else {
+    await showFloatText('败北……', '#78909c');
+    await sleep(320);
   }
 
-  setTimeout(() => {
-    window.location.href = 'forest_map.html';
-  }, 500);
+  if (window.BattleSettlement) {
+    window.BattleSettlement.setBattleExitCinematicFlag();
+  } else {
+    localStorage.setItem('battle_exit_cinematic', '1');
+  }
+
+  await playBattleExitBlackCover();
+
+  window.location.href = battleState.returnMapHref || 'forest_map.html';
+}
+
+/**
+ * 更新山贼击杀任务进度
+ */
+function updateBanditTaskProgress(enemy) {
+  // 从localStorage获取玩家状态
+  const savedState = localStorage.getItem('playerState');
+  if (!savedState) return;
+  
+  let playerState = JSON.parse(savedState);
+  
+  // 检查是否有山贼任务
+  const banditTask = playerState.activeTasks && playerState.activeTasks['bandit_clear'];
+  if (!banditTask) return;
+  
+  // 检查敌人是否是山贼
+  if (enemy.id && enemy.id.includes('shanze')) {
+    // 增加击杀计数（适配新的数据结构）
+    if (banditTask.killCount !== undefined) {
+      banditTask.killCount++;
+    } else if (banditTask.progress && banditTask.progress.killCount !== undefined) {
+      banditTask.progress.killCount++;
+    }
+    
+    // 保存进度
+    localStorage.setItem('playerState', JSON.stringify(playerState));
+    
+    // 显示进度提示
+    const killCount = banditTask.killCount !== undefined ? banditTask.killCount : (banditTask.progress && banditTask.progress.killCount);
+    const targetKill = banditTask.targetKill !== undefined ? banditTask.targetKill : (banditTask.progress && banditTask.progress.targetKill);
+    console.log(`击杀山贼: ${killCount}/${targetKill}`);
+    
+    // 检查是否完成任务
+    if (killCount >= targetKill) {
+      banditTask.isCompleted = true;
+      banditTask.completed = true; // 同时设置两个标记兼容
+      console.log('🎯 任务完成！请前往澄心堂找赵恪领取奖励');
+      localStorage.setItem('playerState', JSON.stringify(playerState));
+    }
+  }
 }
 
 function showFloatText(text, color) {
@@ -1436,9 +1649,73 @@ function toggleAutoBattle() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(() => {
-    initBattle();
-  }, 200);
-  
+  const logPanel = document.getElementById('battleLogPanel');
+  const logToggle = document.getElementById('battleLogToggle');
+  if (logPanel && logToggle) {
+    logToggle.addEventListener('click', () => {
+      const collapsed = logPanel.classList.toggle('collapsed');
+      logToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      if (!collapsed) {
+        const entries = document.getElementById('battleLogEntries');
+        if (entries) {
+          requestAnimationFrame(() => {
+            entries.scrollTop = entries.scrollHeight;
+          });
+        }
+      }
+    });
+  }
+
+  const cineEl = document.getElementById('battlePageCinematicBlack');
+  const cineKey = window.BattleEntry && window.BattleEntry.KEYS && window.BattleEntry.KEYS.battleEnterCinematic;
+
+  setTimeout(async () => {
+    await initBattle();
+    if (cineEl && cineKey) {
+      const clearEntryChrome = () => {
+        localStorage.removeItem(cineKey);
+        document.documentElement.style.background = '';
+        document.body.style.background = '';
+        try {
+          cineEl.remove();
+        } catch (e) {
+          /* ignore */
+        }
+      };
+      cineEl.style.transition = 'opacity 0.42s ease-out';
+      const onEnd = (ev) => {
+        if (ev.propertyName !== 'opacity') return;
+        cineEl.removeEventListener('transitionend', onEnd);
+        clearEntryChrome();
+      };
+      cineEl.addEventListener('transitionend', onEnd);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          cineEl.style.opacity = '0';
+        });
+      });
+      setTimeout(() => {
+        if (!cineEl.parentNode) return;
+        cineEl.removeEventListener('transitionend', onEnd);
+        clearEntryChrome();
+      }, 700);
+    }
+  }, 0);
+
   document.getElementById('btnAuto').addEventListener('click', toggleAutoBattle);
 });
+
+(function attachBattleCinematicBlackIfNeeded() {
+  try {
+    const k = window.BattleEntry && window.BattleEntry.KEYS && window.BattleEntry.KEYS.battleEnterCinematic;
+    if (!k || localStorage.getItem(k) !== '1' || !document.body) return;
+    if (document.getElementById('battlePageCinematicBlack')) return;
+    const el = document.createElement('div');
+    el.id = 'battlePageCinematicBlack';
+    el.setAttribute('aria-hidden', 'true');
+    el.style.cssText = 'position:fixed;inset:0;z-index:2147483000;background:#000;opacity:1;pointer-events:none;';
+    document.body.appendChild(el);
+  } catch (e) {
+    /* ignore */
+  }
+})();

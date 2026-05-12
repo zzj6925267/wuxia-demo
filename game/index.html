@@ -181,7 +181,7 @@
     </div>
   </div>
 
-  <div class="version">v1.0.0</div>
+  <div class="version" id="appVersion">v0.0.9</div>
 
   <!-- 类型定义 -->
   <script src="js/types/index.js"></script>
@@ -203,6 +203,7 @@
   <script src="js/utils/dataMigration.js"></script>
   <script src="js/utils/dataBackup.js"></script>
   <script src="js/utils/validator.js"></script>
+  <script src="js/utils/battleSettlement.js"></script>
   <script src="js/tests/attributeTests.js"></script>
   
   <!-- 存储层 -->
@@ -232,13 +233,17 @@
     /**
      * 初始化
      */
-    function init() {
+    async function init() {
       // 执行数据迁移（处理版本升级兼容性）
       if (window.DataMigration) {
         window.DataMigration.init();
       }
-      window.game.init();
+      await window.game.init();
       bindEvents();
+      const el = document.getElementById('appVersion');
+      if (el && window.GAME_CONFIG && window.GAME_CONFIG.GAME_VERSION) {
+        el.textContent = 'v' + window.GAME_CONFIG.GAME_VERSION;
+      }
     }
 
     /**
@@ -269,10 +274,10 @@
     /**
      * 处理加载游戏
      */
-    function handleLoadGame() {
+    async function handleLoadGame() {
       mainMenu.style.display = 'none';
       saveSlots.classList.add('show');
-      renderSaveSlots();
+      await renderSaveSlots();
     }
 
     /**
@@ -285,10 +290,10 @@
     /**
      * 渲染存档槽位
      */
-    function renderSaveSlots() {
+    async function renderSaveSlots() {
       saveSlots.innerHTML = '';
 
-      const saves = window.game.saveManager.getAllSaveInfo();
+      const saves = await window.game.saveManager.getAllSaveInfo();
       
       for (let i = 0; i < 5; i++) {
         const save = saves.find(s => s.slot === i);
@@ -309,17 +314,17 @@
             <div class="save-date">${dateStr}</div>
           `;
           
-          slotElement.addEventListener('click', () => {
-            if (window.game.loadGame(i)) {
+          slotElement.addEventListener('click', async () => {
+            if (await window.game.loadGame(i)) {
               openMap();
             }
           });
         } else {
           slotElement.className = 'save-slot empty';
           slotElement.innerHTML = `<div class="save-name">存档 ${i + 1}</div><div class="save-info">空存档槽</div>`;
-          slotElement.addEventListener('click', () => {
+          slotElement.addEventListener('click', async () => {
             window.game.startNewGame();
-            window.game.saveGame(i);
+            await window.game.saveGame(i);
             openMap();
           });
         }
@@ -345,8 +350,8 @@
       window.location.href = './ui/map.html';
     }
 
-    // 初始化
-    init();
+    // 初始化（异步：需等存档探测与 Game 系统就绪）
+    init().catch((err) => console.error('游戏初始化失败:', err));
   </script>
 </body>
 </html>

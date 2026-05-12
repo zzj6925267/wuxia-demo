@@ -6,8 +6,30 @@
   <title>江湖舆图</title>
   <link rel="stylesheet" href="map.css">
   <link rel="stylesheet" href="character.css">
+  <script>
+    try {
+      if (localStorage.getItem('battle_exit_cinematic') === '1') {
+        document.documentElement.style.background = '#000';
+      }
+    } catch (e) {}
+  </script>
 </head>
 <body>
+  <script>
+    try {
+      if (localStorage.getItem('battle_exit_cinematic') === '1') {
+        document.documentElement.style.background = '#000';
+        if (document.body) document.body.style.background = '#000';
+        if (!document.getElementById('postBattleMapBlackout')) {
+          var __m = document.createElement('div');
+          __m.id = 'postBattleMapBlackout';
+          __m.setAttribute('aria-hidden', 'true');
+          __m.style.cssText = 'position:fixed;inset:0;z-index:2147483000;background:#000;opacity:1;pointer-events:none;transition:opacity 0.45s ease-out';
+          document.body.appendChild(__m);
+        }
+      }
+    } catch (e) {}
+  </script>
   <!-- 大地图容器 -->
   <div class="map-container" id="worldMap">
     <div class="map-header">
@@ -40,6 +62,7 @@
         <button class="btn-character" id="btnCharacter" onclick="toggleCharacterPanel()">👤 角色</button>
         <button class="btn-character" id="btnMartialArts" onclick="openMartialArts()">⚔️ 武学</button>
         <button class="btn-character" id="btnInventory" onclick="openInventory()">🎒 背包</button>
+        <button class="btn-character" id="btnTask" onclick="openTask()">📋 任务</button>
       </div>
     </div>
 
@@ -355,6 +378,7 @@
   <script src="../js/data/dialogs.js"></script>
   <script src="../js/data/items.js"></script>
   <script src="../js/utils/helpers.js"></script>
+  <script src="../js/utils/battleSettlement.js"></script>
   <script src="zhengyangMapData.js"></script>
   <script src="npcData.js"></script>
   <script src="martialArtsData.js"></script>
@@ -363,7 +387,6 @@
   <script src="../js/systems/PlayerSystem.js"></script>
   <script src="../js/systems/MapSystem.js"></script>
   <script src="../js/systems/DialogSystem.js"></script>
-  <script src="../js/systems/BattleSystem.js"></script>
   <script src="../js/systems/InventorySystem.js"></script>
   
   <!-- UI层 -->
@@ -394,10 +417,88 @@
       window.location.href = 'martialArts.html';
     }
 
+    function showWorldMapBattleRewardFloat(text, color, onDone) {
+      const floatDiv = document.createElement('div');
+      floatDiv.style.cssText = [
+        'position:fixed',
+        'top:52%',
+        'left:50%',
+        'transform:translate(-50%,0)',
+        'font-size:clamp(14px,2.5vw,20px)',
+        'font-weight:bold',
+        'color:' + (color || '#f4d03f'),
+        'text-shadow:0 1px 2px rgba(0,0,0,0.95),0 0 8px rgba(0,0,0,0.75)',
+        'z-index:99999',
+        'pointer-events:none',
+        'opacity:0',
+        'white-space:nowrap',
+        'max-width:min(92vw,420px)',
+        'overflow:hidden',
+        'text-overflow:ellipsis',
+        'will-change:transform,opacity',
+        'transition:transform 0.88s cubic-bezier(0.22,1,0.36,1),opacity 0.35s ease'
+      ].join(';');
+      floatDiv.textContent = text;
+      document.body.appendChild(floatDiv);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          floatDiv.style.opacity = '1';
+          floatDiv.style.transform = 'translate(-50%,calc(-22vh - 28px))';
+        });
+      });
+      setTimeout(() => {
+        floatDiv.style.opacity = '0';
+      }, 720);
+      setTimeout(() => {
+        try {
+          floatDiv.remove();
+        } catch (e) {}
+        if (typeof onDone === 'function') onDone();
+      }, 1000);
+    }
+
+    function playWorldMapPostBattleRewardFloats() {
+      let data = null;
+      if (window.BattleSettlement && typeof BattleSettlement.takePostBattleMapRewardFloats === 'function') {
+        data = BattleSettlement.takePostBattleMapRewardFloats();
+      } else {
+        const raw = localStorage.getItem('battle_map_reward_floats');
+        if (raw) {
+          try {
+            data = JSON.parse(raw);
+          } catch (e) {
+            data = null;
+          }
+          localStorage.removeItem('battle_map_reward_floats');
+        }
+      }
+      if (!data) return;
+      const exp = parseInt(data.exp, 10) || 0;
+      const gold = parseInt(data.gold, 10) || 0;
+      const expReward = parseInt(data.expReward, 10) || 0;
+      const lines = [];
+      if (exp > 0) lines.push([`经验 +${exp}`, '#ffeb3b']);
+      if (gold > 0) lines.push([`银两 +${gold}`, '#ff9800']);
+      if (expReward > 0) lines.push([`阅历 +${expReward}`, '#9c27b0']);
+      let i = 0;
+      function next() {
+        if (i >= lines.length) return;
+        const pair = lines[i++];
+        showWorldMapBattleRewardFloat(pair[0], pair[1], () => {
+          setTimeout(next, 380);
+        });
+      }
+      next();
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       initPlayerData();
 
-      // 处理待处理的战斗奖励
+      const exitBlack =
+        window.BattleSettlement && typeof BattleSettlement.attachPostBattleMapBlackout === 'function'
+          ? BattleSettlement.attachPostBattleMapBlackout()
+          : null;
+
       applyPendingBattleRewards();
 
       // 检查 localStorage 是否需要自动打开角色面板
@@ -420,7 +521,8 @@
 
       // 从 localStorage 读取当前位置，如果没有则使用默认位置
       const savedLocation = localStorage.getItem('currentLocation');
-      const currentLocation = savedLocation || 'yuelai_inn';
+      let currentLocation = savedLocation || 'yuelai_inn';
+      if (currentLocation === 'mysterious_cave') currentLocation = 'qingstone_town';
       // 清除保存的位置，避免下次加载时仍然使用
       localStorage.removeItem('currentLocation');
       
@@ -447,12 +549,20 @@
           if (goldEl) goldEl.textContent = gold;
         } catch (e) {}
       }
+
+      if (exitBlack && window.BattleSettlement) {
+        BattleSettlement.dismissPostBattleMapBlackout(exitBlack, playWorldMapPostBattleRewardFloats);
+      } else {
+        playWorldMapPostBattleRewardFloats();
+      }
     });
 
     // 处理待处理的战斗奖励
     function applyPendingBattleRewards() {
       console.log('=== map.html applyPendingBattleRewards 开始 ===');
-      const pendingData = localStorage.getItem('pending_battle_rewards');
+      const pendingData = window.BattleSettlement
+        ? window.BattleSettlement.getPendingRaw()
+        : localStorage.getItem('pending_battle_rewards');
       console.log('pending_battle_rewards:', pendingData);
       if (!pendingData) {
         console.log('没有待处理的战斗奖励');
@@ -513,20 +623,19 @@
           }
         }
 
-        // 应用银两奖励（转换为数字）
-        const goldReward = parseInt(rewards.goldReward) || 0;
-        if (goldReward > 0) {
+        // 与战斗结算 setPendingRewards 字段对齐（与 forest 小地图一致：exp 写入 player.exp）
+        const goldAdd = parseInt(rewards.gold, 10) || parseInt(rewards.goldReward, 10) || 0;
+        if (goldAdd > 0) {
           if (!save.player.gold) save.player.gold = 0;
-          save.player.gold += goldReward;
-          console.log(`银两 +${goldReward}, 当前: ${save.player.gold}`);
+          save.player.gold += goldAdd;
+          console.log(`银两 +${goldAdd}, 当前: ${save.player.gold}`);
         }
 
-        // 应用阅历奖励（转换为数字，注意字段名是 exp，不是 experience）
-        const expReward = parseInt(rewards.expReward) || 0;
-        if (expReward > 0) {
+        const expAdd = parseInt(rewards.exp, 10) || parseInt(rewards.expReward, 10) || 0;
+        if (expAdd > 0) {
           if (!save.player.exp) save.player.exp = 0;
-          save.player.exp += expReward;
-          console.log(`阅历 +${rewards.expReward}, 当前: ${save.player.exp}`);
+          save.player.exp += expAdd;
+          console.log(`阅历 +${expAdd}, 当前: ${save.player.exp}`);
         }
 
         // 保存存档
@@ -540,7 +649,11 @@
         }
 
         // 清除待处理奖励
-        localStorage.removeItem('pending_battle_rewards');
+        if (window.BattleSettlement) {
+          window.BattleSettlement.clearPendingRewards();
+        } else {
+          localStorage.removeItem('pending_battle_rewards');
+        }
         console.log('战斗奖励已应用');
       } catch (error) {
         console.error('应用战斗奖励失败:', error);

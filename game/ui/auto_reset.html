@@ -1,0 +1,40 @@
+
+&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;title&gt;自动重置玩家状态&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;script&gt;
+        console.log('开始重置玩家状态...');
+        
+        // 清除所有玩家相关的localStorage数据
+        localStorage.removeItem('playerState');
+        localStorage.removeItem('playerMartialArts');
+        
+        // 清除所有可能的玩家数据
+        let keysToRemove = [];
+        for (let i = 0; i &lt; localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key &amp;&amp; (key.includes('player') || key.includes('skill') || key.includes('task'))) {
+                keysToRemove.push(key);
+            }
+        }
+        keysToRemove.forEach(key =&gt; localStorage.removeItem(key));
+        
+        console.log('玩家状态已成功重置！已清除 ' + (keysToRemove.length + 2) + ' 条数据。');
+        console.log('所有武功已恢复到未学习状态，贡献值已重置为0。');
+        
+        // 显示消息
+        document.body.innerHTML = `
+            &lt;div style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px;"&gt;
+                &lt;h2 style="color: green;"&gt;玩家状态已成功重置！&lt;/h2&gt;
+                &lt;p&gt;已清除 ${keysToRemove.length + 2} 条数据。&lt;/p&gt;
+                &lt;p&gt;所有武功已恢复到未学习状态，贡献值已重置为0。&lt;/p&gt;
+                &lt;p&gt;&lt;a href="map.html" style="padding: 10px 20px; background: #4caf50; color: white; text-decoration: none; border-radius: 5px;"&gt;返回大地图&lt;/a&gt;&lt;/p&gt;
+            &lt;/div&gt;
+        `;
+    &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;

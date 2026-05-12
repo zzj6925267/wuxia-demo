@@ -37,7 +37,7 @@ class SaveManager {
       const saveData = {
         player: this.playerSystem.getPlayer(),
         timestamp: Date.now(),
-        version: '1.0.0'
+        version: window.GAME_CONFIG.GAME_VERSION
       };
 
       const key = `game_save_${slot}`;
@@ -78,6 +78,9 @@ class SaveManager {
       }
 
       this.playerSystem.player = window.deepClone(data.player);
+      if (typeof this.playerSystem.recalculateDerivedStats === 'function') {
+        this.playerSystem.recalculateDerivedStats();
+      }
       console.log(`Game loaded from slot ${slot}`);
       return true;
     } catch (error) {

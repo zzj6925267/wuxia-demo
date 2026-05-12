@@ -5,8 +5,25 @@
 // 玩家状态
 let playerState = {
   joinedFaction: false,
-  learnedSkills: []
+  learnedSkills: [],
+  activeTasks: {},
+  factionContribution: 0
 };
+
+// 从localStorage加载状态
+function loadPlayerState() {
+  const savedState = localStorage.getItem('playerState');
+  if (savedState) {
+    const loadedState = JSON.parse(savedState);
+    playerState.joinedFaction = loadedState.joinedFaction || false;
+    playerState.learnedSkills = loadedState.learnedSkills || [];
+    playerState.activeTasks = loadedState.activeTasks || {};
+    playerState.factionContribution = loadedState.factionContribution || 0;
+  }
+}
+
+// 初始化时加载状态
+loadPlayerState();
 
 // NPC数据
 const ZHENGYANG_NPCS = {
@@ -69,9 +86,8 @@ const ZHENGYANG_NPCS = {
       default: {
         text: '嗯？你不在剑坪练剑，来这里做什么？',
         options: [
-          { text: '长老安好，弟子只是路过', next: 'pass' },
           { text: '弟子有门规方面的疑问', next: 'rule' },
-          { text: '想请教长老武学心得', next: 'martial' }
+          { text: '门派任务', next: 'faction_task' }
         ]
       },
       pass: {
@@ -93,11 +109,116 @@ const ZHENGYANG_NPCS = {
           { text: '弟子谨记', next: 'default' }
         ]
       },
-      martial: {
-        text: '武学心得？去看剑痕碑吧，那里有历代掌门的体悟，比我说的有用。',
+      faction_task: {
+        text: '门派任务？很好，你有这份心很好。正阳派正值用人之际，有几件事需要有人去办。',
+        getOptions: () => {
+          // 获取任务状态
+          const savedState = localStorage.getItem('playerState');
+          let state = savedState ? JSON.parse(savedState) : {};
+          
+          // 确保activeTasks存在
+          if (!state.activeTasks) state.activeTasks = {};
+          
+          const tasks = [
+            { id: 'collect_herbs', name: '采集灵芝草', reward: '100门派贡献' },
+            { id: 'bandit_clear', name: '清理山门前山贼', reward: '200门派贡献' },
+            { id: 'organize_books', name: '整理藏经楼书籍', reward: '150门派贡献' }
+          ];
+          
+          const options = [];
+          
+          tasks.forEach(task => {
+            let displayText = '';
+            let nextNode = '';
+            
+            // 检查任务是否已接取
+            const taskData = state.activeTasks && state.activeTasks[task.id];
+            if (taskData) {
+              if (taskData.completed) {
+                displayText = `【已完成】${task.name} - ${task.reward}`;
+                nextNode = `task_complete_${task.id}`;
+              } else {
+                // 显示进度
+                const collected = taskData.collected || 0;
+                let progress = task.id === 'collect_herbs' ? ` (${collected}/5)` : '';
+                displayText = `【已接取】${task.name}${progress} - ${task.reward}`;
+                nextNode = 'task_list';
+              }
+            } else {
+              displayText = `【未接取】${task.name} - ${task.reward}`;
+              nextNode = `task_${task.id}`;
+            }
+            
+            options.push({ text: displayText, next: nextNode });
+          });
+          
+          options.push({ text: '容我考虑一下', next: 'default' });
+          
+          return options;
+        }
+      },
+      task_list: {
+        text: '这是当前的任务列表。',
         options: [
-          { text: '弟子明白了', next: 'default' }
+          { text: '好的', next: 'faction_task' }
         ]
+      },
+      task_collect_herbs: {
+        text: '好，山涧溪旁有灵芝草生长。你去采5朵灵芝草回来。完成后可获得100门派贡献。',
+        options: [
+          { text: '弟子这就去办！', next: 'default' }
+        ],
+        action: 'accept_task',
+        task: 'collect_herbs',
+        reward: { contribution: 100 }
+      },
+      task_bandit_clear: {
+        text: '山门前黑风岭有伙山贼作乱，伤了几个路过的百姓。你去清理一下。完成后可获得200门派贡献。',
+        options: [
+          { text: '弟子领命！', next: 'default' }
+        ],
+        action: 'accept_task',
+        task: 'bandit_clear',
+        reward: { contribution: 200 }
+      },
+      task_organize_books: {
+        text: '藏经楼的书有些乱了，涂长老一个人忙不过来。你去藏经楼找涂长老，帮他整理一下书籍吧。完成后可获得150门派贡献。',
+        options: [
+          { text: '弟子这就去帮忙！', next: 'default' }
+        ],
+        action: 'accept_task',
+        task: 'organize_books',
+        reward: { contribution: 150 }
+      },
+      task_complete_collect_herbs: {
+        getText: () => {
+          return '很好！你完成了采集灵芝草的任务，这是你的奖励。100门派贡献已计入你的账下。';
+        },
+        options: [
+          { text: '多谢长老！', next: 'faction_task' }
+        ],
+        action: 'complete_single_task',
+        task: 'collect_herbs'
+      },
+      task_complete_bandit_clear: {
+        getText: () => {
+          return '很好！你完成了清理山门前山贼的任务，这是你的奖励。200门派贡献已计入你的账下。';
+        },
+        options: [
+          { text: '多谢长老！', next: 'faction_task' }
+        ],
+        action: 'complete_single_task',
+        task: 'bandit_clear'
+      },
+      task_complete_organize_books: {
+        getText: () => {
+          return '很好！藏经楼的书籍已经整整齐齐了！这是你的奖励，150门派贡献已计入你的账下。';
+        },
+        options: [
+          { text: '多谢长老！', next: 'faction_task' }
+        ],
+        action: 'complete_single_task',
+        task: 'organize_books'
       }
     }
   },
@@ -109,12 +230,41 @@ const ZHENGYANG_NPCS = {
     location: ['gui_zhen_lou'],
     dialogues: {
       default: {
-        text: '年轻人，你来到藏经楼，是想借阅典籍吗？',
-        options: [
-          { text: '想借阅基础剑谱', next: 'basic' },
-          { text: '想见识镇派绝学', next: 'secret' },
-          { text: '只是好奇进来看看', next: 'curious' }
-        ]
+        getText: () => {
+          // 检查是否有整理书籍的任务
+          const savedState = localStorage.getItem('playerState');
+          if (savedState) {
+            const state = JSON.parse(savedState);
+            if (state.activeTasks && state.activeTasks.organize_books) {
+              const task = state.activeTasks.organize_books;
+              if (!(task.completed || task.isCompleted)) {
+                return '太好了，你是来帮我整理书籍的吧！正好这架子上的书乱了，辛苦你了！';
+              } else {
+                return '书籍都整理好了！你去赵长老那里领赏吧！';
+              }
+            }
+          }
+          return '年轻人，你来到藏经楼，是想借阅典籍吗？';
+        },
+        getOptions: () => {
+          const savedState = localStorage.getItem('playerState');
+          if (savedState) {
+            const state = JSON.parse(savedState);
+            if (state.activeTasks && state.activeTasks.organize_books) {
+              const task = state.activeTasks.organize_books;
+              if (!(task.completed || task.isCompleted)) {
+                return [
+                  { text: '弟子这就开始整理！', action: 'startOrganizeBooks' }
+                ];
+              }
+            }
+          }
+          return [
+            { text: '想借阅基础剑谱', next: 'basic' },
+            { text: '想见识镇派绝学', next: 'secret' },
+            { text: '只是好奇进来看看', next: 'curious' }
+          ];
+        }
       },
       basic: {
         text: '基础剑谱在一楼，自己去挑吧。记住，看完要归位。',
@@ -215,10 +365,14 @@ const ZHENGYANG_NPCS = {
     location: ['ningyang_bieyuan'],
     dialogues: {
       default: {
-        getText: () => playerState.joinedFaction 
-          ? '大师兄！又见面了，今天想练点什么？' 
-          : '呀，是你！又见面了。你也是来正阳派学艺的吗？',
+        getText: () => {
+          loadPlayerState(); // 每次都重新加载最新状态
+          return playerState.joinedFaction 
+            ? '大师兄！又见面了，今天想练点什么？' 
+            : '呀，是你！又见面了。你也是来正阳派学艺的吗？';
+        },
         getOptions: () => {
+          loadPlayerState(); // 每次都重新加载最新状态
           if (playerState.joinedFaction) {
             return [
               { text: '请教武功', next: 'learn' },
@@ -252,17 +406,27 @@ const ZHENGYANG_NPCS = {
         ]
       },
       learn: {
-        text: '想学武功吗？我可以教你一些入门的功夫。想学哪一样？',
+        getText: () => {
+          loadPlayerState(); // 每次都重新加载最新状态
+          const savedState = localStorage.getItem('playerState');
+          let contribution = 0;
+          if (savedState) {
+            const state = JSON.parse(savedState);
+            contribution = state.factionContribution || 0;
+          }
+          return `想学武功吗？我可以教你一些入门的功夫。想学哪一样？（贡献：${contribution}）`;
+        },
         getOptions: () => {
+          loadPlayerState(); // 每次都重新加载最新状态
           const options = [];
           if (!playerState.learnedSkills.includes('正阳基础剑式')) {
-            options.push({ text: '正阳基础剑式', next: 'sword_skill' });
+            options.push({ text: '正阳基础剑式（50贡献）', next: 'confirm_sword' });
           }
           if (!playerState.learnedSkills.includes('正阳吐纳诀')) {
-            options.push({ text: '正阳吐纳诀', next: 'breath_skill' });
+            options.push({ text: '正阳吐纳诀（50贡献）', next: 'confirm_breath' });
           }
           if (!playerState.learnedSkills.includes('踏云步')) {
-            options.push({ text: '踏云步', next: 'step_skill' });
+            options.push({ text: '踏云步（50贡献）', next: 'confirm_step' });
           }
           if (options.length === 0) {
             return [{ text: '我已经学会所有入门功夫了', next: 'chat' }];
@@ -270,28 +434,31 @@ const ZHENGYANG_NPCS = {
           return options;
         }
       },
-      sword_skill: {
-        text: '好，我来教你正阳基础剑式的要诀...看好了...',
+      confirm_sword: {
+        text: '确定是正阳基础剑式吗？',
         options: [
-          { text: '多谢师姐！', next: 'default' }
+          { text: '确定！', next: 'default' },
+          { text: '我再想想', next: 'learn' }
         ],
         action: 'learn_skill',
         skill: '正阳基础剑式',
         delay: true
       },
-      breath_skill: {
-        text: '正阳吐纳诀是我们门派的基础内功，来，跟着我一起调息...',
+      confirm_breath: {
+        text: '确定是正阳吐纳诀吗？',
         options: [
-          { text: '多谢师姐！', next: 'default' }
+          { text: '确定！', next: 'default' },
+          { text: '我再想想', next: 'learn' }
         ],
         action: 'learn_skill',
         skill: '正阳吐纳诀',
         delay: true
       },
-      step_skill: {
-        text: '踏云步是一门轻盈的轻功，身法飘逸，来，我示范一遍给你看...',
+      confirm_step: {
+        text: '确定是踏云步吗？',
         options: [
-          { text: '多谢师姐！', next: 'default' }
+          { text: '确定！', next: 'default' },
+          { text: '我再想想', next: 'learn' }
         ],
         action: 'learn_skill',
         skill: '踏云步',
@@ -309,3 +476,106 @@ const ZHENGYANG_NPCS = {
 
 // 暴露到全局
 window.ZHENGYANG_NPCS = ZHENGYANG_NPCS;
+window.loadPlayerState = loadPlayerState; // 暴露加载状态函数
+
+// 门派任务数据
+const FACTION_TASKS = [
+  {
+    id: 'herb_collection',
+    name: '下山采购药材',
+    text: '嗯，眼下有个任务：下山采购药材。山下回春堂需要一些药材，你去采十株千年灵芝和五株天山雪莲回来。完成后可获得100门派贡献。',
+    difficulty: '简单',
+    reward: { contribution: 100 }
+  },
+  {
+    id: 'bandit_clear',
+    name: '清理山门前山贼',
+    text: '嗯，眼下有个任务：清理山门前的山贼。黑风岭有伙山贼作乱，伤了几个路过的百姓，你去清理一下。完成后可获得200门派贡献。',
+    difficulty: '普通',
+    reward: { contribution: 200 }
+  },
+  {
+    id: 'bloodknife_investigate',
+    name: '追查血刀门踪迹',
+    text: '嗯，眼下有个任务：追查血刀门踪迹。血刀门最近在附近活动频繁，你去打探一下他们的动向。完成后可获得500门派贡献。',
+    difficulty: '困难',
+    reward: { contribution: 500 }
+  }
+];
+
+/**
+ * 获取可用的门派任务（排除已接取的任务）
+ */
+function getAvailableFactionTasks() {
+  // 如果没有当前任务，所有任务都可用
+  if (!playerState.currentTask) {
+    return FACTION_TASKS;
+  }
+  
+  // 返回未接取的任务
+  return FACTION_TASKS.filter(task => task.id !== playerState.currentTask);
+}
+
+// 暴露任务相关函数到全局
+window.FACTION_TASKS = FACTION_TASKS;
+window.getAvailableFactionTasks = getAvailableFactionTasks;
+
+// 重置玩家状态函数 - 用于清除所有已学武功、门派贡献等
+window.resetPlayerState = function() {
+  console.log('========== 开始重置玩家状态 ==========');
+  
+  // 显示当前localStorage内容
+  console.log('重置前 localStorage 内容:');
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    console.log('  ' + key + ':', localStorage.getItem(key));
+  }
+  
+  // 清除主要的玩家状态
+  localStorage.removeItem('playerState');
+  localStorage.removeItem('playerMartialArts');
+  
+  // 清除所有可能的玩家数据
+  let keysToRemove = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key) {
+      if (key.includes('player') || 
+          key.includes('skill') || 
+          key.includes('task') ||
+          key.includes('faction') ||
+          key.includes('contribution')) {
+        keysToRemove.push(key);
+      }
+    }
+  }
+  keysToRemove.forEach(function(key) {
+    localStorage.removeItem(key);
+  });
+  
+  console.log('========== 重置完成 ==========');
+  console.log('已清除 ' + (keysToRemove.length + 2) + ' 条数据');
+  console.log('所有武功已恢复到未学习状态，贡献值已重置为0');
+  
+  alert('玩家状态已成功重置！\n所有武功已恢复到未学习状态，贡献值已重置为0。\n页面将自动刷新。');
+  
+  // 刷新页面
+  location.reload();
+};
+
+// 添加贡献函数
+window.addContribution = function(amount) {
+  const savedState = localStorage.getItem('playerState');
+  let state = savedState ? JSON.parse(savedState) : {};
+  
+  if (!state.factionContribution) state.factionContribution = 0;
+  state.factionContribution += amount;
+  
+  localStorage.setItem('playerState', JSON.stringify(state));
+  
+  console.log('已添加 ' + amount + ' 门派贡献，当前贡献：' + state.factionContribution);
+  alert('已添加 ' + amount + ' 门派贡献！\n当前贡献：' + state.factionContribution);
+};
+
+console.log('玩家状态重置函数已加载！请在浏览器控制台输入 resetPlayerState() 来重置。');
+console.log('添加贡献函数已加载！请在浏览器控制台输入 addContribution(500) 来添加500贡献。');

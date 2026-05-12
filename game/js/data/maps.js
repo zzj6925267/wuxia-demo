@@ -14,7 +14,7 @@ const MAP_LOCATIONS = {
     type: 'town',
     x: 200,
     y: 350,
-    connections: ['tianji_market', 'broken_temple', 'mysterious_cave'],
+    connections: ['tianji_market', 'broken_temple', 'qingstone_town'],
     icon: '🏠',
     isSafe: true
   },
@@ -25,7 +25,7 @@ const MAP_LOCATIONS = {
     type: 'market',
     x: 380,
     y: 220,
-    connections: ['yuelai_inn', 'liequan_clan', 'mysterious_cave'],
+    connections: ['yuelai_inn', 'liequan_clan', 'qingstone_town'],
     icon: '🏪',
     isSafe: true
   },
@@ -47,20 +47,20 @@ const MAP_LOCATIONS = {
     type: 'clan',
     x: 720,
     y: 320,
-    connections: ['liequan_clan', 'broken_cliff', 'mysterious_cave'],
+    connections: ['liequan_clan', 'broken_cliff', 'qingstone_town'],
     icon: '🗡️',
     isSafe: false
   },
-  mysterious_cave: {
-    id: 'mysterious_cave',
-    name: '神秘山洞',
-    description: '隐藏在深山之中的神秘洞穴，相传有宝藏',
-    type: 'dungeon',
+  qingstone_town: {
+    id: 'qingstone_town',
+    name: '青石镇',
+    description: '依山傍水的江湖小镇，青石板路蜿蜒入云。悦来分号、铁匠药铺、东市杂摊一应俱全，告示墙上墨迹未干，常有新鲜事。',
+    type: 'town',
     x: 520,
     y: 450,
     connections: ['yuelai_inn', 'tianji_market', 'xuedao_clan', 'zhengyang_clan'],
-    icon: '🕳️',
-    isSafe: false
+    icon: '🏘️',
+    isSafe: true
   },
   broken_temple: {
     id: 'broken_temple',
@@ -80,7 +80,7 @@ const MAP_LOCATIONS = {
     type: 'clan',
     x: 450,
     y: 580,
-    connections: ['broken_temple', 'mysterious_cave', 'broken_cliff'],
+    connections: ['broken_temple', 'qingstone_town', 'broken_cliff'],
     icon: '🏰',
     isSafe: true
   },
@@ -114,13 +114,13 @@ const MAP_LOCATIONS = {
 const ALL_CONNECTIONS = [
   ['yuelai_inn', 'tianji_market'],
   ['yuelai_inn', 'broken_temple'],
-  ['yuelai_inn', 'mysterious_cave'],
+  ['yuelai_inn', 'qingstone_town'],
   ['tianji_market', 'liequan_clan'],
-  ['tianji_market', 'mysterious_cave'],
+  ['tianji_market', 'qingstone_town'],
   ['liequan_clan', 'xuedao_clan'],
   ['xuedao_clan', 'broken_cliff'],
-  ['xuedao_clan', 'mysterious_cave'],
-  ['mysterious_cave', 'zhengyang_clan'],
+  ['xuedao_clan', 'qingstone_town'],
+  ['qingstone_town', 'zhengyang_clan'],
   ['broken_temple', 'zhengyang_clan'],
   ['broken_temple', 'forest'],
   ['zhengyang_clan', 'broken_cliff']

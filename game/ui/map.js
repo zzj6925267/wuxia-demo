@@ -24,6 +24,10 @@ let currentZhengyangBuilding = 'menkou';
 let currentDialogue = null;
 let currentNpc = null;
 
+// 飘字队列
+let floatTextQueue = [];
+let isShowingFloatText = false;
+
 // DOM元素缓存
 const UI = {
   worldMap: document.getElementById('worldMap'),
@@ -193,7 +197,14 @@ function updateLocationPanel() {
   UI.locationDesc.textContent = location.description;
   UI.locationStatus.innerHTML = `<span class="status-tag ${location.isSafe ? 'safe' : 'danger'}">${location.isSafe ? '安全区域' : '危险区域'}</span>`;
   
-  UI.btnExplore.textContent = location.id === 'zhengyang_clan' ? '进入门派' : (location.id === 'forest' ? '探索山林' : '探索此地');
+  UI.btnExplore.textContent =
+    location.id === 'zhengyang_clan'
+      ? '进入门派'
+      : location.id === 'forest'
+        ? '探索山林'
+        : location.id === 'qingstone_town'
+          ? '进入青石镇'
+          : '探索此地';
 }
 
 /**
@@ -207,6 +218,8 @@ function handleExplore() {
     enterZhengyangMap();
   } else if (location.id === 'forest') {
     window.location.href = 'forest_map.html';
+  } else if (location.id === 'qingstone_town') {
+    window.location.href = 'qingstone_map.html';
   } else {
     alert(`\u63A2\u7D22 ${location.name}...\n\n${location.description}`);
     
@@ -233,6 +246,9 @@ function enterZhengyangMap() {
  * 返回大地图
  */
 function goBackToWorldMap() {
+  // 离开门派前先关闭对话面板
+  closeDialogue();
+  
   UI.zhengyangMap.style.display = 'none';
   UI.worldMap.style.display = 'flex';
 }
@@ -319,6 +335,9 @@ function drawZhengyangNode(building, isCurrent, isAvailable) {
  * 正阳派内移动
  */
 function travelZhengyang(buildingId) {
+  // 移动前先关闭对话面板，清除状态
+  closeDialogue();
+  
   currentZhengyangBuilding = buildingId;
   renderZhengyangMap();
   updateZhengyangPanel();
@@ -379,6 +398,11 @@ function startDialogue(npcId) {
   currentNpc = ZHENGYANG_NPCS[npcId];
   currentDialogue = 'default';
   
+  // 重新加载玩家状态，确保贡献显示是最新的
+  if (typeof loadPlayerState === 'function') {
+    loadPlayerState();
+  }
+  
   showDialogue();
 }
 
@@ -397,10 +421,6 @@ function showDialogue() {
   const fullText = `${currentNpc.name}：${text}`;
   
   UI.dialogueText.textContent = '';
-  
-  if (dialogue.action) {
-    executeAction(dialogue.action, dialogue.skill, dialogue.delay);
-  }
   
   UI.dialogueOptions.innerHTML = '';
   
@@ -443,31 +463,28 @@ function typeWriter(text, callback) {
 }
 
 /**
- * 执行动作
+ * 显示飘字效果（带队列防止重叠）
  */
-function executeAction(action, skillName, delay = false) {
-  if (action === 'join_faction') {
-    playerState.joinedFaction = true;
-    showFloatText('✓ 加入正阳派', '#4caf50');
-  } else if (action === 'learn_skill' && skillName) {
-    if (!playerState.learnedSkills.includes(skillName)) {
-      playerState.learnedSkills.push(skillName);
-    }
-    
-    if (delay) {
-      showLoadingDots(() => {
-        showFloatText(`✓ 已学会 ${skillName}`, '#4caf50');
-      });
-    } else {
-      showFloatText(`✓ 已学会 ${skillName}`, '#4caf50');
-    }
+function showFloatText(text, color) {
+  // 添加到队列
+  floatTextQueue.push({ text, color });
+  
+  // 如果没有正在显示的飘字，直接显示
+  if (!isShowingFloatText) {
+    processFloatTextQueue();
   }
 }
 
-/**
- * 显示飘字效果
- */
-function showFloatText(text, color) {
+// 处理飘字队列
+function processFloatTextQueue() {
+  if (floatTextQueue.length === 0) {
+    isShowingFloatText = false;
+    return;
+  }
+  
+  isShowingFloatText = true;
+  const { text, color } = floatTextQueue.shift();
+  
   const floatDiv = document.createElement('div');
   floatDiv.className = 'float-text';
   floatDiv.textContent = text;
@@ -497,6 +514,8 @@ function showFloatText(text, color) {
   
   setTimeout(() => {
     document.body.removeChild(floatDiv);
+    // 当前飘字显示完，处理下一个
+    processFloatTextQueue();
   }, 3500);
 }
 
@@ -525,14 +544,286 @@ function selectDialogueOption(optionIndex) {
   
   const dialogue = currentNpc.dialogues[currentDialogue];
   const options = dialogue.getOptions ? dialogue.getOptions() : dialogue.options;
-  const nextDialogue = options[optionIndex].next;
+  const selectedOption = options[optionIndex];
+  const nextDialogue = selectedOption.next;
   
-  if (nextDialogue && currentNpc.dialogues[nextDialogue]) {
-    currentDialogue = nextDialogue;
-    showDialogue();
-  } else {
-    closeDialogue();
+  // 检查选项是否有单独的 action
+  if (selectedOption.action) {
+    if (selectedOption.action === 'startOrganizeBooks') {
+      // 直接调用整理书籍函数
+      startOrganizeBooks();
+      return; // 不继续跳转
+    }
+    // 其他选项 action 可以在这里添加
   }
+  // 如果是学习技能的确认对话框
+  else if (dialogue.action === 'learn_skill') {
+    // 只有点击"确定！"选项时才执行学习技能
+    if (selectedOption.text === '确定！') {
+      handleDialogueAction(dialogue, () => {
+        if (nextDialogue && currentNpc.dialogues[nextDialogue]) {
+          currentDialogue = nextDialogue;
+          showDialogue();
+        } else {
+          closeDialogue();
+        }
+      });
+    } else {
+      // 点击"我再想想"或其他选项，直接跳转
+      if (nextDialogue && currentNpc.dialogues[nextDialogue]) {
+        currentDialogue = nextDialogue;
+        showDialogue();
+      } else {
+        closeDialogue();
+      }
+    }
+  } else {
+    // 处理其他动作
+    if (dialogue.action) {
+      handleDialogueAction(dialogue);
+    }
+    
+    if (nextDialogue && currentNpc.dialogues[nextDialogue]) {
+      currentDialogue = nextDialogue;
+      showDialogue();
+    } else {
+      closeDialogue();
+    }
+  }
+}
+
+/**
+ * 处理对话动作
+ * 返回是否成功处理（false表示需要停留在当前对话）
+ */
+function handleDialogueAction(dialogue, callback) {
+  const action = dialogue.action;
+  
+  if (action === 'join_faction') {
+    // 检查是否已经加入门派
+    if (!playerState.joinedFaction) {
+      playerState.joinedFaction = true;
+      // 保存状态到localStorage
+      const savedState = localStorage.getItem('playerState');
+      let state = savedState ? JSON.parse(savedState) : {};
+      
+      // 确保所有必要的属性都存在
+      state.joinedFaction = true;
+      if (!state.learnedSkills) state.learnedSkills = [];
+      if (state.factionContribution === undefined) state.factionContribution = 0;
+      if (!state.activeTasks) state.activeTasks = {};
+      
+      localStorage.setItem('playerState', JSON.stringify(state));
+      showFloatText('✓ 加入正阳派', '#4caf50');
+    }
+  } else if (action === 'learn_skill' && dialogue.skill) {
+    // 从localStorage获取玩家状态
+    const savedState = localStorage.getItem('playerState');
+    let playerStateFromStorage = savedState ? JSON.parse(savedState) : {};
+    
+    // 确保所有必要的属性都存在
+    if (!playerStateFromStorage.learnedSkills) playerStateFromStorage.learnedSkills = [];
+    if (playerStateFromStorage.factionContribution === undefined) playerStateFromStorage.factionContribution = 0;
+    
+    // 检查是否已经学会
+    if (playerStateFromStorage.learnedSkills.includes(dialogue.skill)) {
+      showFloatText('你已经学会这个技能了', '#ff9800');
+      // 不继续跳转，让用户留在当前对话
+      return;
+    }
+    
+    // 检查贡献是否足够
+    const skillCost = 50; // 每门技能50贡献
+    if (playerStateFromStorage.factionContribution < skillCost) {
+      showFloatText(`贡献不足！需要${skillCost}贡献`, '#f44336');
+      // 不继续跳转，让用户留在当前对话
+      return;
+    }
+    
+    // 扣除贡献
+    playerStateFromStorage.factionContribution -= skillCost;
+    
+    // 学习技能
+    playerStateFromStorage.learnedSkills.push(dialogue.skill);
+    
+    // 保存到localStorage
+    localStorage.setItem('playerState', JSON.stringify(playerStateFromStorage));
+    
+    // 更新当前playerState
+    playerState.learnedSkills = playerStateFromStorage.learnedSkills;
+    playerState.factionContribution = playerStateFromStorage.factionContribution;
+    
+    // 先显示教学文字
+    let teachingText = '';
+    if (dialogue.skill === '正阳基础剑式') {
+      teachingText = '好，我来教你正阳基础剑式的要诀...看好了...';
+    } else if (dialogue.skill === '正阳吐纳诀') {
+      teachingText = '正阳吐纳诀是我们门派的基础内功，来，跟着我一起调息...';
+    } else if (dialogue.skill === '踏云步') {
+      teachingText = '踏云步是一门轻盈的轻功，身法飘逸，来，我示范一遍给你看...';
+    }
+    UI.dialogueText.textContent = `${currentNpc.name}：${teachingText}`;
+    
+    if (dialogue.delay) {
+      showLoadingDots(() => {
+        showFloatText(`✓ 已学会 ${dialogue.skill}`, '#4caf50');
+        if (callback) callback();
+      });
+    } else {
+      showFloatText(`✓ 已学会 ${dialogue.skill}`, '#4caf50');
+      if (callback) callback();
+    }
+  } else if (action === 'accept_task') {
+    // 接受任务
+    acceptTask(dialogue.task, dialogue.reward);
+  } else if (action === 'complete_single_task') {
+    // 完成单个任务并领取奖励
+    completeSingleTask(dialogue.task);
+  } else if (action === 'organize_books') {
+    // 整理书籍任务
+    startOrganizeBooks(callback);
+    return; // 不自动跳转
+  }
+}
+
+/**
+ * 接受任务
+ */
+function acceptTask(taskId, reward) {
+  // 从localStorage获取玩家状态
+  const savedState = localStorage.getItem('playerState');
+  let playerState = savedState ? JSON.parse(savedState) : {};
+  
+  // 确保activeTasks存在
+  if (!playerState.activeTasks) {
+    playerState.activeTasks = {};
+  }
+  
+  // 检查任务是否已接取
+  if (playerState.activeTasks[taskId]) {
+    showFloatText('该任务已接取', '#f44336');
+    return;
+  }
+  
+  // 初始化任务进度
+  const taskData = {
+    collected: 0,
+    completed: false,
+    reward: reward
+  };
+  
+  // 根据任务类型设置目标
+  if (taskId === 'bandit_clear') {
+    // 山贼任务需要特殊处理
+    playerState.activeTasks[taskId] = {
+      killCount: 0,
+      targetKill: 3,
+      isCompleted: false,
+      reward: reward
+    };
+  } else if (taskId === 'collect_herbs') {
+    // 采集任务
+    playerState.activeTasks[taskId] = taskData;
+  } else {
+    // 其他任务
+    playerState.activeTasks[taskId] = {
+      completed: false,
+      reward: reward
+    };
+  }
+  
+  showFloatText('✓ 任务已接取', '#4caf50');
+  
+  // 保存状态
+  localStorage.setItem('playerState', JSON.stringify(playerState));
+}
+
+/**
+ * 完成单个任务并领取奖励
+ */
+function completeSingleTask(taskId) {
+  // 从localStorage获取玩家状态
+  const savedState = localStorage.getItem('playerState');
+  if (!savedState) return;
+  
+  let playerState = JSON.parse(savedState);
+  
+  // 确保activeTasks和factionContribution存在
+  if (!playerState.activeTasks) playerState.activeTasks = {};
+  if (!playerState.factionContribution) playerState.factionContribution = 0;
+  
+  // 获取任务
+  const task = playerState.activeTasks[taskId];
+  if (!task) {
+    return;
+  }
+  
+  // 检查任务是否完成（两种标记方式都支持）
+  const isTaskCompleted = task.completed || task.isCompleted;
+  if (!isTaskCompleted) {
+    return;
+  }
+  
+  // 如果是采集任务，扣除对应物品
+  if (taskId === 'collect_herbs') {
+    const itemId = 'lingzhi_cao';
+    const needToRemove = 5;
+    let remainingToRemove = needToRemove;
+    
+    // 读取playerData（背包）
+    let playerData = null;
+    try {
+      const savedPlayerData = localStorage.getItem('playerData');
+      if (savedPlayerData) {
+        playerData = JSON.parse(savedPlayerData);
+      }
+    } catch (e) {
+      console.error('读取playerData失败:', e);
+    }
+    
+    if (playerData && playerData.inventory) {
+      // 从后往前遍历，优先扣减数量少的格子
+      for (let i = playerData.inventory.length - 1; i >= 0 && remainingToRemove > 0; i--) {
+        const item = playerData.inventory[i];
+        if (item.id === itemId) {
+          if (item.quantity <= remainingToRemove) {
+            // 这个格子全扣完，删除该格子
+            remainingToRemove -= item.quantity;
+            playerData.inventory.splice(i, 1);
+          } else {
+            // 扣减部分数量
+            item.quantity -= remainingToRemove;
+            remainingToRemove = 0;
+          }
+        }
+      }
+      
+      // 保存更新后的playerData
+      localStorage.setItem('playerData', JSON.stringify(playerData));
+      console.log(`已扣除 ${needToRemove - remainingToRemove} 个灵芝草`);
+    }
+  }
+  
+  // 发放奖励
+  let reward = 0;
+  if (task.reward && task.reward.contribution) {
+    reward = task.reward.contribution;
+    playerState.factionContribution += reward;
+    showFloatText(`🎉 获得 ${reward} 门派贡献`, '#4caf50');
+  }
+  
+  // 删除已完成的任务
+  delete playerState.activeTasks[taskId];
+  
+  // 保存状态
+  localStorage.setItem('playerState', JSON.stringify(playerState));
+}
+
+/**
+ * 保存玩家状态
+ */
+function savePlayerState() {
+  localStorage.setItem('playerState', JSON.stringify(playerState));
 }
 
 /**
@@ -574,6 +865,90 @@ function handleLeave() {
   window.close();
 }
 
+/**
+ * 整理书籍任务（三段话动画）
+ */
+function startOrganizeBooks() {
+  // 隐藏选项，显示整理过程
+  UI.dialogueOptions.innerHTML = '';
+  
+  // 第一段：3秒
+  UI.dialogueText.textContent = '你将散落的《武当剑法》《纯阳内功》整理好放到书架上...';
+  let dots = 0;
+  const dotTimer1 = setInterval(() => {
+    dots = (dots % 3) + 1;
+    UI.dialogueText.textContent = '你将散落的《武当剑法》《纯阳内功》整理好放到书架上' + '.'.repeat(dots);
+  }, 600);
+  
+  setTimeout(() => {
+    clearInterval(dotTimer1);
+    
+    // 第二段：3秒
+    UI.dialogueText.textContent = '你小心翼翼地拂去《太极心法》上的灰尘，把它摆到最显眼的位置...';
+    dots = 0;
+    const dotTimer2 = setInterval(() => {
+      dots = (dots % 3) + 1;
+      UI.dialogueText.textContent = '你小心翼翼地拂去《太极心法》上的灰尘，把它摆到最显眼的位置' + '.'.repeat(dots);
+    }, 600);
+    
+    setTimeout(() => {
+      clearInterval(dotTimer2);
+      
+      // 第三段：3秒
+      UI.dialogueText.textContent = '最后一本《易筋经》也放好了，书籍整整齐齐排列在书架上！';
+      dots = 0;
+      const dotTimer3 = setInterval(() => {
+        dots = (dots % 3) + 1;
+        UI.dialogueText.textContent = '最后一本《易筋经》也放好了，书籍整整齐齐排列在书架上' + '.'.repeat(dots);
+      }, 600);
+      
+      setTimeout(() => {
+        clearInterval(dotTimer3);
+        
+        // 标记任务完成
+        const savedState = localStorage.getItem('playerState');
+        let playerState = savedState ? JSON.parse(savedState) : {};
+        
+        if (playerState.activeTasks && playerState.activeTasks.organize_books) {
+          playerState.activeTasks.organize_books.completed = true;
+          playerState.activeTasks.organize_books.isCompleted = true;
+          localStorage.setItem('playerState', JSON.stringify(playerState));
+          
+          showFloatText('✓ 整理书籍任务完成！', '#4caf50');
+        }
+        
+        // 恢复对话，直接显示完成后的对话，不打字
+        currentDialogue = 'default';
+        
+        const dialogue = currentNpc.dialogues[currentDialogue];
+        const text = dialogue.getText ? dialogue.getText() : dialogue.text;
+        const fullText = `${currentNpc.name}：${text}`;
+        UI.dialogueText.textContent = fullText;
+        
+        const options = dialogue.getOptions ? dialogue.getOptions() : dialogue.options;
+        
+        const optionsHtml = options.map((option, index) => `
+          <button class="dialogue-option" onclick="selectDialogueOption(${index})">
+            ${option.text}
+          </button>
+        `).join('');
+        
+        UI.dialogueOptions.innerHTML = optionsHtml + `
+          <button class="dialogue-option return" onclick="closeDialogue()">
+            ← 返回
+          </button>
+        `;
+      }, 3000);
+    }, 3000);
+  }, 3000);
+}
+
+// 打开任务系统
+function openTask() {
+  window.location.href = 'task.html';
+}
+
 // 暴露函数给全局
 window.initMapUI = initMapUI;
 window.goBackToWorldMap = goBackToWorldMap;
+window.openTask = openTask;

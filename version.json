@@ -1,17 +1,12 @@
 {
-  "version": "0.0.6",
-  "build": 6,
-  "date": "2026-05-11",
-  "description": "修复踏云步被动技能不生效的问题",
+  "version": "0.0.9",
+  "build": 9,
+  "date": "2026-05-12",
+  "description": "战斗四阶段改造：统一入口、pending 键名、阶段说明（未合并单形态）",
   "changes": [
-    "1. 修复 getCharacterInnerSkillBonuses 函数只处理内功的问题",
-    "2. 现在函数处理所有类型的武学（内功、轻功、拳法等）",
-    "3. 添加 attackBonus、dodgeBonus、speedBonus 的计算",
-    "4. 修复 applyCharacterStats 函数，正确应用所有加成到角色属性"
-  ],
-  "bug_fix": {
-    "issue": "踏云步三个被动技能不生效",
-    "cause": "getCharacterInnerSkillBonuses 只处理 martial.type === '内功' 的武学",
-    "solution": "移除类型限制，处理所有已装备武学的被动技能"
-  }
+    "1. 新增 BattleEntry：进入 battle.html 队伍战请走 startPartyBattle（山林已接入）",
+    "2. 新增 BattleSettlement：pending_battle_rewards 读写统一（battle / forest_map / map / index）",
+    "3. battle.html 引入上述模块；battle.js 结算写入与敌 id 读取走统一 API",
+    "4. 阶段 4 未实施：BattleSystem 与队伍战仍双形态，仅文档与入口收敛"
+  ]
 }

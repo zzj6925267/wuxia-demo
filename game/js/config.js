@@ -7,6 +7,15 @@
  * 游戏基础配置
  */
 const GAME_CONFIG = {
+  /** 对外展示与存档元数据（与根目录 version.json 保持一致，发版时一并改） */
+  GAME_VERSION: '0.0.9',
+
+  /**
+   * 本地数据（如武学 localStorage）结构版本，与存档 version 分离。
+   * 仅当需要跑 DataMigration 时递增。
+   */
+  DATA_SCHEMA_VERSION: '1.0.1',
+
   // 玩家初始属性
   INITIAL_STATS: {
     level: 1,
