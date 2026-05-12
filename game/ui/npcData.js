@@ -7,6 +7,7 @@ let playerState = {
   joinedFaction: false,
   learnedSkills: [],
   activeTasks: {},
+  completedFactionQuests: {},
   factionContribution: 0
 };
 
@@ -18,9 +19,33 @@ function loadPlayerState() {
     playerState.joinedFaction = loadedState.joinedFaction || false;
     playerState.learnedSkills = loadedState.learnedSkills || [];
     playerState.activeTasks = loadedState.activeTasks || {};
+    playerState.completedFactionQuests = loadedState.completedFactionQuests || {};
     playerState.factionContribution = loadedState.factionContribution || 0;
   }
 }
+
+/**
+ * 测试用：退出门派，便于重走「加入正阳」以验证主线第四节。
+ * 控制台：leaveFactionForRetest()
+ * 传 { keepMainB04: true } 可保留第四节已完成状态。
+ */
+window.leaveFactionForRetest = function (opt) {
+  opt = opt || {};
+  const savedState = localStorage.getItem('playerState');
+  const state = savedState ? JSON.parse(savedState) : {};
+  state.joinedFaction = false;
+  if (!state.activeTasks) state.activeTasks = {};
+  if (!opt.keepMainB04) {
+    delete state.activeTasks.main_b_04;
+  }
+  localStorage.setItem('playerState', JSON.stringify(state));
+  loadPlayerState();
+  console.log(
+    '[leaveFactionForRetest] 已退出门派。' +
+      (opt.keepMainB04 ? 'main_b_04 已保留。' : '') +
+      '请刷新正阳地图页或重新打开苏瑶对话再试加入。'
+  );
+};
 
 // 初始化时加载状态
 loadPlayerState();
@@ -110,7 +135,7 @@ const ZHENGYANG_NPCS = {
         ]
       },
       faction_task: {
-        text: '门派任务？很好，你有这份心很好。正阳派正值用人之际，有几件事需要有人去办。',
+        text: '门派任务？很好。办妥差事后，须点下方带「可交差」的一项，再向老夫道谢，贡献才会记入功过簿。',
         getOptions: () => {
           // 获取任务状态
           const savedState = localStorage.getItem('playerState');
@@ -120,9 +145,9 @@ const ZHENGYANG_NPCS = {
           if (!state.activeTasks) state.activeTasks = {};
           
           const tasks = [
-            { id: 'collect_herbs', name: '采集灵芝草', reward: '100门派贡献' },
-            { id: 'bandit_clear', name: '清理山门前山贼', reward: '200门派贡献' },
-            { id: 'organize_books', name: '整理藏经楼书籍', reward: '150门派贡献' }
+            { id: 'collect_herbs', name: '采集灵芝草', reward: '28门派贡献' },
+            { id: 'bandit_clear', name: '清理山门前山贼', reward: '58门派贡献' },
+            { id: 'organize_books', name: '整理藏经楼书籍', reward: '38门派贡献' }
           ];
           
           const options = [];
@@ -134,15 +159,24 @@ const ZHENGYANG_NPCS = {
             // 检查任务是否已接取
             const taskData = state.activeTasks && state.activeTasks[task.id];
             if (taskData) {
-              if (taskData.completed) {
-                displayText = `【已完成】${task.name} - ${task.reward}`;
+              const done = !!(taskData.completed || taskData.isCompleted);
+              if (done) {
+                displayText = `【可交差】${task.name} - ${task.reward}`;
                 nextNode = `task_complete_${task.id}`;
               } else {
-                // 显示进度
                 const collected = taskData.collected || 0;
-                let progress = task.id === 'collect_herbs' ? ` (${collected}/5)` : '';
+                const kc = taskData.killCount != null ? taskData.killCount : (taskData.progress && taskData.progress.killCount) || 0;
+                const tk = taskData.targetKill != null ? taskData.targetKill : (taskData.progress && taskData.progress.targetKill) || 3;
+                let progress = '';
+                if (task.id === 'collect_herbs') progress = ` (${collected}/5)`;
+                else if (task.id === 'bandit_clear') progress = ` (${kc}/${tk})`;
                 displayText = `【已接取】${task.name}${progress} - ${task.reward}`;
-                nextNode = 'task_list';
+                const remindById = {
+                  collect_herbs: 'task_remind_collect',
+                  bandit_clear: 'task_remind_bandit',
+                  organize_books: 'task_remind_organize'
+                };
+                nextNode = remindById[task.id] || 'task_list';
               }
             } else {
               displayText = `【未接取】${task.name} - ${task.reward}`;
@@ -163,36 +197,48 @@ const ZHENGYANG_NPCS = {
           { text: '好的', next: 'faction_task' }
         ]
       },
+      task_remind_collect: {
+        text: '灵芝草须往江湖舆图点「探索山林」，在山涧溪旁采集够五朵；未满五朵前，回老夫这里只会看到「已接取」与进度。',
+        options: [{ text: '弟子明白', next: 'default' }]
+      },
+      task_remind_bandit: {
+        text: '山贼须在山林地图中与「山贼」相关的战斗点击败累计三只；未满三只前，请继续剿匪，勿忘战后回图。',
+        options: [{ text: '弟子明白', next: 'default' }]
+      },
+      task_remind_organize: {
+        text: '整理书籍须亲往「归真藏经楼」找秦松长老，对话中选「弟子这就开始整理」，在楼内把书摆齐；办妥后回澄心堂向赵长老复命。',
+        options: [{ text: '弟子这就去藏经楼', next: 'default' }]
+      },
       task_collect_herbs: {
-        text: '好，山涧溪旁有灵芝草生长。你去采5朵灵芝草回来。完成后可获得100门派贡献。',
+        text: '好，灵芝草只长在山林里的「山涧溪旁」。你从江湖舆图点「探索山林」进那方小地图，走到山涧溪旁，在林草处采够5朵回来。完成后记你28点门派贡献。',
         options: [
           { text: '弟子这就去办！', next: 'default' }
         ],
         action: 'accept_task',
         task: 'collect_herbs',
-        reward: { contribution: 100 }
+        reward: { contribution: 28 }
       },
       task_bandit_clear: {
-        text: '山门前黑风岭有伙山贼作乱，伤了几个路过的百姓。你去清理一下。完成后可获得200门派贡献。',
+        text: '山门前黑风岭有伙山贼作乱，伤了几个路过的百姓。你去清理一下。完成后记你58点门派贡献。',
         options: [
           { text: '弟子领命！', next: 'default' }
         ],
         action: 'accept_task',
         task: 'bandit_clear',
-        reward: { contribution: 200 }
+        reward: { contribution: 58 }
       },
       task_organize_books: {
-        text: '藏经楼的书有些乱了，涂长老一个人忙不过来。你去藏经楼找涂长老，帮他整理一下书籍吧。完成后可获得150门派贡献。',
+        text: '藏经楼的书有些乱了，涂长老一个人忙不过来。你去藏经楼找涂长老，帮他整理一下书籍吧。完成后记你38点门派贡献。',
         options: [
           { text: '弟子这就去帮忙！', next: 'default' }
         ],
         action: 'accept_task',
         task: 'organize_books',
-        reward: { contribution: 150 }
+        reward: { contribution: 38 }
       },
       task_complete_collect_herbs: {
         getText: () => {
-          return '很好！你完成了采集灵芝草的任务，这是你的奖励。100门派贡献已计入你的账下。';
+          return '很好！你完成了采集灵芝草的任务，这是你的奖励。28点门派贡献已计入你的账下。';
         },
         options: [
           { text: '多谢长老！', next: 'faction_task' }
@@ -202,7 +248,7 @@ const ZHENGYANG_NPCS = {
       },
       task_complete_bandit_clear: {
         getText: () => {
-          return '很好！你完成了清理山门前山贼的任务，这是你的奖励。200门派贡献已计入你的账下。';
+          return '很好！你完成了清理山门前山贼的任务，这是你的奖励。58点门派贡献已计入你的账下。';
         },
         options: [
           { text: '多谢长老！', next: 'faction_task' }
@@ -212,7 +258,7 @@ const ZHENGYANG_NPCS = {
       },
       task_complete_organize_books: {
         getText: () => {
-          return '很好！藏经楼的书籍已经整整齐齐了！这是你的奖励，150门派贡献已计入你的账下。';
+          return '很好！藏经楼的书籍已经整整齐齐了！这是你的奖励，38点门派贡献已计入你的账下。';
         },
         options: [
           { text: '多谢长老！', next: 'faction_task' }
@@ -420,19 +466,24 @@ const ZHENGYANG_NPCS = {
           loadPlayerState(); // 每次都重新加载最新状态
           const options = [];
           if (!playerState.learnedSkills.includes('正阳基础剑式')) {
-            options.push({ text: '正阳基础剑式（50贡献）', next: 'confirm_sword' });
+            options.push({ text: '正阳基础剑式（372贡献）', next: 'confirm_sword' });
           }
           if (!playerState.learnedSkills.includes('正阳吐纳诀')) {
-            options.push({ text: '正阳吐纳诀（50贡献）', next: 'confirm_breath' });
+            options.push({ text: '正阳吐纳诀（372贡献）', next: 'confirm_breath' });
           }
           if (!playerState.learnedSkills.includes('踏云步')) {
-            options.push({ text: '踏云步（50贡献）', next: 'confirm_step' });
+            options.push({ text: '踏云步（372贡献）', next: 'confirm_step' });
           }
           if (options.length === 0) {
-            return [{ text: '我已经学会所有入门功夫了', next: 'chat' }];
+            return [{ text: '弟子三门入门皆已谙熟，特来向师姐复命', next: 'report_main_b_07' }];
           }
           return options;
         }
+      },
+      report_main_b_07: {
+        text: '好，你既已把三门入门都过了一遍，我便替你记上功过簿这一笔。',
+        options: [{ text: '多谢师姐', next: 'default' }],
+        action: 'complete_main_b_07_report'
       },
       confirm_sword: {
         text: '确定是正阳基础剑式吗？',
@@ -483,23 +534,23 @@ const FACTION_TASKS = [
   {
     id: 'herb_collection',
     name: '下山采购药材',
-    text: '嗯，眼下有个任务：下山采购药材。山下回春堂需要一些药材，你去采十株千年灵芝和五株天山雪莲回来。完成后可获得100门派贡献。',
+    text: '嗯，眼下有个任务：下山采购药材。山下回春堂需要一些药材，你去采十株千年灵芝和五株天山雪莲回来。完成后记你28点门派贡献。',
     difficulty: '简单',
-    reward: { contribution: 100 }
+    reward: { contribution: 28 }
   },
   {
     id: 'bandit_clear',
     name: '清理山门前山贼',
-    text: '嗯，眼下有个任务：清理山门前的山贼。黑风岭有伙山贼作乱，伤了几个路过的百姓，你去清理一下。完成后可获得200门派贡献。',
+    text: '嗯，眼下有个任务：清理山门前的山贼。黑风岭有伙山贼作乱，伤了几个路过的百姓，你去清理一下。完成后记你58点门派贡献。',
     difficulty: '普通',
-    reward: { contribution: 200 }
+    reward: { contribution: 58 }
   },
   {
     id: 'bloodknife_investigate',
     name: '追查血刀门踪迹',
-    text: '嗯，眼下有个任务：追查血刀门踪迹。血刀门最近在附近活动频繁，你去打探一下他们的动向。完成后可获得500门派贡献。',
+    text: '嗯，眼下有个任务：追查血刀门踪迹。血刀门最近在附近活动频繁，你去打探一下他们的动向。完成后记你160点门派贡献。',
     difficulty: '困难',
-    reward: { contribution: 500 }
+    reward: { contribution: 160 }
   }
 ];
 

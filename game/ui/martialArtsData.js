@@ -38,27 +38,6 @@ const MARTIAL_ARTS_LIBRARY = [
     ]
   },
   {
-    id: 2,
-    name: '流云剑法',
-    type: '武功',
-    skillType: 'sword',
-    rank: '中阶',
-    school: '正阳派',
-    description: '流云般飘逸，进退自如',
-    currentLevel: 0,
-    maxLevel: 10,
-    practiceTimes: 0,
-    equipped: false,
-    baseBonus: { sword: 8 },
-    stats: { attack: 45, hit: 20, speed: 10 },
-    skills: [
-      { id: 1, name: '云起', type: '主动', unlockLevel: 1, icon: '🌊', description: '流云初起，剑招连绵' },
-      { id: 2, name: '行云', type: '被动', unlockLevel: 4, icon: '☁️', description: '增加15%命中' },
-      { id: 3, name: '破云', type: '主动', unlockLevel: 7, icon: '⚡', description: '强力一击' },
-      { id: 4, name: '云散', type: '被动', unlockLevel: 10, icon: '💨', description: '攻击时有几率连击' }
-    ]
-  },
-  {
     id: 3,
     name: '正阳吐纳诀',
     type: '内功',
@@ -117,6 +96,126 @@ const MARTIAL_ARTS_LIBRARY = [
       { id: 1, name: '踏云', type: '被动', unlockLevel: 1, icon: '☁️', description: '脚踏祥云，增加闪避', effect: { type: 'buff', stat: 'dodge', baseValue: 15, bonusAttr: 'agility', bonusPerPoint: 0.5 }, detail: '基础闪避+15，每点身法额外+0.5' },
       { id: 2, name: '逐日', type: '被动', unlockLevel: 4, icon: '☀️', description: '追逐烈日，增加攻击', effect: { type: 'buff', stat: 'attack', baseValue: 10, bonusAttr: 'strength', bonusPerPoint: 0.5 }, detail: '基础攻击+10，每点臂力额外+0.5' },
       { id: 3, name: '凌虚', type: '被动', unlockLevel: 7, icon: '✨', description: '凌空虚步，增加速度', effect: { type: 'buff', stat: 'speed', baseValue: 15, bonusAttr: 'agility', bonusPerPoint: 0.6 }, detail: '基础速度+15，每点身法额外+0.6' }
+    ]
+  },
+  {
+    id: 6,
+    name: '落草快剑',
+    type: '武功',
+    skillType: 'sword',
+    rank: '初阶',
+    school: '江湖',
+    description: '绿林里口口相传的几式快剑，狠辣不足，只求一个快字。',
+    currentLevel: 0,
+    maxLevel: 10,
+    practiceTimes: 0,
+    equipped: false,
+    baseBonus: { sword: 4 },
+    stats: { attack: 22, hit: 12 },
+    skills: [
+      { id: 1, name: '疾刺', type: '主动', unlockLevel: 1, icon: '⚔️', description: '抢步疾刺', effect: { type: 'damage', value: 1.12, bonusAttr: 'agility', bonusPerPoint: 0.018 }, detail: '基础伤害112%，每点身法额外+1.8%伤害' },
+      { id: 2, name: '缠斗', type: '被动', unlockLevel: 4, icon: '🪢', description: '黏住对手身形', effect: { type: 'buff', stat: 'hit', value: 0.05, bonusAttr: 'agility', bonusPerPoint: 0.02 }, detail: '基础命中+5%，每点身法额外+2%' },
+      { id: 3, name: '回风', type: '被动', unlockLevel: 7, icon: '🌀', description: '剑走偏锋，偶有一式回扫', effect: { type: 'followAttack', baseChance: 0.1, damage: 0.55, chanceAttr: 'agility', chancePerPoint: 0.006 } }
+    ]
+  },
+  {
+    id: 10,
+    name: '阵形剑诀',
+    type: '武功',
+    skillType: 'sword',
+    rank: '初阶',
+    school: '青石武馆',
+    description: '青石武馆所传初阶剑式：步法为阵、剑走正形，不求花巧，先求立身不乱。',
+    currentLevel: 0,
+    maxLevel: 10,
+    practiceTimes: 0,
+    equipped: false,
+    baseBonus: { sword: 3 },
+    stats: { attack: 18, hit: 8 },
+    skills: [
+      { id: 1, name: '挑灯', type: '主动', unlockLevel: 1, icon: '🕯️', mpCost: 15, description: '腕底一挑，刺向对方破绽', effect: { type: 'damage', value: 1.1, bonusAttr: 'strength', bonusPerPoint: 0.015 }, detail: '基础伤害110%，每点臂力额外+1.5%伤害' },
+      { id: 2, name: '守拙', type: '被动', unlockLevel: 4, icon: '🛡️', description: '剑走中线，先立于不败之地', effect: { type: 'buff', stat: 'defense', value: 0.06, bonusAttr: 'bone', bonusPerPoint: 0.02 }, detail: '基础防御+6%，每点根骨额外+2%' },
+      { id: 3, name: '连环', type: '被动', unlockLevel: 7, icon: '🔗', description: '式虽简，劲路相连', effect: { type: 'followAttack', baseChance: 0.12, damage: 0.65, chanceAttr: 'agility', chancePerPoint: 0.008 } }
+    ]
+  },
+  {
+    id: 13,
+    name: '沉桥拳诀',
+    type: '武功',
+    skillType: 'fist',
+    rank: '初阶',
+    school: '青石武馆',
+    description: '青石武馆所传初阶拳法：沉肩坠肘、桥手稳固，讲究脚下生根、拳从腰出。',
+    currentLevel: 0,
+    maxLevel: 10,
+    practiceTimes: 0,
+    equipped: false,
+    baseBonus: { fist: 3 },
+    stats: { attack: 17, hit: 9 },
+    skills: [
+      { id: 1, name: '闯捶', type: '主动', unlockLevel: 1, icon: '👊', mpCost: 14, description: '半步抢入，捶打中线', effect: { type: 'damage', value: 1.08, bonusAttr: 'strength', bonusPerPoint: 0.016 }, detail: '基础伤害108%，每点臂力额外+1.6%伤害' },
+      { id: 2, name: '沉肩', type: '被动', unlockLevel: 4, icon: '⚓', description: '肩沉肘坠，劲从脚底起', effect: { type: 'buff', stat: 'defense', value: 0.055, bonusAttr: 'bone', bonusPerPoint: 0.018 }, detail: '基础防御+5.5%，每点根骨额外+1.8%' },
+      { id: 3, name: '黏手', type: '被动', unlockLevel: 7, icon: '🤝', description: '搭手即黏，让对方势老难收', effect: { type: 'buff', stat: 'hit', value: 0.045, bonusAttr: 'agility', bonusPerPoint: 0.018 }, detail: '基础命中+4.5%，每点身法额外+1.8%' }
+    ]
+  },
+  {
+    id: 14,
+    name: '破浪刀谱',
+    type: '武功',
+    skillType: 'blade',
+    rank: '初阶',
+    school: '青石武馆',
+    description: '青石武馆所传初阶刀法：刀势如浪、开合分明，先学护胁与回扫，再谈破敌。',
+    currentLevel: 0,
+    maxLevel: 10,
+    practiceTimes: 0,
+    equipped: false,
+    baseBonus: { blade: 3 },
+    stats: { attack: 20, hit: 7 },
+    skills: [
+      { id: 1, name: '开门见山', type: '主动', unlockLevel: 1, icon: '🔪', mpCost: 16, description: '刀势直落，先声夺人', effect: { type: 'damage', value: 1.12, bonusAttr: 'strength', bonusPerPoint: 0.014 }, detail: '基础伤害112%，每点臂力额外+1.4%伤害' },
+      { id: 2, name: '护胁', type: '被动', unlockLevel: 4, icon: '🛡️', description: '刀背贴身，护住要害', effect: { type: 'defenseBuff', baseValue: 16, bonusAttr: 'bone', bonusPerPoint: 0.32 }, detail: '基础防御+16，每点根骨额外+0.32' },
+      { id: 3, name: '回风扫', type: '被动', unlockLevel: 7, icon: '💨', description: '刀走偏锋，偶有一式回扫', effect: { type: 'followAttack', baseChance: 0.11, damage: 0.62, chanceAttr: 'agility', chancePerPoint: 0.007 } }
+    ]
+  },
+  {
+    id: 11,
+    name: '养气术',
+    type: '内功',
+    skillType: 'innerSkill',
+    rank: '初阶',
+    school: '青石武馆',
+    description: '青石武馆所传初阶内功：吐纳匀细、守中养气，不求玄关洞开，只求气血少亏。',
+    currentLevel: 0,
+    maxLevel: 10,
+    practiceTimes: 0,
+    equipped: false,
+    baseBonus: { innerSkill: 3 },
+    stats: { hp: 35, defense: 8, innerSkill: 10 },
+    skills: [
+      { id: 1, name: '匀息', type: '被动', unlockLevel: 1, icon: '🌬️', description: '呼吸匀长，稳住气血', effect: { type: 'maxHpBuff', baseValue: 35, bonusAttr: 'bone', bonusPerPoint: 0.4 }, detail: '气血上限+35，每点根骨额外+0.4' },
+      { id: 2, name: '固表', type: '被动', unlockLevel: 4, icon: '🧱', description: '卫气外护，少受皮肉伤', effect: { type: 'defenseBuff', baseValue: 18, bonusAttr: 'bone', bonusPerPoint: 0.35 }, detail: '基础防御+18，每点根骨额外+0.35' },
+      { id: 3, name: '回春', type: '被动', unlockLevel: 7, icon: '🌿', description: '气血将竭时徐徐自生', effect: { type: 'autoHeal', baseValue: 3, levelMultiplier: 2, bonusAttr: 'qi', bonusPerPoint: 0.5 }, detail: '每回合恢复3+等级×2+内息×0.5点气血' }
+    ]
+  },
+  {
+    id: 12,
+    name: '挪步诀',
+    type: '轻功',
+    skillType: 'lightSkill',
+    rank: '初阶',
+    school: '青石武馆',
+    description: '青石武馆所传初阶轻功：以小挪大、半步换形，专练趋避与抢位，不求凌虚飞纵。',
+    currentLevel: 0,
+    maxLevel: 10,
+    practiceTimes: 0,
+    equipped: false,
+    baseBonus: { lightSkill: 3 },
+    stats: { speed: 18, dodge: 15, attack: 5 },
+    skills: [
+      { id: 1, name: '斜掠', type: '被动', unlockLevel: 1, icon: '↗️', description: '拧腰错步，让对手的势落在空处', effect: { type: 'buff', stat: 'dodge', baseValue: 12, bonusAttr: 'agility', bonusPerPoint: 0.45 }, detail: '基础闪避+12，每点身法额外+0.45' },
+      { id: 2, name: '抢半步', type: '被动', unlockLevel: 4, icon: '⚡', description: '先发制人半个脚掌的距离', effect: { type: 'buff', stat: 'attack', baseValue: 6, bonusAttr: 'strength', bonusPerPoint: 0.35 }, detail: '基础攻击+6，每点臂力额外+0.35' },
+      { id: 3, name: '收腿', type: '被动', unlockLevel: 7, icon: '🌀', description: '帖地而走，身形再难捉摸', effect: { type: 'buff', stat: 'speed', baseValue: 12, bonusAttr: 'agility', bonusPerPoint: 0.45 }, detail: '基础速度+12，每点身法额外+0.45' }
     ]
   }
 ];
@@ -194,7 +293,24 @@ const martialCharacters = [
 let currentMartialCharacterId = 1;
 
 // 武学数据版本号，用于检测旧数据
-const MARTIAL_DATA_VERSION = 4;
+const MARTIAL_DATA_VERSION = 5;
+
+// 修补存档：缺 skills 的条目从武学库补全，避免整表被判定无效后退回初始（地图商店会误判「未学」）
+function normalizePlayerMartialArtsList(parsed) {
+  const lib = typeof MARTIAL_ARTS_LIBRARY !== 'undefined' ? MARTIAL_ARTS_LIBRARY : [];
+  let changed = false;
+  const list = parsed.map((m) => {
+    if (!m || typeof m.id !== 'number') return m;
+    if (m.skills && Array.isArray(m.skills)) return m;
+    changed = true;
+    const tmpl = lib.find((x) => x && x.id === m.id);
+    if (tmpl && Array.isArray(tmpl.skills)) {
+      return { ...m, skills: JSON.parse(JSON.stringify(tmpl.skills)) };
+    }
+    return { ...m, skills: [] };
+  });
+  return { list, changed };
+}
 
 // 玩家武学背包（每个角色单独一份）
 function getPlayerMartialArts(charId) {
@@ -219,14 +335,18 @@ function getPlayerMartialArts(charId) {
     const saved = localStorage.getItem(`playerMartialArts_${charId}`);
     if (saved) {
       const parsed = JSON.parse(saved);
-      // 验证数据格式，确保每个武学都有skills数组
-      if (Array.isArray(parsed) && parsed.every(martial => 
-        martial && martial.skills && Array.isArray(martial.skills)
-      )) {
-        return parsed;
-      } else {
-        console.warn('武学数据格式错误，使用初始数据');
+      if (Array.isArray(parsed)) {
+        const { list, changed } = normalizePlayerMartialArtsList(parsed);
+        if (changed) {
+          try {
+            localStorage.setItem(`playerMartialArts_${charId}`, JSON.stringify(list));
+          } catch (persistErr) {
+            console.warn('写回修补后的武学数据失败', persistErr);
+          }
+        }
+        return list;
       }
+      console.warn('武学数据格式错误（非数组），使用初始数据');
     }
   } catch (e) {
     console.warn('解析武学数据失败，使用初始数据', e);
@@ -306,7 +426,7 @@ window.MARTIAL_ARTS_LIBRARY = MARTIAL_ARTS_LIBRARY;
 let playerMartialArts = getPlayerMartialArts(currentMartialCharacterId);
 let playerExperience = getPlayerExperience();
 
-// 计算当前武学修为（全局函数，供角色系统调用）
+// 计算当前角色「修为」五项加成（全已学武学 baseBonus 之和，与装备/激活无关；战斗属性另算）
 function calculateMartialArtsBonuses() {
   const bonuses = {
     fist: 0,

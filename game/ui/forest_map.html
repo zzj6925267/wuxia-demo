@@ -391,6 +391,7 @@
       opacity: 1;
     }
   </style>
+  <link rel="stylesheet" href="submap_quick_nav.css" />
 </head>
 <body>
   <script>
@@ -427,6 +428,12 @@
         </defs>
       </svg>
       <div class="map-nodes" id="mapNodes"></div>
+      <div class="character-button-area character-button-area--submap" aria-label="快捷入口">
+        <button type="button" class="btn-character" onclick="submapOpenCharacter()">👤 角色</button>
+        <button type="button" class="btn-character" onclick="submapOpenMartialArts()">⚔️ 武学</button>
+        <button type="button" class="btn-character" onclick="submapOpenInventory()">🎒 背包</button>
+        <button type="button" class="btn-character" onclick="submapOpenTask()">📋 任务</button>
+      </div>
     </div>
 
     <div class="location-panel" id="locationPanel">
@@ -450,6 +457,7 @@
     </div>
   </div>
 
+  <script src="submap_quick_nav.js"></script>
   <script src="../js/data/enemies.js"></script>
   <script src="../js/data/items.js"></script>
   <script src="../js/utils/battleEntry.js"></script>
@@ -1028,6 +1036,7 @@ function updateCollectTaskProgress() {
       // 检查是否完成（只有从4变5时才提示）
       if (oldCount < 5 && task.collected >= 5) {
         task.completed = true;
+        task.isCompleted = true;
         showFloatText('采集任务完成！', '#ff9800');
       }
     }

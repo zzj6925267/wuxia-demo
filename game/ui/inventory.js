@@ -327,7 +327,7 @@ function showItemDetail(item) {
   `;
   
   // 显示秘籍学习条件
-  if (isSkillbook && itemData.learningRequirement) {
+  if (isSkillbook && itemData.learningRequirement && itemData.learningRequirement.value > 0) {
     const skillTypeNames = {
       sword: '剑术',
       innerSkill: '内功',
@@ -441,6 +441,51 @@ function dropItem(itemId) {
   clearSelection();
 }
 
+function persistPlayerData() {
+  try {
+    if (window.playerData) {
+      localStorage.setItem('playerData', JSON.stringify(window.playerData));
+    }
+  } catch (e) {
+    console.warn('persistPlayerData', e);
+  }
+}
+
+function bumpMartialCultivation(charId, skillType, delta) {
+  if (!skillType || !delta) return;
+  try {
+    let list = null;
+    const raw = localStorage.getItem('playerCharacters');
+    if (raw) {
+      list = JSON.parse(raw);
+    } else if (typeof window !== 'undefined' && Array.isArray(window.characters) && window.characters.length) {
+      list = JSON.parse(JSON.stringify(window.characters));
+    }
+    if (Array.isArray(list)) {
+      const c = list.find(x => x.id === charId);
+      if (c) {
+        if (!c.stats) c.stats = {};
+        c.stats[skillType] = (c.stats[skillType] || 0) + delta;
+        localStorage.setItem('playerCharacters', JSON.stringify(list));
+      }
+    }
+  } catch (e) {
+    console.warn('bumpMartialCultivation', e);
+  }
+  const ic = characters.find(x => x.id === charId);
+  if (ic) {
+    if (!ic.stats) ic.stats = {};
+    ic.stats[skillType] = (ic.stats[skillType] || 0) + delta;
+  }
+  if (typeof window !== 'undefined' && Array.isArray(window.characters)) {
+    const wc = window.characters.find(x => x.id === charId);
+    if (wc) {
+      if (!wc.stats) wc.stats = {};
+      wc.stats[skillType] = (wc.stats[skillType] || 0) + delta;
+    }
+  }
+}
+
 // 从背包移除
 function removeFromInventory(itemId, quantity) {
   const player = window.playerData;
@@ -453,6 +498,7 @@ function removeFromInventory(itemId, quantity) {
       player.inventory.splice(index, 1);
     }
   }
+  persistPlayerData();
 }
 
 // 添加到背包
@@ -480,6 +526,7 @@ function addToInventory(itemId, quantity) {
     player.inventory.push({ id: itemId, quantity: toAdd });
     remaining -= toAdd;
   }
+  persistPlayerData();
 }
 
 // 获取分类物品
@@ -581,8 +628,16 @@ function closeTempBackpack() {
   // 暂时简化
 }
 
-// 关闭背包
+// 关闭背包（若从小地图/嵌套正阳进入则回到原界面）
 function closeInventory() {
+  try {
+    var ret = sessionStorage.getItem('game_ui_return_href');
+    if (ret) {
+      sessionStorage.removeItem('game_ui_return_href');
+      window.location.href = ret;
+      return;
+    }
+  } catch (e) {}
   window.location.href = 'map.html';
 }
 
@@ -736,68 +791,30 @@ function learnMartialArt(itemData, itemId, charId = 1) {
   });
   
   localStorage.setItem(`playerMartialArts_${charId}`, JSON.stringify(playerMartialArts));
-  
-  removeFromInventory(itemId, 1);
-  
-  showInventoryFloatText(`${char.name}学会了【${martialArtToLearn.name}】！`, '#4caf50');
+
+  const cultivationGain = itemData.cultivationGain != null ? itemData.cultivationGain : 5;
+  bumpMartialCultivation(charId, martialArtToLearn.skillType, cultivationGain);
+  const cultivationLabels = {
+    sword: '剑术',
+    fist: '拳脚',
+    blade: '刀术',
+    innerSkill: '内功',
+    lightSkill: '轻功'
+  };
+  const culLab = cultivationLabels[martialArtToLearn.skillType] || '武学';
+
+  if (itemData.category === 'skillbook') {
+    removeFromInventory(itemId, 1);
+  }
+
+  showInventoryFloatText(
+    `${char.name}研读悟通【${martialArtToLearn.name}】！${culLab}修为 +${cultivationGain}；秘籍抄本已化入心得。行囊若无该册，教头处仍可再购。`,
+    '#4caf50'
+  );
   
   renderItems();
   updateCapacity();
   clearSelection();
-}
-
-// 获取角色武学数据
-function getPlayerMartialArts(charId) {
-  const saved = localStorage.getItem(`playerMartialArts_${charId}`);
-  if (saved) return JSON.parse(saved);
-  
-  return [
-    {
-      id: 1,
-      name: '正阳基础剑式',
-      type: '武功',
-      skillType: 'sword',
-      rank: '初阶',
-      school: '正阳派',
-      currentLevel: 3,
-      maxLevel: 10,
-      practiceTimes: 2,
-      equipped: true,
-      baseBonus: { sword: 5 },
-      stats: { attack: 25, hit: 10 },
-      skills: []
-    },
-    {
-      id: 3,
-      name: '正阳吐纳诀',
-      type: '内功',
-      skillType: 'innerSkill',
-      rank: '初阶',
-      school: '正阳派',
-      currentLevel: 2,
-      maxLevel: 10,
-      practiceTimes: 1,
-      equipped: true,
-      baseBonus: { innerSkill: 5 },
-      stats: { hp: 50, defense: 10, innerSkill: 15 },
-      skills: []
-    },
-    {
-      id: 5,
-      name: '踏云步',
-      type: '轻功',
-      skillType: 'lightSkill',
-      rank: '初阶',
-      school: '正阳派',
-      currentLevel: 1,
-      maxLevel: 10,
-      practiceTimes: 0,
-      equipped: true,
-      baseBonus: { lightSkill: 5 },
-      stats: { speed: 30, dodge: 15 },
-      skills: []
-    }
-  ];
 }
 
 // 计算当前修为

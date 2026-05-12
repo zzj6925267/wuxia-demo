@@ -2,22 +2,59 @@
  * 地图UI组件
  */
 
-// 打开武学系统
+/**
+ * 从嵌套正阳打开背包/武学/任务前写入 sessionStorage，关闭子页时回到 map 并恢复正阳视图。
+ */
+function rememberReturnContextIfZhengyangOrSubmapPage() {
+  try {
+    var zy = document.getElementById('zhengyangMap');
+    if (zy) {
+      var disp = window.getComputedStyle(zy).display;
+      if (disp !== 'none') {
+        sessionStorage.setItem('game_ui_return_href', 'map.html');
+        sessionStorage.setItem('game_map_restore_view', 'zhengyang');
+      }
+    }
+  } catch (e) {}
+}
+
+/**
+ * 从 inventory / martialArts / task 返回 map.html 后，若之前在嵌套正阳则恢复正阳视图。
+ */
+function tryRestoreMapViewAfterReturn() {
+  try {
+    var v = sessionStorage.getItem('game_map_restore_view');
+    if (v === 'zhengyang' && UI.zhengyangMap && UI.worldMap) {
+      sessionStorage.removeItem('game_map_restore_view');
+      enterZhengyangMap();
+    }
+  } catch (e) {}
+  try {
+    document.documentElement.classList.remove('map-restore-zhengyang');
+  } catch (e2) {}
+}
+
+// 打开武学系统（与 martialArts.js 一致：类型走 localStorage.martialArtsType）
 function openMartialArts(type) {
-  // 如果指定了type，通过URL传递
+  rememberReturnContextIfZhengyangOrSubmapPage();
   if (type) {
-    window.location.href = 'martialArts.html?type=' + encodeURIComponent(type);
-  } else {
-    window.location.href = 'martialArts.html';
+    try {
+      localStorage.setItem('martialArtsType', type);
+    } catch (e) {}
   }
+  window.location.href = 'martialArts.html';
 }
 
 // 打开背包系统
 function openInventory() {
+  rememberReturnContextIfZhengyangOrSubmapPage();
   window.location.href = 'inventory.html';
 }
 
-// 当前正阳派位置（默认在门派入口）
+/** 正阳派内上次所在建筑（sessionStorage），避免每次进山都回到山门又见不到 NPC */
+const ZHENGYANG_LAST_BUILDING_KEY = 'zhengyang_last_building_id';
+
+// 当前正阳派位置（默认在门派入口；进入时会尝试恢复上次位置）
 let currentZhengyangBuilding = 'menkou';
 
 // 当前对话状态
@@ -235,7 +272,12 @@ function handleExplore() {
  * 进入正阳派地图
  */
 function enterZhengyangMap() {
-  currentZhengyangBuilding = 'menkou';
+  let saved = '';
+  try {
+    saved = sessionStorage.getItem(ZHENGYANG_LAST_BUILDING_KEY) || '';
+  } catch (e) {}
+  currentZhengyangBuilding =
+    saved && typeof ZHENGYANG_BUILDINGS !== 'undefined' && ZHENGYANG_BUILDINGS[saved] ? saved : 'menkou';
   UI.worldMap.style.display = 'none';
   UI.zhengyangMap.style.display = 'flex';
   renderZhengyangMap();
@@ -339,6 +381,9 @@ function travelZhengyang(buildingId) {
   closeDialogue();
   
   currentZhengyangBuilding = buildingId;
+  try {
+    sessionStorage.setItem(ZHENGYANG_LAST_BUILDING_KEY, buildingId);
+  } catch (e) {}
   renderZhengyangMap();
   updateZhengyangPanel();
 }
@@ -387,7 +432,12 @@ function updateNpcList() {
       </div>
     `).join('');
   } else {
-    UI.npcSection.style.display = 'none';
+    UI.npcSection.style.display = 'block';
+    UI.npcList.innerHTML = `
+      <div class="npc-hint" style="padding:10px 12px;font-size:13px;color:#bbb;line-height:1.55;border-radius:8px;background:rgba(0,0,0,0.25);">
+        当前位置暂无对话人物。执事长老<strong style="color:#e8d89a;">赵恪</strong>在<strong style="color:#e8d89a;">澄心堂</strong>；请点击上方地图中<strong>相邻可前往</strong>的地点，沿路走到澄心堂后再与长老对话、领交门派差事。
+      </div>
+    `;
   }
 }
 
@@ -615,6 +665,9 @@ function handleDialogueAction(dialogue, callback) {
       
       localStorage.setItem('playerState', JSON.stringify(state));
       showFloatText('✓ 加入正阳派', '#4caf50');
+      if (typeof window.onMainQuestJoinedFaction === 'function') {
+        window.onMainQuestJoinedFaction();
+      }
     }
   } else if (action === 'learn_skill' && dialogue.skill) {
     // 从localStorage获取玩家状态
@@ -633,7 +686,8 @@ function handleDialogueAction(dialogue, callback) {
     }
     
     // 检查贡献是否足够
-    const skillCost = 50; // 每门技能50贡献
+    // 与 taskData 门派三条差事对齐：采药28+剿匪58+理书38=124/轮；连做三轮（各任务接交共9次）≈372，换一门入门武
+    const skillCost = 372; // 3×(28+58+38)
     if (playerStateFromStorage.factionContribution < skillCost) {
       showFloatText(`贡献不足！需要${skillCost}贡献`, '#f44336');
       // 不继续跳转，让用户留在当前对话
@@ -652,7 +706,9 @@ function handleDialogueAction(dialogue, callback) {
     // 更新当前playerState
     playerState.learnedSkills = playerStateFromStorage.learnedSkills;
     playerState.factionContribution = playerStateFromStorage.factionContribution;
-    
+
+    tryCompleteMainB07AfterLearnSkill();
+
     // 先显示教学文字
     let teachingText = '';
     if (dialogue.skill === '正阳基础剑式') {
@@ -679,6 +735,8 @@ function handleDialogueAction(dialogue, callback) {
   } else if (action === 'complete_single_task') {
     // 完成单个任务并领取奖励
     completeSingleTask(dialogue.task);
+  } else if (action === 'complete_main_b_07_report') {
+    tryCompleteMainB07IfAllEntrySkillsKnown();
   } else if (action === 'organize_books') {
     // 整理书籍任务
     startOrganizeBooks(callback);
@@ -698,12 +756,18 @@ function acceptTask(taskId, reward) {
   if (!playerState.activeTasks) {
     playerState.activeTasks = {};
   }
+  if (!playerState.completedFactionQuests) {
+    playerState.completedFactionQuests = {};
+  }
   
   // 检查任务是否已接取
   if (playerState.activeTasks[taskId]) {
     showFloatText('该任务已接取', '#f44336');
     return;
   }
+
+  // 新接同一门派差事时去掉旧的「已交差」记录，避免任务页仍显示已完成
+  delete playerState.completedFactionQuests[taskId];
   
   // 初始化任务进度
   const taskData = {
@@ -733,9 +797,154 @@ function acceptTask(taskId, reward) {
   }
   
   showFloatText('✓ 任务已接取', '#4caf50');
-  
+
   // 保存状态
   localStorage.setItem('playerState', JSON.stringify(playerState));
+  if (typeof loadPlayerState === 'function') {
+    loadPlayerState();
+  }
+  // 「整理书籍」须等藏经楼内摆书完成后再记主线「贡献与艺」，避免刚接任务就飘主线达成被误认为书已整理好
+  if (taskId !== 'organize_books') {
+    tryCompleteMainB05AfterFactionAccept(taskId);
+  }
+}
+
+const FACTION_TASK_IDS = ['collect_herbs', 'bandit_clear', 'organize_books'];
+
+function isMainQuestStepDoneMq(state, questId) {
+  const t = state.activeTasks && state.activeTasks[questId];
+  return !!(t && (t.completed || t.isCompleted));
+}
+
+function markMainQuestStepMq(questId) {
+  if (typeof ALL_TASKS === 'undefined' || !ALL_TASKS.main) return false;
+  const raw = localStorage.getItem('playerState');
+  const state = raw ? JSON.parse(raw) : {};
+  if (!state.activeTasks) state.activeTasks = {};
+  const cur = state.activeTasks[questId];
+  if (cur && (cur.completed || cur.isCompleted)) return false;
+  state.activeTasks[questId] = Object.assign({}, cur, { completed: true, isCompleted: true });
+  localStorage.setItem('playerState', JSON.stringify(state));
+  if (typeof loadPlayerState === 'function') {
+    loadPlayerState();
+  }
+  return true;
+}
+
+function applyMainQuestRewardsMq(questId) {
+  if (typeof ALL_TASKS === 'undefined' || !ALL_TASKS.main) return;
+  const task = ALL_TASKS.main.find((t) => t.id === questId);
+  if (!task || !task.rewards) return;
+  const saveData = localStorage.getItem('game_save_0');
+  if (!saveData) return;
+  try {
+    const save = JSON.parse(saveData);
+    if (!save.player) return;
+    task.rewards.forEach((r) => {
+      const v = parseInt(r.value, 10) || 0;
+      if (!v) return;
+      if (r.type === 'gold') save.player.gold = (save.player.gold || 0) + v;
+      else if (r.type === 'yueli' || r.type === 'exp') save.player.exp = (save.player.exp || 0) + v;
+    });
+    localStorage.setItem('game_save_0', JSON.stringify(save));
+    const goldEl = document.getElementById('goldValue');
+    if (goldEl) goldEl.textContent = save.player.gold;
+  } catch (e) {
+    console.warn('applyMainQuestRewardsMq', e);
+  }
+}
+
+function floatMainQuestRewardsMq(questId) {
+  if (typeof ALL_TASKS === 'undefined' || !ALL_TASKS.main) return;
+  const task = ALL_TASKS.main.find((t) => t.id === questId);
+  if (!task || !task.rewards) return;
+  showFloatText(`主线 · 「${task.name}」达成`, '#FFD700');
+  let delay = 500;
+  task.rewards.forEach((r) => {
+    const v = parseInt(r.value, 10) || 0;
+    if (!v) return;
+    let color = '#f4d03f';
+    if (r.type === 'gold') color = '#ff9800';
+    else if (r.type === 'exp') color = '#ffeb3b';
+    else if (r.type === 'yueli') color = '#9c27b0';
+    const label = `${r.name || '奖励'} +${v}`;
+    setTimeout(() => showFloatText(label, color), delay);
+    delay += 450;
+  });
+}
+
+/** 在澄心堂首次领取三门派差事之一后，推进主线「贡献与艺」 */
+function tryCompleteMainB05AfterFactionAccept(taskId) {
+  if (!FACTION_TASK_IDS.includes(taskId)) return;
+  const state = JSON.parse(localStorage.getItem('playerState') || '{}');
+  if (!isMainQuestStepDoneMq(state, 'main_b_04')) return;
+  if (isMainQuestStepDoneMq(state, 'main_b_05')) return;
+  if (markMainQuestStepMq('main_b_05')) {
+    applyMainQuestRewardsMq('main_b_05');
+    floatMainQuestRewardsMq('main_b_05');
+  }
+}
+
+/**
+ * 首次向赵长老交差成功后：补记主线「贡献与艺」（若缺）并推进「三事九回」
+ */
+function tryAdvanceMainQuestOnFactionTurnIn(taskId) {
+  if (!FACTION_TASK_IDS.includes(taskId)) return;
+  let state = JSON.parse(localStorage.getItem('playerState') || '{}');
+  if (!isMainQuestStepDoneMq(state, 'main_b_04')) return;
+  if (!isMainQuestStepDoneMq(state, 'main_b_05')) {
+    if (markMainQuestStepMq('main_b_05')) {
+      applyMainQuestRewardsMq('main_b_05');
+      floatMainQuestRewardsMq('main_b_05');
+    }
+  }
+  state = JSON.parse(localStorage.getItem('playerState') || '{}');
+  if (!isMainQuestStepDoneMq(state, 'main_b_05')) return;
+  if (isMainQuestStepDoneMq(state, 'main_b_06')) return;
+  if (markMainQuestStepMq('main_b_06')) {
+    applyMainQuestRewardsMq('main_b_06');
+    floatMainQuestRewardsMq('main_b_06');
+  }
+}
+
+/** 苏瑶处成功学会任一门入门武式后，推进主线「授式入门」(main_b_07) */
+function tryCompleteMainB07AfterLearnSkill() {
+  if (typeof ALL_TASKS === 'undefined' || !ALL_TASKS.main) return;
+  const state = JSON.parse(localStorage.getItem('playerState') || '{}');
+  if (!isMainQuestStepDoneMq(state, 'main_b_06')) return;
+  if (isMainQuestStepDoneMq(state, 'main_b_07')) return;
+  if (markMainQuestStepMq('main_b_07')) {
+    applyMainQuestRewardsMq('main_b_07');
+    floatMainQuestRewardsMq('main_b_07');
+  }
+}
+
+/**
+ * 若 learnedSkills 已含三门入门（例如武学页版本清档后仍保留苏瑶传授记录），
+ * 与苏瑶对话「复命」可补记 main_b_07，避免卡关。
+ */
+function tryCompleteMainB07IfAllEntrySkillsKnown() {
+  const state = JSON.parse(localStorage.getItem('playerState') || '{}');
+  const skills = state.learnedSkills || [];
+  const need = ['正阳基础剑式', '正阳吐纳诀', '踏云步'];
+  if (!need.every((s) => skills.includes(s))) {
+    showFloatText('尚未学全三门入门武学，无法复命。', '#f44336');
+    return false;
+  }
+  if (!isMainQuestStepDoneMq(state, 'main_b_06')) {
+    showFloatText('主线未到「授式入门」阶段。', '#f44336');
+    return false;
+  }
+  if (isMainQuestStepDoneMq(state, 'main_b_07')) {
+    showFloatText('主线「授式入门」已完成。', '#ff9800');
+    return false;
+  }
+  if (markMainQuestStepMq('main_b_07')) {
+    applyMainQuestRewardsMq('main_b_07');
+    floatMainQuestRewardsMq('main_b_07');
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -755,12 +964,14 @@ function completeSingleTask(taskId) {
   // 获取任务
   const task = playerState.activeTasks[taskId];
   if (!task) {
+    showFloatText('未找到该差事记录，或已结算。', '#f44336');
     return;
   }
   
   // 检查任务是否完成（两种标记方式都支持）
   const isTaskCompleted = task.completed || task.isCompleted;
   if (!isTaskCompleted) {
+    showFloatText('差事尚未办妥，请完成目标后再回澄心堂复命。', '#f44336');
     return;
   }
   
@@ -811,12 +1022,24 @@ function completeSingleTask(taskId) {
     playerState.factionContribution += reward;
     showFloatText(`🎉 获得 ${reward} 门派贡献`, '#4caf50');
   }
-  
-  // 删除已完成的任务
+
+  if (!playerState.completedFactionQuests) playerState.completedFactionQuests = {};
+  playerState.completedFactionQuests[taskId] = {
+    completed: true,
+    isCompleted: true,
+    contribution: reward || 0,
+    turnedInAt: Date.now()
+  };
+
+  // 删除已领取中的条目（任务页改看 completedFactionQuests 显示「已完成」）
   delete playerState.activeTasks[taskId];
   
   // 保存状态
   localStorage.setItem('playerState', JSON.stringify(playerState));
+  if (typeof loadPlayerState === 'function') {
+    loadPlayerState();
+  }
+  tryAdvanceMainQuestOnFactionTurnIn(taskId);
 }
 
 /**
@@ -866,9 +1089,55 @@ function handleLeave() {
 }
 
 /**
+ * 将「整理藏经楼书籍」标为已完成并写入存档（与秦松处整理动画结束时调用）
+ */
+function markOrganizeBooksTaskCompleteInStorage() {
+  try {
+    const raw = localStorage.getItem('playerState');
+    const state = raw ? JSON.parse(raw) : {};
+    if (!state.activeTasks) state.activeTasks = {};
+    const t = state.activeTasks.organize_books;
+    if (!t) {
+      console.warn('markOrganizeBooksTaskCompleteInStorage: 未接取整理差事');
+      return false;
+    }
+    if (t.completed || t.isCompleted) {
+      tryCompleteMainB05AfterFactionAccept('organize_books');
+      return true;
+    }
+    t.completed = true;
+    t.isCompleted = true;
+    localStorage.setItem('playerState', JSON.stringify(state));
+    if (typeof loadPlayerState === 'function') {
+      loadPlayerState();
+    }
+    tryCompleteMainB05AfterFactionAccept('organize_books');
+    return true;
+  } catch (e) {
+    console.error('markOrganizeBooksTaskCompleteInStorage', e);
+    return false;
+  }
+}
+
+/**
  * 整理书籍任务（三段话动画）
  */
 function startOrganizeBooks() {
+  let st = {};
+  try {
+    const raw = localStorage.getItem('playerState');
+    st = raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    st = {};
+  }
+  if (!st.activeTasks || !st.activeTasks.organize_books) {
+    return;
+  }
+  const ob = st.activeTasks.organize_books;
+  if (ob.completed || ob.isCompleted) {
+    return;
+  }
+
   // 隐藏选项，显示整理过程
   UI.dialogueOptions.innerHTML = '';
   
@@ -905,39 +1174,30 @@ function startOrganizeBooks() {
       setTimeout(() => {
         clearInterval(dotTimer3);
         
-        // 标记任务完成
-        const savedState = localStorage.getItem('playerState');
-        let playerState = savedState ? JSON.parse(savedState) : {};
+        markOrganizeBooksTaskCompleteInStorage();
         
-        if (playerState.activeTasks && playerState.activeTasks.organize_books) {
-          playerState.activeTasks.organize_books.completed = true;
-          playerState.activeTasks.organize_books.isCompleted = true;
-          localStorage.setItem('playerState', JSON.stringify(playerState));
-          
-          showFloatText('✓ 整理书籍任务完成！', '#4caf50');
+        try {
+          if (currentNpc && currentNpc.dialogues) {
+            currentDialogue = 'default';
+            const dialogue = currentNpc.dialogues[currentDialogue];
+            const text = dialogue.getText ? dialogue.getText() : dialogue.text;
+            const fullText = `${currentNpc.name}：${text}`;
+            UI.dialogueText.textContent = fullText;
+            const options = dialogue.getOptions ? dialogue.getOptions() : dialogue.options;
+            const optionsHtml = options.map((option, index) => `
+              <button class="dialogue-option" onclick="selectDialogueOption(${index})">
+                ${option.text}
+              </button>
+            `).join('');
+            UI.dialogueOptions.innerHTML = optionsHtml + `
+              <button class="dialogue-option return" onclick="closeDialogue()">
+                ← 返回
+              </button>
+            `;
+          }
+        } catch (e) {
+          console.error('startOrganizeBooks refresh dialogue', e);
         }
-        
-        // 恢复对话，直接显示完成后的对话，不打字
-        currentDialogue = 'default';
-        
-        const dialogue = currentNpc.dialogues[currentDialogue];
-        const text = dialogue.getText ? dialogue.getText() : dialogue.text;
-        const fullText = `${currentNpc.name}：${text}`;
-        UI.dialogueText.textContent = fullText;
-        
-        const options = dialogue.getOptions ? dialogue.getOptions() : dialogue.options;
-        
-        const optionsHtml = options.map((option, index) => `
-          <button class="dialogue-option" onclick="selectDialogueOption(${index})">
-            ${option.text}
-          </button>
-        `).join('');
-        
-        UI.dialogueOptions.innerHTML = optionsHtml + `
-          <button class="dialogue-option return" onclick="closeDialogue()">
-            ← 返回
-          </button>
-        `;
       }, 3000);
     }, 3000);
   }, 3000);
@@ -945,6 +1205,7 @@ function startOrganizeBooks() {
 
 // 打开任务系统
 function openTask() {
+  rememberReturnContextIfZhengyangOrSubmapPage();
   window.location.href = 'task.html';
 }
 
@@ -952,3 +1213,4 @@ function openTask() {
 window.initMapUI = initMapUI;
 window.goBackToWorldMap = goBackToWorldMap;
 window.openTask = openTask;
+window.tryRestoreMapViewAfterReturn = tryRestoreMapViewAfterReturn;

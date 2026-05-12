@@ -563,17 +563,78 @@ const ITEMS = {
   // 秘籍
   skillbook_liuyun: {
     id: 'skillbook_liuyun',
-    name: '流云剑法秘籍',
+    name: '阵形剑诀秘籍',
     type: 'consumable',
     category: 'skillbook',
     quality: 'uncommon',
-    description: '记载流云剑法的秘籍，需要剑术修为20才能学习',
+    description: '记载《阵形剑诀》，青石武馆初阶剑式；研读悟通后剑术修为见长。',
     icon: '📖',
-    martialArtId: 2,
+    martialArtId: 10,
+    cultivationGain: 5,
     learningRequirement: {
       skillType: 'sword',
-      value: 20
+      value: 0
     },
+    effects: {},
+    price: 200
+  },
+
+  skillbook_chenqiao_quan: {
+    id: 'skillbook_chenqiao_quan',
+    name: '沉桥拳诀秘籍',
+    type: 'consumable',
+    category: 'skillbook',
+    quality: 'uncommon',
+    description: '记载《沉桥拳诀》，青石武馆初阶拳法；研读悟通后拳脚修为见长。',
+    icon: '📖',
+    martialArtId: 13,
+    cultivationGain: 5,
+    learningRequirement: { skillType: 'fist', value: 0 },
+    effects: {},
+    price: 200
+  },
+
+  skillbook_polang_dao: {
+    id: 'skillbook_polang_dao',
+    name: '破浪刀谱秘籍',
+    type: 'consumable',
+    category: 'skillbook',
+    quality: 'uncommon',
+    description: '记载《破浪刀谱》，青石武馆初阶刀法；研读悟通后刀术修为见长。',
+    icon: '📖',
+    martialArtId: 14,
+    cultivationGain: 5,
+    learningRequirement: { skillType: 'blade', value: 0 },
+    effects: {},
+    price: 200
+  },
+
+  skillbook_yangqi_shu: {
+    id: 'skillbook_yangqi_shu',
+    name: '养气术秘籍',
+    type: 'consumable',
+    category: 'skillbook',
+    quality: 'uncommon',
+    description: '记载《养气术》，青石武馆初阶内功；研读悟通后内功修为见长。',
+    icon: '📿',
+    martialArtId: 11,
+    cultivationGain: 5,
+    learningRequirement: { skillType: 'innerSkill', value: 0 },
+    effects: {},
+    price: 200
+  },
+
+  skillbook_nuobu_jue: {
+    id: 'skillbook_nuobu_jue',
+    name: '挪步诀秘籍',
+    type: 'consumable',
+    category: 'skillbook',
+    quality: 'uncommon',
+    description: '记载《挪步诀》，青石武馆初阶轻功；研读悟通后轻功修为见长。',
+    icon: '👟',
+    martialArtId: 12,
+    cultivationGain: 5,
+    learningRequirement: { skillType: 'lightSkill', value: 0 },
     effects: {},
     price: 200
   },
@@ -618,7 +679,7 @@ const ITEMS = {
     type: 'consumable',
     category: 'skillbook',
     quality: 'rare',
-    description: '山寨流传的剑经，需要剑术修为25才能学习',
+    description: '山寨流传的《落草快剑》手抄，需要剑术修为25才能学习',
     icon: '📖',
     martialArtId: 6,
     learningRequirement: {

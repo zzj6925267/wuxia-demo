@@ -1584,8 +1584,12 @@ function updateBanditTaskProgress(enemy) {
   const banditTask = playerState.activeTasks && playerState.activeTasks['bandit_clear'];
   if (!banditTask) return;
   
-  // 检查敌人是否是山贼
-  if (enemy.id && enemy.id.includes('shanze')) {
+  // 检查敌人是否是山贼（id 或名称）
+  const enemyId = (enemy && enemy.id) ? String(enemy.id) : '';
+  const enemyName = (enemy && enemy.name) ? String(enemy.name) : '';
+  const isBanditEnemy =
+    (enemyId && enemyId.includes('shanze')) || (enemyName && enemyName.includes('山贼'));
+  if (isBanditEnemy) {
     // 增加击杀计数（适配新的数据结构）
     if (banditTask.killCount !== undefined) {
       banditTask.killCount++;

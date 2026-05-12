@@ -259,7 +259,88 @@
       color: #fff8ec;
       box-shadow: 0 0 8px rgba(201, 162, 39, 0.2);
     }
+
+    /* 与大地图正阳派侧栏对话区同构（map.css .dialogue-*），嵌入面板而非居中弹窗 */
+    .street-story-npc-section,
+    .gate-guide-npc-section {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid #5d5346;
+    }
+    .street-story-npc-section .npc-list,
+    .gate-guide-npc-section .npc-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .dialogue-section {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #5d5346;
+    }
+    .dialogue-content {
+      display: flex;
+      flex-direction: column;
+    }
+    .dialogue-speaker {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .dialogue-npc-icon {
+      font-size: 20px;
+      margin-right: 8px;
+    }
+    .dialogue-npc-name {
+      font-size: 15px;
+      font-weight: bold;
+      color: #d4af37;
+    }
+    .dialogue-text {
+      font-size: 15px;
+      color: #d8d0c4;
+      line-height: 1.6;
+      margin-bottom: 12px;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.28);
+      border-radius: 6px;
+      border: 1px solid #4a4338;
+      min-height: 3.2em;
+    }
+    .dialogue-options {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .dialogue-option {
+      padding: 8px 15px;
+      background: linear-gradient(145deg, #3d3830, #2c2822);
+      border: 1px solid #6b6254;
+      border-radius: 6px;
+      color: #d0c8b8;
+      font-size: 14px;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .dialogue-option:hover {
+      border-color: #c9a227;
+      color: #fff8ec;
+    }
+    .dialogue-option.return {
+      border-color: #555;
+      color: #8a8278;
+    }
+    .dialogue-option.return:hover {
+      border-color: #777;
+      color: #b8b0a4;
+    }
+    .dialogue-option:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
   </style>
+  <link rel="stylesheet" href="submap_quick_nav.css" />
 </head>
 <body>
   <script>
@@ -296,6 +377,12 @@
         </defs>
       </svg>
       <div class="map-nodes" id="mapNodes"></div>
+      <div class="character-button-area character-button-area--submap" aria-label="快捷入口">
+        <button type="button" class="btn-character" onclick="submapOpenCharacter()">👤 角色</button>
+        <button type="button" class="btn-character" onclick="submapOpenMartialArts()">⚔️ 武学</button>
+        <button type="button" class="btn-character" onclick="submapOpenInventory()">🎒 背包</button>
+        <button type="button" class="btn-character" onclick="submapOpenTask()">📋 任务</button>
+      </div>
     </div>
 
     <div class="location-panel" id="locationPanel">
@@ -309,27 +396,484 @@
         <h3 class="town-title">🏮 街坊见闻</h3>
         <div id="townTips" class="town-tips"></div>
         <button type="button" class="town-chat-btn" id="townChatBtn">打听几句闲话</button>
+        <div class="gate-guide-npc-section" id="gateGuideNpcSection" style="display: none;">
+          <h3 class="town-title">👥 镇口有人招呼</h3>
+          <div class="npc-list">
+            <button type="button" class="npc-interact-btn" data-npc="gate_guard" id="npcBtnGateGuard">
+              🛡️ 巡丁 · 周诚 — 可搭话
+            </button>
+          </div>
+        </div>
+        <div class="street-story-npc-section" id="streetStoryNpcSection" style="display: none;">
+          <h3 class="town-title">👥 街面上有人可搭话</h3>
+          <div class="npc-list">
+            <button type="button" class="npc-interact-btn" data-npc="street_wang" id="npcBtnStreetWang">
+              👴 杂货摊 · 王福寿 — 可交谈
+            </button>
+          </div>
+        </div>
       </div>
 
       <div class="dojo-npc-section" id="dojoNpcSection" style="display: none;">
         <h3 class="town-title">🥋 武馆内</h3>
         <div class="npc-list">
-          <button type="button" class="npc-interact-btn" data-npc="jiaotou" id="npcBtnJiaotou">👤 教头 — 可交谈</button>
+          <button type="button" class="npc-interact-btn" data-npc="jiaotou" id="npcBtnJiaotou">🥋 教头 — 可交谈</button>
           <button type="button" class="npc-interact-btn" data-npc="wood_dummy" id="npcBtnWoodDummy">🪵 木人儿 — 可交互</button>
         </div>
       </div>
 
       <div id="leaveBtnContainer" style="display: none;"></div>
+
+      <div class="dialogue-section" id="qingstoneDialoguePanel" style="display: none;" aria-live="polite">
+        <div class="dialogue-content">
+          <div class="dialogue-speaker">
+            <span class="dialogue-npc-icon" id="qingstoneDialogueNpcIcon"></span>
+            <span class="dialogue-npc-name" id="qingstoneDialogueNpcName"></span>
+          </div>
+          <div class="dialogue-text" id="qingstoneDialogueText"></div>
+          <div class="dialogue-options" id="qingstoneDialogueOptions"></div>
+        </div>
+      </div>
     </div>
   </div>
 
+  <script src="submap_quick_nav.js"></script>
   <script src="../js/utils/battleSettlement.js"></script>
+  <script src="../js/data/items.js"></script>
   <script src="qingstoneMapData.js"></script>
+  <script src="taskData.js"></script>
+  <script src="martialArtsData.js"></script>
   <script>
         const LOCATIONS = window.QINGSTONE_LOCATIONS;
         const CONNECTIONS = window.QINGSTONE_CONNECTIONS;
 
         let currentLocation = 'qingstone_gate';
+
+        const QINGSTONE_GATE_GUIDE_STEPS = [
+          { icon: '📜', name: '旁白', title: '', body: '你刚进镇，牌坊下人来人往，鞋底还沾着城外的尘土。' },
+          {
+            icon: '🛡️',
+            name: '周诚',
+            title: '镇口巡丁',
+            body: '「外来客？先报个安心——镇上规矩不多，别让鞘里的家伙随便出声响。」'
+          },
+          {
+            icon: '🛡️',
+            name: '周诚',
+            title: '镇口巡丁',
+            body: '「要识镇子，顺着主街青石板走，烟火气最足；若要问路，杂货摊王老汉嘴碎，却肯说实话。」'
+          },
+          { icon: '📜', name: '旁白', title: '', body: '他朝主街方向抬了抬下巴，便又去拦一辆骡车查验。' }
+        ];
+
+        const QINGSTONE_MAIN_B01_STEPS = [
+          { icon: '📜', name: '旁白', title: '', body: '主街青石板被日头晒得发白，馄饨锅热气一掀，整条街都像活了过来。' },
+          {
+            icon: '📜',
+            name: '旁白',
+            title: '',
+            body: '你在馄饨摊边上收住脚，听小贩与挑夫争路又互让，心里渐渐有了「这镇子活人不少」的实感。'
+          },
+          {
+            icon: '👴',
+            name: '王福寿',
+            title: '杂货摊',
+            body: '老汉从杂货堆里抬起眼，把算盘轻轻一合：「生面孔？先稳住神，别把慌乱写在脸上。」'
+          },
+          {
+            icon: '👴',
+            name: '王福寿',
+            title: '杂货摊',
+            body: '「客官若要打听事，武馆教头嘴严，但心不坏；告示栏上新贴的东西，可别不当回事。」'
+          },
+          {
+            icon: '👴',
+            name: '王福寿',
+            title: '杂货摊',
+            body: '「脚店在西，铁匠铺在北；天黑别独自往后巷钻，那儿酒鬼多，口舌也多。」'
+          },
+          {
+            icon: '📜',
+            name: '旁白',
+            title: '',
+            body: '你把这些零碎嘱咐在肚里过了两遍，又抬头认了认匾额铺招——至少再乱走，不至于一头雾水。'
+          }
+        ];
+        const QINGSTONE_MAIN_B02_STEPS = [
+          { icon: '📜', name: '旁白', title: '', body: '武馆里木屑与汗味混在一起，拳脚破风的声响一下下砸在耳膜上。' },
+          {
+            icon: '🥋',
+            name: '教头',
+            title: '青石武馆',
+            body: '教头正训一名学徒步法，抬头见你进院，眉头先松了半分：「新来的？镇上不太平，先把脚跟站稳。」'
+          },
+          { icon: '🥋', name: '教头', title: '青石武馆', body: '「走江湖不是逞嘴上功夫。桩稳了，气才沉得下。」' },
+          {
+            icon: '🥋',
+            name: '教头',
+            title: '青石武馆',
+            body: '他指了指院里的木人桩：「想走远路，先学会挨打与站稳。青石镇往东是黑风林，往西有蛇窟——没两把刷子，别瞎闯。」'
+          },
+          {
+            icon: '🧒',
+            name: '小学徒',
+            title: '武馆',
+            body: '后头有个孩子忍不住插嘴：「教头，人来了——茶还沏吗？」'
+          },
+          {
+            icon: '🥋',
+            name: '教头',
+            title: '青石武馆',
+            body: '教头横他一眼，又转向你：「茶不必。你只记得——有事来武馆找老子。听人劝，吃饱饭。」'
+          },
+          {
+            icon: '📜',
+            name: '旁白',
+            title: '',
+            body: '你抱拳应了。风吹过木人桩，笃的一声轻响，像是某种不成文的约定落在了心里。'
+          }
+        ];
+
+        function qingstoneEnsurePlayerData() {
+          if (!window.playerData) {
+            window.playerData = {
+              inventory: [],
+              level: 1,
+              equipment: { weapon: null, armor: null, helmet: null, shoes: null, accessory: null }
+            };
+          }
+          if (!window.playerData.inventory) window.playerData.inventory = [];
+        }
+
+        function qingstonePersistPlayerData() {
+          try {
+            if (window.playerData) {
+              localStorage.setItem('playerData', JSON.stringify(window.playerData));
+            }
+          } catch (e) {}
+        }
+
+        function qingstoneCountItem(itemId) {
+          qingstoneEnsurePlayerData();
+          var n = 0;
+          window.playerData.inventory.forEach(function (s) {
+            if (s.id === itemId) n += s.quantity || 0;
+          });
+          return n;
+        }
+
+        function qingstoneAddInventoryItem(itemId, qty) {
+          qingstoneEnsurePlayerData();
+          var q = qty || 1;
+          var inv = window.playerData.inventory;
+          for (var i = 0; i < inv.length; i++) {
+            if (inv[i].id === itemId && inv[i].quantity < 99) {
+              var can = 99 - inv[i].quantity;
+              var add = Math.min(can, q);
+              inv[i].quantity += add;
+              q -= add;
+              if (q <= 0) break;
+            }
+          }
+          while (q > 0) {
+            var add2 = Math.min(q, 99);
+            inv.push({ id: itemId, quantity: add2 });
+            q -= add2;
+          }
+          qingstonePersistPlayerData();
+        }
+
+        /** 教头处银两购武：先入背包秘籍，研读后再入武学；行囊里已有该册则暂不可叠购，读完消耗后可再买 */
+        const QINGSTONE_DOJO_SHOP = [
+          { martialId: 10, itemId: 'skillbook_liuyun', label: '《阵形剑诀》', price: 88 },
+          { martialId: 13, itemId: 'skillbook_chenqiao_quan', label: '《沉桥拳诀》', price: 86 },
+          { martialId: 14, itemId: 'skillbook_polang_dao', label: '《破浪刀谱》', price: 90 },
+          { martialId: 11, itemId: 'skillbook_yangqi_shu', label: '《养气术》', price: 95 },
+          { martialId: 12, itemId: 'skillbook_nuobu_jue', label: '《挪步诀》', price: 90 }
+        ];
+
+        let qsDialoguePayload = null;
+        let qsTypeTimer = null;
+
+        function clearQsTypeTimer() {
+          if (qsTypeTimer) {
+            clearInterval(qsTypeTimer);
+            qsTypeTimer = null;
+          }
+        }
+
+        function formatQsSpeakerLine(step) {
+          if (!step.title) return step.name;
+          return step.name + '（' + step.title + '）';
+        }
+
+        function getQsTypeText(step) {
+          if (step.name === '旁白') return step.body;
+          return step.name + '：' + step.body;
+        }
+
+        function closeQingstoneDialogueAbandon() {
+          clearQsTypeTimer();
+          qsDialoguePayload = null;
+          const panel = document.getElementById('qingstoneDialoguePanel');
+          if (panel) panel.style.display = 'none';
+          updatePanel();
+        }
+
+        function finishQingstoneDialogueSequence() {
+          const fn = qsDialoguePayload && qsDialoguePayload.onComplete;
+          clearQsTypeTimer();
+          qsDialoguePayload = null;
+          const panel = document.getElementById('qingstoneDialoguePanel');
+          if (panel) panel.style.display = 'none';
+          if (typeof fn === 'function') fn();
+          updatePanel();
+        }
+
+        function runQsTypewriter(fullText, onDone) {
+          clearQsTypeTimer();
+          const textEl = document.getElementById('qingstoneDialogueText');
+          const optsEl = document.getElementById('qingstoneDialogueOptions');
+          if (!textEl || !optsEl) return;
+          textEl.textContent = '';
+          optsEl.innerHTML =
+            '<button type="button" class="dialogue-option" disabled id="qsDialoguePrimaryBtn">请稍候…</button>' +
+            '<button type="button" class="dialogue-option return" id="qsDialogueReturnBtn">← 收起</button>';
+          const ret = document.getElementById('qsDialogueReturnBtn');
+          if (ret) ret.addEventListener('click', closeQingstoneDialogueAbandon);
+          let i = 0;
+          qsTypeTimer = setInterval(function () {
+            if (i < fullText.length) {
+              textEl.textContent += fullText.charAt(i);
+              i++;
+            } else {
+              clearQsTypeTimer();
+              if (onDone) onDone();
+            }
+          }, 42);
+        }
+
+        function bindQsAdvanceButtons(isLast) {
+          const optsEl = document.getElementById('qingstoneDialogueOptions');
+          if (!optsEl) return;
+          optsEl.innerHTML =
+            '<button type="button" class="dialogue-option" id="qsDialoguePrimaryBtn">' +
+            (isLast ? '知道了' : '接下一句') +
+            '</button>' +
+            '<button type="button" class="dialogue-option return" id="qsDialogueReturnBtn">← 收起</button>';
+          document.getElementById('qsDialoguePrimaryBtn').addEventListener('click', advanceQsDialogueStep);
+          document.getElementById('qsDialogueReturnBtn').addEventListener('click', closeQingstoneDialogueAbandon);
+        }
+
+        function showQsDialogueStep() {
+          const p = qsDialoguePayload;
+          if (!p || !p.steps || p.stepIndex >= p.steps.length) return;
+          const step = p.steps[p.stepIndex];
+          document.getElementById('qingstoneDialogueNpcIcon').textContent = step.icon || '👤';
+          document.getElementById('qingstoneDialogueNpcName').textContent = formatQsSpeakerLine(step);
+          const full = getQsTypeText(step);
+          const isLast = p.stepIndex >= p.steps.length - 1;
+          runQsTypewriter(full, function () {
+            bindQsAdvanceButtons(isLast);
+          });
+        }
+
+        function advanceQsDialogueStep() {
+          const p = qsDialoguePayload;
+          if (!p) return;
+          p.stepIndex += 1;
+          if (p.stepIndex >= p.steps.length) {
+            finishQingstoneDialogueSequence();
+            return;
+          }
+          showQsDialogueStep();
+        }
+
+        function startQingstoneEmbeddedDialogue(steps, onComplete) {
+          if (!steps || !steps.length) return;
+          qsDialoguePayload = { steps: steps.slice(), stepIndex: 0, onComplete: onComplete || null };
+          const panel = document.getElementById('qingstoneDialoguePanel');
+          if (panel) panel.style.display = 'block';
+          hideQingstoneNpcRowsBehindDialogue();
+          showQsDialogueStep();
+        }
+
+        function isQingstoneDialoguePanelOpen() {
+          const panel = document.getElementById('qingstoneDialoguePanel');
+          return panel && panel.style.display === 'block';
+        }
+
+        function hideQingstoneNpcRowsBehindDialogue() {
+          const gate = document.getElementById('gateGuideNpcSection');
+          if (gate) gate.style.display = 'none';
+          const street = document.getElementById('streetStoryNpcSection');
+          if (street) street.style.display = 'none';
+          const dojo = document.getElementById('dojoNpcSection');
+          if (dojo) dojo.style.display = 'none';
+        }
+
+        function readGameSaveRaw() {
+          try {
+            const raw = localStorage.getItem('game_save_0');
+            return raw ? JSON.parse(raw) : null;
+          } catch (e) {
+            return null;
+          }
+        }
+
+        function deductPlayerGoldFromSave(amount) {
+          const n = parseInt(amount, 10) || 0;
+          if (n <= 0) return false;
+          const save = readGameSaveRaw();
+          if (!save || !save.player) return false;
+          const g = save.player.gold || 0;
+          if (g < n) return false;
+          save.player.gold = g - n;
+          localStorage.setItem('game_save_0', JSON.stringify(save));
+          loadGoldFromSave();
+          return true;
+        }
+
+        function closeJiaotouBranchMenu() {
+          clearQsTypeTimer();
+          qsDialoguePayload = null;
+          const panel = document.getElementById('qingstoneDialoguePanel');
+          if (panel) panel.style.display = 'none';
+          updatePanel();
+        }
+
+        function openJiaotouBranchMenu() {
+          clearQsTypeTimer();
+          qsDialoguePayload = null;
+          const panel = document.getElementById('qingstoneDialoguePanel');
+          if (!panel) return;
+          hideQingstoneNpcRowsBehindDialogue();
+          panel.style.display = 'block';
+          document.getElementById('qingstoneDialogueNpcIcon').textContent = '🥋';
+          document.getElementById('qingstoneDialogueNpcName').textContent = '教头（青石武馆）';
+          document.getElementById('qingstoneDialogueText').textContent =
+            '教头抬眼扫你一眼：「杵在这儿作甚？有话直说。」';
+          const parts = [];
+          if (isQingstoneMainDone('main_b_01') && !isQingstoneMainDone('main_b_02')) {
+            parts.push(
+              '<button type="button" class="dialogue-option" data-jiaotou-act="main">弟子初来乍到，想请前辈指点镇上安身、外出行走的门道（主线）</button>'
+            );
+          }
+          parts.push(
+            '<button type="button" class="dialogue-option" data-jiaotou-act="shop">想向您淘换两本粗浅图谱，价钱好商量（购武）</button>'
+          );
+          if (isQingstoneMainDone('main_b_02')) {
+            parts.push(
+              '<button type="button" class="dialogue-option" data-jiaotou-act="chat">随便寒暄两句</button>'
+            );
+          }
+          parts.push(
+            '<button type="button" class="dialogue-option return" data-jiaotou-act="close">← 告辞</button>'
+          );
+          document.getElementById('qingstoneDialogueOptions').innerHTML = parts.join('');
+        }
+
+        function openJiaotouShopPanel() {
+          clearQsTypeTimer();
+          qsDialoguePayload = null;
+          const panel = document.getElementById('qingstoneDialoguePanel');
+          if (!panel) return;
+          hideQingstoneNpcRowsBehindDialogue();
+          panel.style.display = 'block';
+          document.getElementById('qingstoneDialogueNpcIcon').textContent = '🥋';
+          document.getElementById('qingstoneDialogueNpcName').textContent = '教头（青石武馆）';
+          document.getElementById('qingstoneDialogueText').textContent =
+            '「外头野路子杂书多，我这儿压五本：剑、拳、刀的粗谱各一，再加养气与步法。都是江湖上最浅的初阶货。钱货两清，看不懂别回来哭。」';
+          const lib = typeof MARTIAL_ARTS_LIBRARY !== 'undefined' ? MARTIAL_ARTS_LIBRARY : window.MARTIAL_ARTS_LIBRARY;
+          const rows = QINGSTONE_DOJO_SHOP.map(function (item, idx) {
+            const inBag = item.itemId && qingstoneCountItem(item.itemId) > 0;
+            const tmpl = lib && lib.find ? lib.find(function (m) {
+              return m.id === item.martialId;
+            }) : null;
+            const note = tmpl ? '（' + tmpl.rank + ' · ' + tmpl.type + '）' : '';
+            if (inBag) {
+              return (
+                '<button type="button" class="dialogue-option" disabled>' +
+                item.label +
+                note +
+                ' — 行囊已有该册（先研读或腾出再购）</button>'
+              );
+            }
+            return (
+              '<button type="button" class="dialogue-option" data-jiaotou-act="shop-buy" data-shop-idx="' +
+              idx +
+              '">' +
+              item.label +
+              note +
+              ' — ' +
+              item.price +
+              ' 两</button>'
+            );
+          }).join('');
+          document.getElementById('qingstoneDialogueOptions').innerHTML =
+            rows +
+            '<button type="button" class="dialogue-option return" data-jiaotou-act="shop-back">← 回上一问</button>';
+        }
+
+        function tryPurchaseJiaotouShop(idx) {
+          const item = QINGSTONE_DOJO_SHOP[idx];
+          if (!item || !item.itemId) return;
+          if (qingstoneCountItem(item.itemId) > 0) {
+            showFloatText('教头：「行囊里已有这一册，先研读消化了再来。」', '#ff9800');
+            return;
+          }
+          const lib = typeof MARTIAL_ARTS_LIBRARY !== 'undefined' ? MARTIAL_ARTS_LIBRARY : window.MARTIAL_ARTS_LIBRARY;
+          const tmpl = lib && lib.find ? lib.find(function (m) {
+            return m.id === item.martialId;
+          }) : null;
+          if (!tmpl) return;
+          if (!deductPlayerGoldFromSave(item.price)) {
+            showFloatText('教头把银锭推回来：「不够数，别充阔。」', '#f44336');
+            return;
+          }
+          qingstoneAddInventoryItem(item.itemId, 1);
+          showFloatText('✓ 入手「' + item.label + '」秘籍，已放入行囊「秘籍」页；研读后悟通并记入武学。', '#4caf50');
+          openJiaotouShopPanel();
+        }
+
+        function bindJiaotouDialogueOptionDelegation() {
+          const dlgOpts = document.getElementById('qingstoneDialogueOptions');
+          if (!dlgOpts || dlgOpts.dataset.jiaotouDelegate) return;
+          dlgOpts.dataset.jiaotouDelegate = '1';
+          dlgOpts.addEventListener('click', function (ev) {
+            const b = ev.target.closest('[data-jiaotou-act]');
+            if (!b) return;
+            const act = b.getAttribute('data-jiaotou-act');
+            if (act === 'main') {
+              document.getElementById('qingstoneDialoguePanel').style.display = 'none';
+              startQingstoneEmbeddedDialogue(QINGSTONE_MAIN_B02_STEPS, function () {
+                tryCompleteMainB02AfterJiaotouTalk();
+              });
+              return;
+            }
+            if (act === 'shop') {
+              openJiaotouShopPanel();
+              return;
+            }
+            if (act === 'chat') {
+              showFloatText('教头：「行啦，桩功照旧练，别偷懒。」', '#d4af37');
+              closeJiaotouBranchMenu();
+              return;
+            }
+            if (act === 'close') {
+              closeJiaotouBranchMenu();
+              return;
+            }
+            if (act === 'shop-buy') {
+              const idx = parseInt(b.getAttribute('data-shop-idx'), 10);
+              if (!isNaN(idx)) tryPurchaseJiaotouShop(idx);
+              return;
+            }
+            if (act === 'shop-back') {
+              openJiaotouBranchMenu();
+            }
+          });
+        }
         
         // 飘字队列
         let floatTextQueue = [];
@@ -588,6 +1132,57 @@
           }, 1000);
         }
 
+        function applyMainQuestRewardsToSave(questId) {
+          if (typeof ALL_TASKS === 'undefined' || !ALL_TASKS.main) return;
+          const task = ALL_TASKS.main.find((t) => t.id === questId);
+          if (!task || !task.rewards) return;
+          const saveData = localStorage.getItem('game_save_0');
+          if (!saveData) return;
+          try {
+            const save = JSON.parse(saveData);
+            if (!save.player) return;
+            task.rewards.forEach((r) => {
+              const v = parseInt(r.value, 10) || 0;
+              if (!v) return;
+              if (r.type === 'gold') {
+                save.player.gold = (save.player.gold || 0) + v;
+              } else if (r.type === 'yueli' || r.type === 'exp') {
+                save.player.exp = (save.player.exp || 0) + v;
+              }
+            });
+            if (typeof checkLevelUp === 'function') checkLevelUp(save);
+            localStorage.setItem('game_save_0', JSON.stringify(save));
+            loadGoldFromSave();
+          } catch (e) {
+            console.warn('applyMainQuestRewardsToSave', e);
+          }
+        }
+
+        function floatMainQuestRewardChain(questId) {
+          if (typeof ALL_TASKS === 'undefined' || !ALL_TASKS.main) return;
+          const task = ALL_TASKS.main.find((t) => t.id === questId);
+          if (!task || !task.rewards) return;
+          const lines = [];
+          lines.push([`主线 · 「${task.name}」达成`, '#FFD700']);
+          task.rewards.forEach((r) => {
+            const v = parseInt(r.value, 10) || 0;
+            if (!v) return;
+            let color = '#f4d03f';
+            const label = `${r.name || '奖励'} +${v}`;
+            if (r.type === 'gold') color = '#ff9800';
+            else if (r.type === 'exp') color = '#ffeb3b';
+            else if (r.type === 'yueli') color = '#9c27b0';
+            lines.push([label, color]);
+          });
+          let idx = 0;
+          function next() {
+            if (idx >= lines.length) return;
+            const pair = lines[idx++];
+            runSmallMapBattleRewardFloat(pair[0], pair[1], () => setTimeout(next, 380));
+          }
+          next();
+        }
+
         function playPostBattleMapRewardFloats() {
           let data = null;
           if (window.BattleSettlement && typeof BattleSettlement.takePostBattleMapRewardFloats === 'function') {
@@ -639,6 +1234,7 @@
               console.error('加载playerData失败:', e);
             }
           }
+          qingstoneEnsurePlayerData();
           
           // 加载银两显示
           loadGoldFromSave();
@@ -665,6 +1261,28 @@
             chatBtn.addEventListener('click', randomTownRumor);
           }
 
+          const streetStorySec = document.getElementById('streetStoryNpcSection');
+          if (streetStorySec && !streetStorySec.dataset.bound) {
+            streetStorySec.dataset.bound = '1';
+            streetStorySec.addEventListener('click', (ev) => {
+              const btn = ev.target.closest('.npc-interact-btn');
+              if (!btn || btn.dataset.npc !== 'street_wang') return;
+              startQingstoneEmbeddedDialogue(QINGSTONE_MAIN_B01_STEPS, () => tryCompleteMainB01AfterStreetTalk());
+            });
+          }
+
+          const gateGuideSec = document.getElementById('gateGuideNpcSection');
+          if (gateGuideSec && !gateGuideSec.dataset.bound) {
+            gateGuideSec.dataset.bound = '1';
+            gateGuideSec.addEventListener('click', (ev) => {
+              const btn = ev.target.closest('.npc-interact-btn');
+              if (!btn || btn.dataset.npc !== 'gate_guard') return;
+              startQingstoneEmbeddedDialogue(QINGSTONE_GATE_GUIDE_STEPS, null);
+            });
+          }
+
+          bindJiaotouDialogueOptionDelegation();
+
           const dojoSec = document.getElementById('dojoNpcSection');
           if (dojoSec && !dojoSec.dataset.bound) {
             dojoSec.dataset.bound = '1';
@@ -673,7 +1291,12 @@
               if (!btn) return;
               const npc = btn.dataset.npc;
               if (npc === 'jiaotou') {
-                showFloatText('教头：「先把桩功三式练熟了，再来跟老子说话。」（功能后续开放）', '#d4af37');
+                if (!isQingstoneMainDone('main_b_01')) {
+                  showFloatText('教头一摆手：「连街面都没踩熟，来武馆作甚？先去主街问问人。」', '#d4af37');
+                  return;
+                }
+                openJiaotouBranchMenu();
+                return;
               } else if (npc === 'wood_dummy') {
                 showFloatText('你在木人儿身上试了两招，木声笃笃，震得虎口微麻。（功能后续开放）', '#bcaaa4');
               }
@@ -740,6 +1363,78 @@
       updatePanel();
     }
 
+    /** 读写 playerState（与任务页一致） */
+    function readPlayerStateRaw() {
+      try {
+        const raw = localStorage.getItem('playerState');
+        return raw ? JSON.parse(raw) : {};
+      } catch (e) {
+        return {};
+      }
+    }
+    function writePlayerStateRaw(state) {
+      localStorage.setItem('playerState', JSON.stringify(state));
+    }
+    /** 标记主线小节完成；若本次新完成则返回 true */
+    function markMainQuestStepComplete(questId) {
+      if (!questId) return false;
+      const state = readPlayerStateRaw();
+      if (!state.activeTasks) state.activeTasks = {};
+      const cur = state.activeTasks[questId];
+      if (cur && (cur.completed || cur.isCompleted)) return false;
+      state.activeTasks[questId] = Object.assign({}, cur, { completed: true, isCompleted: true });
+      writePlayerStateRaw(state);
+      return true;
+    }
+    /** 主线小节是否已在存档中标记完成 */
+    function isQingstoneMainDone(questId) {
+      const state = readPlayerStateRaw();
+      const t = state.activeTasks && state.activeTasks[questId];
+      return !!(t && (t.completed || t.isCompleted));
+    }
+
+    function tryCompleteMainB01AfterStreetTalk() {
+      if (markMainQuestStepComplete('main_b_01')) {
+        applyMainQuestRewardsToSave('main_b_01');
+        floatMainQuestRewardChain('main_b_01');
+      }
+    }
+
+    function tryCompleteMainB02AfterJiaotouTalk() {
+      if (!isQingstoneMainDone('main_b_01')) {
+        showFloatText('教头一摆手：「连街面都没踩熟，来武馆作甚？先去主街问问人。」', '#d4af37');
+        return;
+      }
+      if (markMainQuestStepComplete('main_b_02')) {
+        applyMainQuestRewardsToSave('main_b_02');
+        floatMainQuestRewardChain('main_b_02');
+      }
+    }
+
+    function refreshGateGuideNpcSection() {
+      const sec = document.getElementById('gateGuideNpcSection');
+      if (!sec) return;
+      if (isQingstoneDialoguePanelOpen()) {
+        sec.style.display = 'none';
+        return;
+      }
+      const atGate = currentLocation === 'qingstone_gate';
+      const need = atGate && !isQingstoneMainDone('main_b_01');
+      sec.style.display = need ? 'block' : 'none';
+    }
+
+    function refreshStreetStoryNpcSection() {
+      const sec = document.getElementById('streetStoryNpcSection');
+      if (!sec) return;
+      if (isQingstoneDialoguePanelOpen()) {
+        sec.style.display = 'none';
+        return;
+      }
+      const onStreet = currentLocation === 'bluestone_street';
+      const need = onStreet && !isQingstoneMainDone('main_b_01');
+      sec.style.display = need ? 'block' : 'none';
+    }
+
     function updatePanel() {
       const location = LOCATIONS[currentLocation];
       document.getElementById('locationIcon').textContent = location.icon;
@@ -750,7 +1445,11 @@
 
       const dojoNpcSection = document.getElementById('dojoNpcSection');
       if (dojoNpcSection) {
-        dojoNpcSection.style.display = currentLocation === 'qingstone_dojo' ? 'block' : 'none';
+        if (isQingstoneDialoguePanelOpen()) {
+          dojoNpcSection.style.display = 'none';
+        } else {
+          dojoNpcSection.style.display = currentLocation === 'qingstone_dojo' ? 'block' : 'none';
+        }
       }
 
       const leaveBtnContainer = document.getElementById('leaveBtnContainer');
@@ -760,6 +1459,9 @@
       } else {
         leaveBtnContainer.style.display = 'none';
       }
+
+      refreshGateGuideNpcSection();
+      refreshStreetStoryNpcSection();
     }
 
     const TOWN_TIP_LINES = {

@@ -171,6 +171,7 @@
       text-shadow: 0 1px 2px rgba(0,0,0,0.3);
     }
   </style>
+  <link rel="stylesheet" href="submap_quick_nav.css" />
 </head>
 <body>
   <div class="map-container">
@@ -192,6 +193,12 @@
       </svg>
       <div class="map-nodes" id="mapNodes"></div>
       <div class="contribution-display" id="contributionDisplay">门派贡献：0</div>
+      <div class="character-button-area character-button-area--submap" aria-label="快捷入口">
+        <button type="button" class="btn-character" onclick="submapOpenCharacter()">👤 角色</button>
+        <button type="button" class="btn-character" onclick="submapOpenMartialArts()">⚔️ 武学</button>
+        <button type="button" class="btn-character" onclick="submapOpenInventory()">🎒 背包</button>
+        <button type="button" class="btn-character" onclick="submapOpenTask()">📋 任务</button>
+      </div>
     </div>
 
     <div class="location-panel" id="locationPanel">
@@ -203,6 +210,7 @@
     </div>
   </div>
 
+  <script src="submap_quick_nav.js"></script>
   <script>
     const BUILDINGS = {
       zhengyang_hall: { id: 'zhengyang_hall', name: '正阳主殿', icon: '🏰', x: 500, y: 200, connections: ['wangjian_peak', 'yifeng_xuan', 'chengxin_tang', 'chunyang_ping'], desc: '门派大典、掌门议事、接待重要正道访客的核心场所。以玄玉为基、紫檀木为梁，殿顶刻满纯阳符文，正午阳光洒下时，符文会映出金色光纹，自带正气威压；殿中悬挂开山祖师手书的「正心为剑」匾额。' },

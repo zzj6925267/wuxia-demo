@@ -18,21 +18,6 @@ const LOCAL_MARTIAL_ARTS = [
     skills: []
   },
   {
-    id: 2,
-    name: '流云剑法',
-    type: '武功',
-    skillType: 'sword',
-    rank: '中阶',
-    school: '正阳派',
-    currentLevel: 0,
-    maxLevel: 10,
-    practiceTimes: 0,
-    equipped: false,
-    baseBonus: { sword: 8 },
-    stats: { attack: 45, hit: 20, speed: 10 },
-    skills: []
-  },
-  {
     id: 3,
     name: '正阳吐纳诀',
     type: '内功',
@@ -45,21 +30,6 @@ const LOCAL_MARTIAL_ARTS = [
     equipped: true,
     baseBonus: { innerSkill: 5 },
     stats: { hp: 50, defense: 10, innerSkill: 15 },
-    skills: []
-  },
-  {
-    id: 4,
-    name: '紫霞心经',
-    type: '内功',
-    skillType: 'innerSkill',
-    rank: '高阶',
-    school: '正阳派',
-    currentLevel: 0,
-    maxLevel: 10,
-    practiceTimes: 0,
-    equipped: false,
-    baseBonus: { innerSkill: 10 },
-    stats: { hp: 150, defense: 30, parry: 20, innerSkill: 40 },
     skills: []
   },
   {
@@ -219,6 +189,12 @@ function getLocalMartialBonuses() {
   };
 
   let arts = [];
+
+  /**
+   * 规则（与「卸装不保留基础属性」一致）：
+   * - 拳脚/剑术/刀术/轻功/内功「修为」五项：凡已学且重数>0 即按 baseBonus 累计，与是否装备、是否激活无关。
+   * - attack/hit/hp/mp 等面板战斗属性及内功被动：仅当前已装备武学生效，卸下即不计入。
+   */
   
   // 获取当前角色ID
   const currentCharId = getCurrentCharacter().id;
@@ -239,35 +215,31 @@ function getLocalMartialBonuses() {
     console.warn('从localStorage加载武学数据失败，使用默认数据:', e);
   }
 
+  const cultKeys = ['fist', 'sword', 'blade', 'lightSkill', 'innerSkill'];
   arts.forEach(martial => {
-    // 只有已装备的武学才生效
+    if (!martial.baseBonus || martial.currentLevel <= 0) return;
+    Object.entries(martial.baseBonus).forEach(([key, val]) => {
+      if (cultKeys.includes(key) && bonuses.hasOwnProperty(key)) {
+        bonuses[key] += val * martial.currentLevel;
+      }
+    });
+  });
+
+  arts.forEach(martial => {
     if (!martial.equipped) return;
-    
-    // 计算基础加成（修为）
-    if (martial.baseBonus && martial.currentLevel > 0) {
-      Object.entries(martial.baseBonus).forEach(([key, val]) => {
-        if (bonuses.hasOwnProperty(key)) {
-          bonuses[key] += val * martial.currentLevel;
-        }
-      });
-    }
-    
-    // 计算属性加成（attack, hit等）
+
     if (martial.stats && martial.currentLevel > 0) {
       Object.entries(martial.stats).forEach(([key, val]) => {
         if (bonuses.hasOwnProperty(key)) {
           bonuses[key] += val;
         }
-        // 把武学的 innerSkill（内功修为）加到 mp（内力）上
-        // 注意：武学的 innerSkill 也会转化为内力加成
         if (key === 'innerSkill') {
           bonuses.mp += val;
         }
       });
     }
-    
-    // 计算内功被动技能效果（只有装备且达到解锁等级才生效）
-    // 注意：修为（innerSkill）是永久的，不会因为卸下内功而扣除
+
+    // 内功被动（气血/防御等）：仅已装备且达解锁等级时生效；与「修为」五项累计无关
     if (martial.type === '内功' && martial.skills && martial.currentLevel > 0) {
       // 获取内功被动效果（接口预留，方便后续扩展）
       const passiveEffects = getInnerSkillPassiveEffects(martial, getCurrentCharacter());
@@ -338,7 +310,7 @@ function createDefaultCharacters() {
       exp: { current: 78, max: 100 },
       description: '正阳派内门弟子，天资聪颖，剑法出众。性格活泼开朗，乐于助人。',
       equipped: {
-        weapon: { id: 4, name: '流云剑', type: 'weapon', rarity: 'blue', level: 12, attack: 42, hit: 8, desc: '剑身轻盈，挥舞时如流云般飘逸。' },
+        weapon: { id: 4, name: '青锋剑', type: 'weapon', rarity: 'blue', level: 12, attack: 42, hit: 8, desc: '坊市常见好剑，刃口清亮，趁手可靠。' },
         armor: { id: 5, name: '素纱衣', type: 'armor', rarity: 'blue', level: 10, defense: 18, speed: 10, desc: '轻盈的纱衣，不影响身法施展。' },
         accessory: { id: 6, name: '玉坠', type: 'accessory', rarity: 'purple', level: 12, innerSkill: 15, hp: 40, desc: '温润的玉佩，能滋养内力。' },
         shoes: { id: 7, name: '云履', type: 'shoes', rarity: 'green', level: 10, speed: 15, dodge: 8, desc: '轻便的布鞋，适合施展轻功。' }
@@ -415,7 +387,7 @@ if (savedChars) {
 const PLAYER_INVENTORY = {
   weapon: [
     { id: 1, name: '青锋剑', type: 'weapon', rarity: 'blue', level: 10, attack: 35, hit: 5, desc: '普通的青钢剑，剑锋锋利，适合初学者使用。' },
-    { id: 4, name: '流云剑', type: 'weapon', rarity: 'blue', level: 12, attack: 42, hit: 8, desc: '剑身轻盈，挥舞时如流云般飘逸。' },
+    { id: 4, name: '青锋剑', type: 'weapon', rarity: 'blue', level: 12, attack: 42, hit: 8, desc: '坊市常见好剑，刃口清亮，趁手可靠。' },
     { id: 8, name: '铁剑', type: 'weapon', rarity: 'green', level: 5, attack: 20, desc: '普通的铁剑，随处可见。' }
   ],
   armor: [
@@ -632,15 +604,28 @@ function switchCharacter(index) {
  */
 function toggleCharacterPanel() {
   const panel = CHAR_UI.characterPanel;
-  panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
-  
-  if (panel.style.display === 'flex') {
-    // 检查是否有升级信息
-    checkLevelUpNotification();
-    
-    // 加载角色数据
-    loadCharacterData();
+  const wasVisible = panel.style.display === 'flex';
+  panel.style.display = wasVisible ? 'none' : 'flex';
+
+  if (wasVisible) {
+    try {
+      var ret = sessionStorage.getItem('game_ui_return_href');
+      var base = (window.location.pathname || '').split('/').pop() || '';
+      if (ret && /^map\.html$/i.test(base) && ret !== base) {
+        sessionStorage.removeItem('game_ui_return_href');
+        window.location.href = ret;
+        return;
+      }
+    } catch (e) {}
+    return;
   }
+
+  try {
+    document.documentElement.classList.remove('map-hide-map-until-char');
+  } catch (e) {}
+
+  checkLevelUpNotification();
+  loadCharacterData();
 }
 
 /**

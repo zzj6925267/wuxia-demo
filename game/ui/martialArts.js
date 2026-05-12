@@ -86,8 +86,16 @@ function initPage() {
   // 更新阅历显示
   document.getElementById('playerExp').textContent = playerExperience;
 
-  // 绑定返回按钮
+  // 绑定返回按钮（若从小地图/嵌套正阳进入则回到原界面）
   document.getElementById('backBtn').addEventListener('click', function() {
+    try {
+      var ret = sessionStorage.getItem('game_ui_return_href');
+      if (ret) {
+        sessionStorage.removeItem('game_ui_return_href');
+        window.location.href = ret;
+        return;
+      }
+    } catch (e) {}
     window.location.href = 'map.html';
   });
 
@@ -372,9 +380,8 @@ function practiceMartialArt() {
   if (typeof saveMartialData === 'function') saveMartialData();
 }
 
-// 装备武学
+// 装备武学（武功 / 内功 / 轻功：各大类同时只能激活一本）
 function equipMartialArt() {
-  // 卸载同类型已装备的
   playerMartialArts.forEach(m => {
     if (m.type === selectedMartialArt.type && m.equipped) {
       m.equipped = false;

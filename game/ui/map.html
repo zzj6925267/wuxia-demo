@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>江湖舆图</title>
   <link rel="stylesheet" href="map.css">
+  <link rel="stylesheet" href="submap_quick_nav.css">
   <link rel="stylesheet" href="character.css">
   <script>
     try {
@@ -13,6 +14,31 @@
       }
     } catch (e) {}
   </script>
+  <!-- 首帧避免「先大地图再切正阳 / 先舆图再弹角色」造成的闪屏 -->
+  <script>
+    (function () {
+      try {
+        if (sessionStorage.getItem('game_map_restore_view') === 'zhengyang') {
+          document.documentElement.classList.add('map-restore-zhengyang');
+          return;
+        }
+        if (localStorage.getItem('openCharacterOnLoad') === '1') {
+          var ret = sessionStorage.getItem('game_ui_return_href');
+          if (ret && !/^map\.html$/i.test(ret) && /\.html$/i.test(ret)) {
+            document.documentElement.classList.add('map-hide-map-until-char');
+          }
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <style>
+    html.map-restore-zhengyang #worldMap { display: none !important; }
+    html.map-restore-zhengyang #zhengyangMap { display: flex !important; }
+    html.map-hide-map-until-char #worldMap,
+    html.map-hide-map-until-char #zhengyangMap {
+      visibility: hidden !important;
+    }
+  </style>
 </head>
 <body>
   <script>
@@ -343,6 +369,12 @@
         </defs>
       </svg>
       <div class="map-nodes" id="zhengyangMapNodes"></div>
+      <div class="character-button-area character-button-area--submap" aria-label="快捷入口">
+        <button type="button" class="btn-character" onclick="toggleCharacterPanel()">👤 角色</button>
+        <button type="button" class="btn-character" onclick="openMartialArts()">⚔️ 武学</button>
+        <button type="button" class="btn-character" onclick="openInventory()">🎒 背包</button>
+        <button type="button" class="btn-character" onclick="openTask()">📋 任务</button>
+      </div>
     </div>
 
     <div class="location-panel">
@@ -392,29 +424,13 @@
   <!-- UI层 -->
   <script src="character.js"></script>
   <script src="map.js"></script>
+  <script src="taskData.js"></script>
   
   <script>
     // 使用 character.js 里已经初始化的 window.playerData
     function initPlayerData() {
       // character.js 在文件开头已经初始化了 window.playerData，我们什么都不用做
       console.log('map.html 加载时，window.playerData.inventory 是：', window.playerData?.inventory);
-    }
-
-    // 打开背包页面
-    function openInventory() {
-      window.location.href = 'inventory.html';
-    }
-
-    // 打开武学页面
-    function openMartialArts(type) {
-      console.log('openMartialArts called, type:', type);
-      console.log('Current location:', window.location.href);
-      // 把类型存到localStorage
-      if (type) {
-        localStorage.setItem('martialArtsType', type);
-      }
-      // 不带参数跳转
-      window.location.href = 'martialArts.html';
     }
 
     function showWorldMapBattleRewardFloat(text, color, onDone) {
@@ -491,6 +507,98 @@
       next();
     }
 
+    function readPlayerStateRawMap() {
+      try {
+        const raw = localStorage.getItem('playerState');
+        return raw ? JSON.parse(raw) : {};
+      } catch (e) {
+        return {};
+      }
+    }
+    function writePlayerStateRawMap(state) {
+      localStorage.setItem('playerState', JSON.stringify(state));
+    }
+    function markMainQuestStepCompleteMap(questId) {
+      if (!questId) return false;
+      const state = readPlayerStateRawMap();
+      if (!state.activeTasks) state.activeTasks = {};
+      const cur = state.activeTasks[questId];
+      if (cur && (cur.completed || cur.isCompleted)) return false;
+      state.activeTasks[questId] = Object.assign({}, cur, { completed: true, isCompleted: true });
+      writePlayerStateRawMap(state);
+      return true;
+    }
+    function applyMainQuestRewardsToSaveMap(questId) {
+      if (typeof ALL_TASKS === 'undefined' || !ALL_TASKS.main) return;
+      const task = ALL_TASKS.main.find((t) => t.id === questId);
+      if (!task || !task.rewards) return;
+      const saveData = localStorage.getItem('game_save_0');
+      if (!saveData) return;
+      try {
+        const save = JSON.parse(saveData);
+        if (!save.player) return;
+        task.rewards.forEach((r) => {
+          const v = parseInt(r.value, 10) || 0;
+          if (!v) return;
+          if (r.type === 'gold') save.player.gold = (save.player.gold || 0) + v;
+          else if (r.type === 'yueli' || r.type === 'exp') save.player.exp = (save.player.exp || 0) + v;
+        });
+        localStorage.setItem('game_save_0', JSON.stringify(save));
+        const goldEl = document.getElementById('goldValue');
+        if (goldEl) goldEl.textContent = save.player.gold;
+      } catch (e) {
+        console.warn('applyMainQuestRewardsToSaveMap', e);
+      }
+    }
+    function floatMainQuestRewardChainMap(questId) {
+      if (typeof ALL_TASKS === 'undefined' || !ALL_TASKS.main) return;
+      const task = ALL_TASKS.main.find((t) => t.id === questId);
+      if (!task || !task.rewards) return;
+      const lines = [];
+      lines.push([`主线 · 「${task.name}」达成`, '#FFD700']);
+      task.rewards.forEach((r) => {
+        const v = parseInt(r.value, 10) || 0;
+        if (!v) return;
+        let color = '#f4d03f';
+        const label = `${r.name || '奖励'} +${v}`;
+        if (r.type === 'gold') color = '#ff9800';
+        else if (r.type === 'exp') color = '#ffeb3b';
+        else if (r.type === 'yueli') color = '#9c27b0';
+        lines.push([label, color]);
+      });
+      let idx = 0;
+      function nextFloat() {
+        if (idx >= lines.length) return;
+        const pair = lines[idx++];
+        showWorldMapBattleRewardFloat(pair[0], pair[1], () => setTimeout(nextFloat, 380));
+      }
+      nextFloat();
+    }
+    /** 主线「图开山门」：已完成武馆问径后，首次进入本页（江湖舆图）即完成 */
+    function tryCompleteMainQuestWorldMapOpen() {
+      const st = readPlayerStateRawMap();
+      const at = st.activeTasks || {};
+      const b2 = at.main_b_02;
+      if (!b2 || !(b2.completed || b2.isCompleted)) return;
+      if (at.main_b_03 && (at.main_b_03.completed || at.main_b_03.isCompleted)) return;
+      if (!markMainQuestStepCompleteMap('main_b_03')) return;
+      applyMainQuestRewardsToSaveMap('main_b_03');
+      floatMainQuestRewardChainMap('main_b_03');
+    }
+
+    /** 主线「正阳入籍」：第三节已完成且已加入正阳（含此前已入派未记主线的情况） */
+    function tryCompleteMainQuestZhengyangRegister() {
+      const st = readPlayerStateRawMap();
+      if (!st.joinedFaction) return;
+      const at = st.activeTasks || {};
+      const b3 = at.main_b_03;
+      if (!b3 || !(b3.completed || b3.isCompleted)) return;
+      if (at.main_b_04 && (at.main_b_04.completed || at.main_b_04.isCompleted)) return;
+      if (!markMainQuestStepCompleteMap('main_b_04')) return;
+      applyMainQuestRewardsToSaveMap('main_b_04');
+      floatMainQuestRewardChainMap('main_b_04');
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       initPlayerData();
 
@@ -504,14 +612,21 @@
       // 检查 localStorage 是否需要自动打开角色面板
       const shouldOpenCharacter = localStorage.getItem('openCharacterOnLoad');
       if (shouldOpenCharacter === '1') {
-        // 清除标记
         localStorage.removeItem('openCharacterOnLoad');
-        // 延迟一点打开，确保 character.js 加载完成
-        setTimeout(() => {
-          if (typeof toggleCharacterPanel === 'function') {
-            toggleCharacterPanel();
-          }
-        }, 100);
+        function scheduleOpenCharacter() {
+          if (typeof toggleCharacterPanel !== 'function') return;
+          requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+              toggleCharacterPanel();
+            });
+          });
+        }
+        scheduleOpenCharacter();
+        setTimeout(function () {
+          try {
+            document.documentElement.classList.remove('map-hide-map-until-char');
+          } catch (e) {}
+        }, 600);
       }
 
       const mapData = {
@@ -539,6 +654,10 @@
 
       initMapUI(mapData, playerData);
 
+      if (typeof tryRestoreMapViewAfterReturn === 'function') {
+        tryRestoreMapViewAfterReturn();
+      }
+
       // 从localStorage读取存档数据更新银两显示
       const saveData = localStorage.getItem('game_save_0');
       if (saveData) {
@@ -555,6 +674,9 @@
       } else {
         playWorldMapPostBattleRewardFloats();
       }
+
+      tryCompleteMainQuestWorldMapOpen();
+      tryCompleteMainQuestZhengyangRegister();
     });
 
     // 处理待处理的战斗奖励
@@ -659,6 +781,8 @@
         console.error('应用战斗奖励失败:', error);
       }
     }
+
+    window.onMainQuestJoinedFaction = tryCompleteMainQuestZhengyangRegister;
   </script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 // 任务系统主逻辑
-let currentType = 'faction'; // 默认显示门派任务
+let currentType = 'main'; // 默认显示主线（与 task.html 侧栏一致）
 let selectedTaskId = null;
 
 // DOM 元素
@@ -10,11 +10,27 @@ const UI = {
   btnClose: document.getElementById('btnClose')
 };
 
+// 同步侧栏高亮与标题（与 task.html 默认 currentType 一致）
+function renderTaskTypes() {
+  document.querySelectorAll('.task-type').forEach((el) => {
+    el.classList.toggle('active', el.dataset.type === currentType);
+  });
+  if (typeof TASK_TYPE_CONFIG !== 'undefined' && TASK_TYPE_CONFIG[currentType]) {
+    UI.currentTypeTitle.textContent = TASK_TYPE_CONFIG[currentType].name + '任务';
+  }
+}
+
 // 初始化
 function init() {
   bindEvents();
   renderTaskTypes();
   renderTaskList();
+  renderTaskDetail();
+  window.addEventListener('pageshow', function () {
+    renderTaskTypes();
+    renderTaskList();
+    renderTaskDetail();
+  });
 }
 
 // 绑定事件
@@ -27,8 +43,16 @@ function bindEvents() {
     });
   });
 
-  // 离开按钮
+  // 离开按钮（若从小地图/嵌套正阳进入则回到原界面）
   UI.btnClose.addEventListener('click', () => {
+    try {
+      var ret = sessionStorage.getItem('game_ui_return_href');
+      if (ret) {
+        sessionStorage.removeItem('game_ui_return_href');
+        window.location.href = ret;
+        return;
+      }
+    } catch (e) {}
     window.history.back();
   });
 }
@@ -52,6 +76,19 @@ function switchTaskType(type) {
   renderTaskDetail();
 }
 
+// 主线串行：只显示「当前」一条（按 chainOrder 首个未完成的）；全部完成后列表为空并提示
+function getCurrentMainQuestSlice(sortedMain, playerState) {
+  const active = playerState.activeTasks || {};
+  const isDone = (id) => {
+    const ts = active[id];
+    return ts && (ts.completed || ts.isCompleted);
+  };
+  for (let i = 0; i < sortedMain.length; i++) {
+    if (!isDone(sortedMain[i].id)) return [sortedMain[i]];
+  }
+  return [];
+}
+
 // 渲染任务列表
 function renderTaskList() {
   const savedState = localStorage.getItem('playerState');
@@ -60,30 +97,66 @@ function renderTaskList() {
   if (!playerState.activeTasks) {
     playerState.activeTasks = {};
   }
-  
-  const tasksInType = ALL_TASKS[currentType] || [];
-  
-  // 只显示已接取的任务（主线除外）
-  const displayTasks = tasksInType.filter(task => {
-    if (currentType === 'main') {
-      return true; // 主线任务始终显示
-    }
-    return playerState.activeTasks[task.id]; // 只显示已接取的
-  });
-  
-  if (displayTasks.length === 0) {
-    UI.taskList.innerHTML = `
-      <div class="no-tasks">
-        <div class="no-tasks-icon">📭</div>
-        <p>暂无任务</p>
-      </div>
-    `;
-    return;
+  if (!playerState.completedFactionQuests) {
+    playerState.completedFactionQuests = {};
   }
   
+  let tasksInType = ALL_TASKS[currentType] || [];
+
+  let displayTasks;
+  if (currentType === 'main') {
+    const sorted =
+      tasksInType.length > 0
+        ? [...tasksInType].sort((a, b) => (a.chainOrder || 0) - (b.chainOrder || 0))
+        : [];
+    displayTasks = getCurrentMainQuestSlice(sorted, playerState);
+  } else {
+    const doneFq = playerState.completedFactionQuests || {};
+    displayTasks = tasksInType.filter(
+      (task) => playerState.activeTasks[task.id] || doneFq[task.id]
+    );
+  }
+
+  if (displayTasks.length === 0) {
+    const mains = ALL_TASKS.main || [];
+    const isMainAllDone =
+      currentType === 'main' &&
+      mains.length > 0 &&
+      mains.every(t => {
+        const ts = playerState.activeTasks && playerState.activeTasks[t.id];
+        return ts && (ts.completed || ts.isCompleted);
+      });
+    const tip =
+      currentType === 'faction'
+        ? '<p>暂无已领取的门派差事</p><p style="color:#888;font-size:13px;margin-top:8px;line-height:1.5;">请至<strong>正阳派 · 澄心堂</strong>找赵长老领取。「领取」只登记差事；须达成目标后<strong>再回澄心堂向赵长老交差</strong>，该条方算完成并获得贡献。三门派差事任领其一或轮换均可，并非「点领即完成」。</p>'
+        : isMainAllDone
+          ? '<p>主线已定，江湖路远。</p><p style="color:#888;font-size:13px;margin-top:8px;">当前章节皆已完成。</p>'
+          : '<p>暂无任务</p>';
+    UI.taskList.innerHTML = `
+      <div class="no-tasks">
+        <div class="no-tasks-icon">${isMainAllDone ? '✨' : '📭'}</div>
+        ${tip}
+      </div>
+    `;
+    if (currentType === 'main') selectedTaskId = null;
+    renderTaskDetail();
+    return;
+  }
+
+  if (currentType === 'main') {
+    if (!selectedTaskId || !displayTasks.some(t => t.id === selectedTaskId)) {
+      selectedTaskId = displayTasks[0].id;
+    }
+  } else if (displayTasks.length > 0) {
+    if (!selectedTaskId || !displayTasks.some((t) => t.id === selectedTaskId)) {
+      selectedTaskId = displayTasks[0].id;
+    }
+  }
+  
+  const doneFq = playerState.completedFactionQuests || {};
   UI.taskList.innerHTML = displayTasks.map(task => {
-    const taskState = playerState.activeTasks[task.id];
-    const isCompleted = taskState && (taskState.completed || taskState.isCompleted);
+    const taskState = playerState.activeTasks[task.id] || doneFq[task.id];
+    const isCompleted = !!(taskState && (taskState.completed || taskState.isCompleted));
     const progress = getTaskProgress(task, taskState);
     
     return `
@@ -105,17 +178,24 @@ function renderTaskList() {
       </div>
     `;
   }).join('');
+
+  renderTaskDetail();
 }
 
 // 获取任务进度
 function getTaskProgress(task, taskState) {
+  const storyTotal = task.target && task.target.type === 'story' ? task.target.count || 1 : 0;
+
   if (!taskState) {
+    if (storyTotal) {
+      return { percent: 0, text: `0/${storyTotal}` };
+    }
     return { percent: 0, text: '0/0' };
   }
-  
+
   let current = 0;
   let total = 1;
-  
+
   if (task.target.type === 'collect') {
     total = task.target.count;
     current = taskState.collected || 0;
@@ -124,7 +204,13 @@ function getTaskProgress(task, taskState) {
     current = taskState.killCount || 0;
   } else if (task.target.type === 'organize') {
     total = 1;
-    current = taskState.completed || taskState.isCompleted ? 1 : 0;
+    current = (taskState.completed || taskState.isCompleted) ? 1 : 0;
+  } else if (task.target.type === 'main_step') {
+    total = task.target.count || 1;
+    current = taskState && (taskState.completed || taskState.isCompleted) ? 1 : 0;
+  } else if (task.target.type === 'story') {
+    total = task.target.count || 1;
+    current = (taskState.completed || taskState.isCompleted) ? total : 0;
   }
   
   const percent = Math.min((current / total) * 100, 100);
@@ -176,11 +262,18 @@ function renderTaskDetail() {
   
   const savedState = localStorage.getItem('playerState');
   let playerState = savedState ? JSON.parse(savedState) : {};
-  const taskState = playerState.activeTasks && playerState.activeTasks[task.id];
-  const isCompleted = taskState && (taskState.completed || taskState.isCompleted);
+  if (!playerState.completedFactionQuests) playerState.completedFactionQuests = {};
+  const doneFq = playerState.completedFactionQuests;
+  const taskState =
+    (playerState.activeTasks && playerState.activeTasks[task.id]) || doneFq[task.id];
+  const isCompleted = !!(taskState && (taskState.completed || taskState.isCompleted));
   const typeConfig = TASK_TYPE_CONFIG[task.type];
   const progress = getTaskProgress(task, taskState);
-  
+  const turnedContrib =
+    task.type === 'faction' && doneFq[task.id] && doneFq[task.id].contribution
+      ? doneFq[task.id].contribution
+      : 0;
+
   UI.taskDetail.innerHTML = `
     <div class="task-detail-content">
       <div class="detail-header">
@@ -194,6 +287,13 @@ function renderTaskDetail() {
         <div class="detail-section-title">任务描述</div>
         <div class="detail-desc">${task.description}</div>
       </div>
+      
+      ${turnedContrib ? `
+        <div class="detail-section">
+          <div class="detail-section-title">交付记录</div>
+          <div class="detail-desc" style="color:#a5d6a7;">已向赵长老交差，已获得 <strong>${turnedContrib}</strong> 点门派贡献。</div>
+        </div>
+      ` : ''}
       
       ${task.location ? `
         <div class="detail-section">
@@ -237,6 +337,7 @@ function getRewardIcon(type) {
     case 'contribution': return '⭐';
     case 'gold': return '💰';
     case 'exp': return '✨';
+    case 'yueli': return '📖';
     case 'item': return '📦';
     default: return '🎁';
   }
