@@ -440,6 +440,7 @@ function showSkillTooltip(event, skill, playerStats) {
         attack: '攻击',
         defense: '防御',
         dodge: '闪避',
+        parry: '招架',
         speed: '速度',
         maxHp: '气血上限',
         maxMp: '内力上限'

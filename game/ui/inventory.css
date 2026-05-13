@@ -180,6 +180,23 @@ body {
   background: #f59e0b;
 }
 
+/* 武学品阶（与 martialArtsData MARTIAL_ARTS_RANKS 色值一致） */
+.quality-chu-jie {
+  background: #9e9e9e;
+}
+
+.quality-zhong-jie {
+  background: #4caf50;
+}
+
+.quality-gao-jie {
+  background: #2196f3;
+}
+
+.quality-jue-jie {
+  background: #ff9800;
+}
+
 /* 操作按钮 */
 .item-actions {
   display: flex;

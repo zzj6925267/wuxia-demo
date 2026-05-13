@@ -513,7 +513,8 @@ body {
   height: 100%;
   background: linear-gradient(90deg, #8b6914, #c9a227);
   border-radius: 6px 0 0 6px;
-  transition: width 0.3s ease;
+  /* 四维条与数值同步，避免 width 过渡造成「数已变条晚动」 */
+  transition: none;
 }
 
 .four-dim-bar-preview {
@@ -527,7 +528,7 @@ body {
     #a5d6a7 15%,
     #4caf50 100%);
   border-radius: 0 6px 6px 0;
-  transition: width 0.3s ease, left 0.3s ease;
+  transition: none;
   display: none;
 }
 

@@ -491,8 +491,8 @@ body {
   to { width: 100%; }
 }
 
-/* 角色按钮区域 */
-.character-button-area {
+/* 角色按钮区域（仅旧式浮动条；与山林/正阳等统一的底栏请用 .character-button-area--submap，见 submap_quick_nav.css） */
+.character-button-area:not(.character-button-area--submap) {
   position: absolute;
   bottom: 15px;
   left: 15px;

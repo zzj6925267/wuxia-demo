@@ -125,7 +125,7 @@ const MARTIAL_ARTS_LIBRARY = [
     skillType: 'sword',
     rank: '初阶',
     school: '青石武馆',
-    description: '青石武馆所传初阶剑式：步法为阵、剑走正形，不求花巧，先求立身不乱。',
+    description: '教头处粗浅剑谱，以垫剑术修为为主，无甚花巧。',
     currentLevel: 0,
     maxLevel: 10,
     practiceTimes: 0,
@@ -133,9 +133,8 @@ const MARTIAL_ARTS_LIBRARY = [
     baseBonus: { sword: 3 },
     stats: { attack: 18, hit: 8 },
     skills: [
-      { id: 1, name: '挑灯', type: '主动', unlockLevel: 1, icon: '🕯️', mpCost: 15, description: '腕底一挑，刺向对方破绽', effect: { type: 'damage', value: 1.1, bonusAttr: 'strength', bonusPerPoint: 0.015 }, detail: '基础伤害110%，每点臂力额外+1.5%伤害' },
-      { id: 2, name: '守拙', type: '被动', unlockLevel: 4, icon: '🛡️', description: '剑走中线，先立于不败之地', effect: { type: 'buff', stat: 'defense', value: 0.06, bonusAttr: 'bone', bonusPerPoint: 0.02 }, detail: '基础防御+6%，每点根骨额外+2%' },
-      { id: 3, name: '连环', type: '被动', unlockLevel: 7, icon: '🔗', description: '式虽简，劲路相连', effect: { type: 'followAttack', baseChance: 0.12, damage: 0.65, chanceAttr: 'agility', chancePerPoint: 0.008 } }
+      { id: 1, name: '对位刺', type: '主动', unlockLevel: 3, icon: '·', mpCost: 10, plainFx: true, description: '先对上身前那人的方位，再顺势递出一剑。', effect: { type: 'damage', value: 1.0, bonusAttr: 'strength', bonusPerPoint: 0.006 }, detail: '对正了人再刺，伤害与寻常一剑相仿。' },
+      { id: 2, name: '守拙', type: '被动', unlockLevel: 6, icon: '🛡️', description: '剑随身列，胸肋少露，人更扛打些。', effect: { type: 'defenseBuff', stat: 'defense', baseValue: 10 }, detail: '固定防御+10。' }
     ]
   },
   {
@@ -145,7 +144,7 @@ const MARTIAL_ARTS_LIBRARY = [
     skillType: 'fist',
     rank: '初阶',
     school: '青石武馆',
-    description: '青石武馆所传初阶拳法：沉肩坠肘、桥手稳固，讲究脚下生根、拳从腰出。',
+    description: '馆中口令不离「沉肩、坠肘、钉桥」六字：桥手要沉得下去，马步才生根；捶法不求花，只求劲从脚底起、落在人身上。为拳脚修为打底子。',
     currentLevel: 0,
     maxLevel: 10,
     practiceTimes: 0,
@@ -153,29 +152,67 @@ const MARTIAL_ARTS_LIBRARY = [
     baseBonus: { fist: 3 },
     stats: { attack: 17, hit: 9 },
     skills: [
-      { id: 1, name: '闯捶', type: '主动', unlockLevel: 1, icon: '👊', mpCost: 14, description: '半步抢入，捶打中线', effect: { type: 'damage', value: 1.08, bonusAttr: 'strength', bonusPerPoint: 0.016 }, detail: '基础伤害108%，每点臂力额外+1.6%伤害' },
-      { id: 2, name: '沉肩', type: '被动', unlockLevel: 4, icon: '⚓', description: '肩沉肘坠，劲从脚底起', effect: { type: 'buff', stat: 'defense', value: 0.055, bonusAttr: 'bone', bonusPerPoint: 0.018 }, detail: '基础防御+5.5%，每点根骨额外+1.8%' },
-      { id: 3, name: '黏手', type: '被动', unlockLevel: 7, icon: '🤝', description: '搭手即黏，让对方势老难收', effect: { type: 'buff', stat: 'hit', value: 0.045, bonusAttr: 'agility', bonusPerPoint: 0.018 }, detail: '基础命中+4.5%，每点身法额外+1.8%' }
+      {
+        id: 1,
+        name: '钉小锤',
+        type: '主动',
+        unlockLevel: 3,
+        icon: '✊',
+        mpCost: 10,
+        punchFx: true,
+        description: '劲落如钉，小抡一拳自肋下翻出；教头要的是短劲里门，不是花架子。',
+        effect: { type: 'damage', value: 1.0, bonusAttr: 'strength', bonusPerPoint: 0.006 },
+        detail: '抡拳短打：与武馆诸主动同档（约一倍攻 + 臂力每点 +0.6%），耗蓝 10；朴素拳击命中特效。'
+      },
+      {
+        id: 2,
+        name: '沉肩',
+        type: '被动',
+        unlockLevel: 6,
+        icon: '🛡️',
+        description: '肩肘一沉，门户封得更死，敢贴身去架。',
+        effect: { type: 'buff', stat: 'parry', baseValue: 10, bonusAttr: 'bone', bonusPerPoint: 0.5 },
+        detail: '招架 +10；每点根骨额外 +0.5。'
+      }
     ]
   },
   {
     id: 14,
-    name: '破浪刀谱',
+    name: '开合刀法',
     type: '武功',
     skillType: 'blade',
     rank: '初阶',
     school: '青石武馆',
-    description: '青石武馆所传初阶刀法：刀势如浪、开合分明，先学护胁与回扫，再谈破敌。',
+    description: '武馆柴刀入门，教头口传「开、合」二字：开是势要放得出去，合是劲要收得住刃；不讲花巧，先把一刀一脚练老实。',
     currentLevel: 0,
     maxLevel: 10,
     practiceTimes: 0,
     equipped: false,
     baseBonus: { blade: 3 },
-    stats: { attack: 20, hit: 7 },
+    stats: { attack: 19, hit: 8 },
     skills: [
-      { id: 1, name: '开门见山', type: '主动', unlockLevel: 1, icon: '🔪', mpCost: 16, description: '刀势直落，先声夺人', effect: { type: 'damage', value: 1.12, bonusAttr: 'strength', bonusPerPoint: 0.014 }, detail: '基础伤害112%，每点臂力额外+1.4%伤害' },
-      { id: 2, name: '护胁', type: '被动', unlockLevel: 4, icon: '🛡️', description: '刀背贴身，护住要害', effect: { type: 'defenseBuff', baseValue: 16, bonusAttr: 'bone', bonusPerPoint: 0.32 }, detail: '基础防御+16，每点根骨额外+0.32' },
-      { id: 3, name: '回风扫', type: '被动', unlockLevel: 7, icon: '💨', description: '刀走偏锋，偶有一式回扫', effect: { type: 'followAttack', baseChance: 0.11, damage: 0.62, chanceAttr: 'agility', chancePerPoint: 0.007 } }
+      {
+        id: 1,
+        name: '开',
+        type: '主动',
+        unlockLevel: 3,
+        icon: '⛰️',
+        mpCost: 10,
+        bladeFx: true,
+        description: '借步拧腰，一刀自外弧劈出，势先「开」满；教头只问落点准不准。',
+        effect: { type: 'damage', value: 1.0, bonusAttr: 'strength', bonusPerPoint: 0.006 },
+        detail: '与武馆诸主动同档（约一倍攻 + 臂力每点 +0.6%），耗蓝 10；刀类 bladeFx 头像劈斩特效。'
+      },
+      {
+        id: 2,
+        name: '合',
+        type: '被动',
+        unlockLevel: 6,
+        icon: '⚔️',
+        description: '腕底一沉一拧，劲往刃口「合」；出手便带三分狠劲，刀才听人使唤。',
+        effect: { type: 'buff', stat: 'attack', baseValue: 10, bonusAttr: 'strength', bonusPerPoint: 0.5 },
+        detail: '基础攻击+10；每点臂力额外+0.5。'
+      }
     ]
   },
   {
@@ -185,7 +222,7 @@ const MARTIAL_ARTS_LIBRARY = [
     skillType: 'innerSkill',
     rank: '初阶',
     school: '青石武馆',
-    description: '青石武馆所传初阶内功：吐纳匀细、守中养气，不求玄关洞开，只求气血少亏。',
+    description: '武馆抄本里最薄的一册，专讲「先养后练」：初阶只练两件事——把气血底子垫厚些，再把气机沉稳了慢慢回；**两式皆是被动**，不以气外放伤人。',
     currentLevel: 0,
     maxLevel: 10,
     practiceTimes: 0,
@@ -193,9 +230,26 @@ const MARTIAL_ARTS_LIBRARY = [
     baseBonus: { innerSkill: 3 },
     stats: { hp: 35, defense: 8, innerSkill: 10 },
     skills: [
-      { id: 1, name: '匀息', type: '被动', unlockLevel: 1, icon: '🌬️', description: '呼吸匀长，稳住气血', effect: { type: 'maxHpBuff', baseValue: 35, bonusAttr: 'bone', bonusPerPoint: 0.4 }, detail: '气血上限+35，每点根骨额外+0.4' },
-      { id: 2, name: '固表', type: '被动', unlockLevel: 4, icon: '🧱', description: '卫气外护，少受皮肉伤', effect: { type: 'defenseBuff', baseValue: 18, bonusAttr: 'bone', bonusPerPoint: 0.35 }, detail: '基础防御+18，每点根骨额外+0.35' },
-      { id: 3, name: '回春', type: '被动', unlockLevel: 7, icon: '🌿', description: '气血将竭时徐徐自生', effect: { type: 'autoHeal', baseValue: 3, levelMultiplier: 2, bonusAttr: 'qi', bonusPerPoint: 0.5 }, detail: '每回合恢复3+等级×2+内息×0.5点气血' }
+      {
+        id: 1,
+        name: '纳息',
+        type: '被动',
+        unlockLevel: 3,
+        icon: '◇',
+        description: '吐浊纳清，肩背略松；根骨厚实的人，胸腹间更能多容一口气血。',
+        effect: { type: 'maxHpBuff', baseValue: 30, bonusAttr: 'bone', bonusPerPoint: 0.45 },
+        detail: '气血上限：基础+30，每点根骨额外+0.45（初阶可先调）。'
+      },
+      {
+        id: 2,
+        name: '归根',
+        type: '被动',
+        unlockLevel: 6,
+        icon: '🌿',
+        description: '气机沉回丹田，像水渗进土里；每回合只回一小口，贵在细水长流。',
+        effect: { type: 'autoHeal', baseValue: 4, levelMultiplier: 2, bonusAttr: 'qi', bonusPerPoint: 0.35 },
+        detail: '每回合回血：4 + 武学等级×2 + 内息×0.35（与「调息」同类，多件 autoHeal 可叠加求和；数值可先调）。'
+      }
     ]
   },
   {
@@ -205,7 +259,7 @@ const MARTIAL_ARTS_LIBRARY = [
     skillType: 'lightSkill',
     rank: '初阶',
     school: '青石武馆',
-    description: '青石武馆所传初阶轻功：以小挪大、半步换形，专练趋避与抢位，不求凌虚飞纵。',
+    description: '武馆抄本专讲「挪」字：不求飞檐走壁，只求脚下半步能挪活。两式皆被动：「挪寸」先学让拳风擦身过，「卸风」再学把脚步带快。为轻功修为打底子。',
     currentLevel: 0,
     maxLevel: 10,
     practiceTimes: 0,
@@ -213,9 +267,26 @@ const MARTIAL_ARTS_LIBRARY = [
     baseBonus: { lightSkill: 3 },
     stats: { speed: 18, dodge: 15, attack: 5 },
     skills: [
-      { id: 1, name: '斜掠', type: '被动', unlockLevel: 1, icon: '↗️', description: '拧腰错步，让对手的势落在空处', effect: { type: 'buff', stat: 'dodge', baseValue: 12, bonusAttr: 'agility', bonusPerPoint: 0.45 }, detail: '基础闪避+12，每点身法额外+0.45' },
-      { id: 2, name: '抢半步', type: '被动', unlockLevel: 4, icon: '⚡', description: '先发制人半个脚掌的距离', effect: { type: 'buff', stat: 'attack', baseValue: 6, bonusAttr: 'strength', bonusPerPoint: 0.35 }, detail: '基础攻击+6，每点臂力额外+0.35' },
-      { id: 3, name: '收腿', type: '被动', unlockLevel: 7, icon: '🌀', description: '帖地而走，身形再难捉摸', effect: { type: 'buff', stat: 'speed', baseValue: 12, bonusAttr: 'agility', bonusPerPoint: 0.45 }, detail: '基础速度+12，每点身法额外+0.45' }
+      {
+        id: 1,
+        name: '挪寸',
+        type: '被动',
+        unlockLevel: 3,
+        icon: '👣',
+        description: '脚尖里挪半寸，肩胯先让一线；来招常从衣角掠过，看着险，其实不沾身。',
+        effect: { type: 'buff', stat: 'dodge', baseValue: 10 },
+        detail: '基础闪避+10（初阶定数，后可调）。'
+      },
+      {
+        id: 2,
+        name: '卸风',
+        type: '被动',
+        unlockLevel: 6,
+        icon: '🍃',
+        description: '劲从侧卸、步随身转；脚下愈轻，愈跟得上自己的挪。',
+        effect: { type: 'buff', stat: 'speed', baseValue: 10 },
+        detail: '基础速度+10（初阶定数，后可调）。'
+      }
     ]
   }
 ];
@@ -301,9 +372,95 @@ function normalizePlayerMartialArtsList(parsed) {
   let changed = false;
   const list = parsed.map((m) => {
     if (!m || typeof m.id !== 'number') return m;
+    const tmpl = lib.find((x) => x && x.id === m.id);
+    // 《阵形剑诀》id10：旧档可能仍为垫步刺 / 守拙 buff%，从库同步技能表
+    if (m.id === 10 && tmpl && Array.isArray(tmpl.skills)) {
+      const s0 = m.skills && m.skills[0];
+      const s1 = m.skills && m.skills[1];
+      const oldShape =
+        !s0 ||
+        s0.name !== '对位刺' ||
+        !s1 ||
+        s1.name !== '守拙' ||
+        s1.effect?.type !== 'defenseBuff';
+      if (oldShape) {
+        changed = true;
+        return { ...m, skills: JSON.parse(JSON.stringify(tmpl.skills)) };
+      }
+    }
+    // 《沉桥拳诀》id13：旧档技能名或被动非招架 buff，从库同步
+    if (m.id === 13 && tmpl && Array.isArray(tmpl.skills)) {
+      const s0 = m.skills && m.skills[0];
+      const s1 = m.skills && m.skills[1];
+      const oldShape =
+        !s0 ||
+        s0.name !== '钉小锤' ||
+        !s0.punchFx ||
+        !s1 ||
+        s1.name !== '沉肩' ||
+        s1.effect?.type !== 'buff' ||
+        s1.effect?.stat !== 'parry';
+      if (oldShape) {
+        changed = true;
+        return { ...m, skills: JSON.parse(JSON.stringify(tmpl.skills)) };
+      }
+    }
+    // id14《开合刀法》：旧档「破荒/劈荒/砺锋」等或缺 bladeFx / 被动非「合」攻击 buff 时，从库同步
+    if (m.id === 14 && tmpl && Array.isArray(tmpl.skills)) {
+      const s0 = m.skills && m.skills[0];
+      const s1 = m.skills && m.skills[1];
+      const oldShape =
+        !s0 ||
+        s0.name !== '开' ||
+        !s0.bladeFx ||
+        !s1 ||
+        s1.name !== '合' ||
+        s1.effect?.type !== 'buff' ||
+        s1.effect?.stat !== 'attack';
+      if (oldShape) {
+        changed = true;
+        return { ...m, skills: JSON.parse(JSON.stringify(tmpl.skills)) };
+      }
+    }
+    // 《养气术》id11：旧档带主动/换气固元等，或「纳息」非 maxHpBuff+根骨，从库同步（现为两被动）
+    if (m.id === 11 && tmpl && Array.isArray(tmpl.skills)) {
+      const s0 = m.skills && m.skills[0];
+      const s1 = m.skills && m.skills[1];
+      const oldShape =
+        !s0 ||
+        s0.name !== '纳息' ||
+        s0.type !== '被动' ||
+        s0.effect?.type !== 'maxHpBuff' ||
+        s0.effect?.bonusAttr !== 'bone' ||
+        !s1 ||
+        s1.name !== '归根' ||
+        s1.effect?.type !== 'autoHeal';
+      if (oldShape) {
+        changed = true;
+        return { ...m, skills: JSON.parse(JSON.stringify(tmpl.skills)) };
+      }
+    }
+    // 《挪步诀》id12：旧档「抢位/挫步」主动或「卸风」非速度 buff 等，从库同步（现为双被动）
+    if (m.id === 12 && tmpl && Array.isArray(tmpl.skills)) {
+      const s0 = m.skills && m.skills[0];
+      const s1 = m.skills && m.skills[1];
+      const oldShape =
+        !s0 ||
+        s0.name !== '挪寸' ||
+        s0.type !== '被动' ||
+        s0.effect?.type !== 'buff' ||
+        s0.effect?.stat !== 'dodge' ||
+        !s1 ||
+        s1.name !== '卸风' ||
+        s1.effect?.type !== 'buff' ||
+        s1.effect?.stat !== 'speed';
+      if (oldShape) {
+        changed = true;
+        return { ...m, skills: JSON.parse(JSON.stringify(tmpl.skills)) };
+      }
+    }
     if (m.skills && Array.isArray(m.skills)) return m;
     changed = true;
-    const tmpl = lib.find((x) => x && x.id === m.id);
     if (tmpl && Array.isArray(tmpl.skills)) {
       return { ...m, skills: JSON.parse(JSON.stringify(tmpl.skills)) };
     }
@@ -354,6 +511,49 @@ function getPlayerMartialArts(charId) {
   // 默认初始武学（只有基础武学）
   return [...INITIAL_PLAYER_MARTIAL_ARTS];
 }
+
+/**
+ * 武学库 + 某角色存档合并表（战斗、面板被动等共用）。
+ * 与 `playerMartialArts_{charId}` 对齐；存档经 normalize 再合并。
+ */
+function getMergedMartialArtsListForCharId(charId) {
+  const cid = charId == null || isNaN(Number(charId)) ? 1 : Number(charId);
+  let savedMartialArts = [];
+  try {
+    const raw = localStorage.getItem('playerMartialArts_' + cid);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        const norm = normalizePlayerMartialArtsList(parsed);
+        savedMartialArts = norm.list;
+      }
+    }
+  } catch (e) {
+    console.warn('getMergedMartialArtsListForCharId: 解析失败', e);
+  }
+
+  if (typeof MARTIAL_ARTS_LIBRARY === 'undefined' || !MARTIAL_ARTS_LIBRARY.length) {
+    if (typeof getPlayerMartialArts === 'function') return getPlayerMartialArts(cid);
+    return savedMartialArts;
+  }
+
+  return MARTIAL_ARTS_LIBRARY.map(function (martial) {
+    if (!martial) return martial;
+    const savedMartial = savedMartialArts.find(function (m) {
+      return m && m.id === martial.id;
+    });
+    if (savedMartial) {
+      return Object.assign({}, martial, {
+        currentLevel: savedMartial.currentLevel != null ? savedMartial.currentLevel : martial.currentLevel,
+        equipped: !!savedMartial.equipped,
+        practiceTimes: savedMartial.practiceTimes != null ? savedMartial.practiceTimes : martial.practiceTimes
+      });
+    }
+    return Object.assign({}, martial);
+  });
+}
+
+window.getMergedMartialArtsListForCharId = getMergedMartialArtsListForCharId;
 
 function getPlayerExperience() {
   const saved = localStorage.getItem('playerExperience');

@@ -1,5 +1,9 @@
 # Cursor MCP（含 API Key，勿提交）
 .cursor/mcp.json
+.cursor/
+
+# 本地备份目录，勿提交
+_backup_battle_merge_*/
 
 # VS Code
 .vscode/

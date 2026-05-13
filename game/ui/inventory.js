@@ -91,7 +91,12 @@ const QUALITY_CONFIG = {
   uncommon: { name: '优秀', class: 'quality-uncommon' },
   rare: { name: '稀有', class: 'quality-rare' },
   epic: { name: '史诗', class: 'quality-epic' },
-  legendary: { name: '传说', class: 'quality-legendary' }
+  legendary: { name: '传说', class: 'quality-legendary' },
+  // 与武学 `rank`（martialArtsData MARTIAL_ARTS_RANKS）一致，用于秘籍等待遇型物品
+  chu_jie: { name: '初阶', class: 'quality-chu-jie' },
+  zhong_jie: { name: '中阶', class: 'quality-zhong-jie' },
+  gao_jie: { name: '高阶', class: 'quality-gao-jie' },
+  jue_jie: { name: '绝阶', class: 'quality-jue-jie' }
 };
 
 // 初始化函数 - DOM加载完成后调用
@@ -226,14 +231,29 @@ function renderItems() {
   filteredItems.sort((a, b) => {
     const itemA = window.ITEMS[a.id];
     const itemB = window.ITEMS[b.id];
-    
+    const qualityOrder = {
+      legendary: 9,
+      epic: 8,
+      jue_jie: 7,
+      gao_jie: 6,
+      rare: 5,
+      zhong_jie: 4,
+      uncommon: 3,
+      chu_jie: 2,
+      common: 1
+    };
+
     if (itemA.category === 'equipment' && itemB.category === 'equipment') {
-      const qualityOrder = { legendary: 5, epic: 4, rare: 3, uncommon: 2, common: 1 };
       const qualityCompare = (qualityOrder[itemB.quality] || 0) - (qualityOrder[itemA.quality] || 0);
       if (qualityCompare !== 0) return qualityCompare;
       return (itemB.requiredLevel || 0) - (itemA.requiredLevel || 0);
     }
-    
+
+    if (itemA.category === 'skillbook' && itemB.category === 'skillbook') {
+      const qualityCompare = (qualityOrder[itemB.quality] || 0) - (qualityOrder[itemA.quality] || 0);
+      if (qualityCompare !== 0) return qualityCompare;
+    }
+
     return itemA.name.localeCompare(itemB.name);
   });
   
@@ -262,7 +282,11 @@ function createItemSlot(item) {
     uncommon: '#22c55e',
     rare: '#3b82f6',
     epic: '#a855f7',
-    legendary: '#f59e0b'
+    legendary: '#f59e0b',
+    chu_jie: '#9e9e9e',
+    zhong_jie: '#4caf50',
+    gao_jie: '#2196f3',
+    jue_jie: '#ff9800'
   };
   slot.style.borderColor = qualityColors[quality] || '#d4c4a8';
   

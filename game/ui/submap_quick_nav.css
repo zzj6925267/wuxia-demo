@@ -1,5 +1,4 @@
-/* 小地图（青石 / 山林 / 正阳独立页）与 map.html 内嵌正阳派：底栏统一贴底、全宽、四键等分 */
-
+/* 小地图（青石 / 山林 / 正阳独立页）与 map.html 大地图 / 内嵌正阳：底栏统一贴底、全宽、四键等分 */
 .map-area .character-button-area--submap {
   position: absolute;
   left: 0;

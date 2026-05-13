@@ -298,6 +298,14 @@
       box-shadow: 3px 3px 0 rgba(0,0,0,0.1);
       border: 2px solid #333;
     }
+
+    .skill-bubble.skill-bubble--speed-extra {
+      border-color: #b8860b;
+      background: linear-gradient(180deg, #fffaf0, #ffe4b5);
+      color: #3d2914;
+      font-size: 16px;
+      box-shadow: 2px 2px 0 rgba(139, 90, 0, 0.2);
+    }
     
     /* 直刺特效 - 直线剑气 */
     .sword-effect-thrust {
@@ -314,6 +322,48 @@
     
     .sword-effect-thrust.show {
       animation: thrustEffect 0.5s ease-out forwards;
+    }
+    
+    /* 通用轻量剑光（武馆/ plainFx）：短、淡、快，不抢戏 */
+    .sword-effect-plain {
+      position: absolute;
+      width: 140px;
+      height: 5px;
+      background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(220, 235, 255, 0.15) 15%,
+        rgba(255, 255, 255, 0.95) 45%,
+        rgba(180, 220, 255, 0.85) 55%,
+        rgba(120, 180, 255, 0.35) 80%,
+        transparent 100%);
+      border-radius: 3px;
+      box-shadow: 0 0 10px rgba(200, 230, 255, 0.65), 0 0 4px rgba(255, 255, 255, 0.9);
+      z-index: 50;
+      pointer-events: none;
+      opacity: 0;
+      transform-origin: center center;
+    }
+    
+    .sword-effect-plain.show {
+      animation: plainThrust 0.34s ease-out forwards;
+    }
+    
+    @keyframes plainThrust {
+      0% {
+        opacity: 0;
+        transform: scaleX(0.2);
+        filter: blur(1px);
+      }
+      25% {
+        opacity: 1;
+        transform: scaleX(1);
+        filter: blur(0);
+      }
+      100% {
+        opacity: 0;
+        transform: scaleX(1.05);
+        filter: blur(0.5px);
+      }
     }
     
     @keyframes thrustEffect {
@@ -365,19 +415,307 @@
     
     /* 受击震动效果 */
     .character-card.hit {
-      animation: hitShake 0.3s ease-out;
+      animation: hitShake 0.32s ease-out;
     }
     
     @keyframes hitShake {
       0%, 100% {
         transform: translateX(0);
       }
-      10%, 30%, 50%, 70%, 90% {
-        transform: translateX(-8px);
+      12%, 36%, 60%, 84% {
+        transform: translateX(-10px);
       }
-      20%, 40%, 60%, 80% {
-        transform: translateX(8px);
+      24%, 48%, 72% {
+        transform: translateX(10px);
       }
+    }
+
+    /* 拳落点：略大位移 + 轻倾角，仍偏朴素 */
+    .character-card.hit.hit-strong {
+      animation: hitShakeStrong 0.36s ease-out;
+    }
+
+    @keyframes hitShakeStrong {
+      0%, 100% {
+        transform: translate(0, 0) rotate(0deg);
+      }
+      14%, 42%, 70% {
+        transform: translate(-14px, 2px) rotate(-2deg);
+      }
+      28%, 56%, 84% {
+        transform: translate(14px, -2px) rotate(2deg);
+      }
+    }
+
+    /* 拳命中时极轻整屏一颤 */
+    .battle-container.screen-jolt {
+      animation: screenJolt 0.2s ease-out;
+    }
+
+    @keyframes screenJolt {
+      0%, 100% {
+        transform: translate(0, 0);
+      }
+      35% {
+        transform: translate(-4px, 3px);
+      }
+      70% {
+        transform: translate(3px, -2px);
+      }
+    }
+
+    /* 刀招 bladeFx：冷青刃风 + 细刃脊 + 掠锋短闪（非拳类放射爆） */
+    .blade-cut-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 22;
+      overflow: hidden;
+    }
+
+    .blade-cut-wind {
+      position: absolute;
+      left: -45%;
+      top: 32%;
+      width: 190%;
+      height: 48%;
+      opacity: 0;
+      background: radial-gradient(
+        ellipse 72% 48% at 48% 50%,
+        rgba(210, 222, 240, 0.5) 0%,
+        rgba(130, 150, 175, 0.22) 42%,
+        transparent 68%
+      );
+      transform: rotate(-32deg) translate(-58%, 0) scale(0.55);
+      transform-origin: center center;
+      filter: blur(2.2px);
+    }
+
+    .blade-cut-spine {
+      position: absolute;
+      left: -38%;
+      top: 40%;
+      width: 176%;
+      height: 3px;
+      opacity: 0;
+      background: linear-gradient(
+        90deg,
+        transparent 4%,
+        rgba(18, 26, 36, 0.88) 38%,
+        rgba(248, 250, 255, 0.98) 50%,
+        rgba(18, 26, 36, 0.88) 62%,
+        transparent 96%
+      );
+      box-shadow:
+        0 0 10px rgba(200, 215, 235, 0.55),
+        0 0 3px rgba(255, 255, 255, 0.45);
+      transform: rotate(-32deg) translate(-100%, 0);
+      transform-origin: center center;
+      border-radius: 1px;
+    }
+
+    .blade-cut-glint {
+      position: absolute;
+      left: -20%;
+      top: 41%;
+      width: 55%;
+      height: 5px;
+      opacity: 0;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.75) 45%,
+        rgba(200, 220, 245, 0.35) 70%,
+        transparent
+      );
+      transform: rotate(-32deg) translate(-130%, 0);
+      transform-origin: center center;
+      filter: blur(0.6px);
+    }
+
+    .blade-cut-layer.show .blade-cut-wind {
+      animation: bladeWindSweep 0.42s ease-out forwards;
+    }
+
+    .blade-cut-layer.show .blade-cut-spine {
+      animation: bladeSpineSweep 0.34s cubic-bezier(0.2, 0.85, 0.35, 1) forwards;
+    }
+
+    .blade-cut-layer.show .blade-cut-glint {
+      animation: bladeGlintSweep 0.3s ease-out 0.05s forwards;
+    }
+
+    @keyframes bladeWindSweep {
+      0% {
+        opacity: 0;
+        transform: rotate(-32deg) translate(-70%, 0) scale(0.5);
+      }
+      22% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+        transform: rotate(-32deg) translate(72%, 0) scale(1.05);
+      }
+    }
+
+    @keyframes bladeSpineSweep {
+      0% {
+        opacity: 0;
+        transform: rotate(-32deg) translate(-115%, 0);
+      }
+      12% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+        transform: rotate(-32deg) translate(115%, 0);
+      }
+    }
+
+    @keyframes bladeGlintSweep {
+      0% {
+        opacity: 0;
+        transform: rotate(-32deg) translate(-100%, 0);
+      }
+      18% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+        transform: rotate(-32deg) translate(95%, 0);
+      }
+    }
+
+    /* 朴素拳击命中：中心亮斑 + 放射短劲线 */
+    .punch-impact-root {
+      position: absolute;
+      z-index: 55;
+      pointer-events: none;
+      width: 0;
+      height: 0;
+    }
+
+    .punch-impact-core {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 56px;
+      height: 56px;
+      margin: -28px 0 0 -28px;
+      border-radius: 50%;
+      background: radial-gradient(
+        circle,
+        rgba(255, 255, 255, 0.98) 0%,
+        rgba(255, 210, 160, 0.55) 42%,
+        rgba(255, 130, 70, 0.22) 68%,
+        transparent 78%
+      );
+      opacity: 0;
+      transform: scale(0.45);
+      mix-blend-mode: screen;
+    }
+
+    .punch-impact-root.show .punch-impact-core {
+      animation: punchCorePop 0.34s ease-out forwards;
+    }
+
+    @keyframes punchCorePop {
+      0% {
+        opacity: 0;
+        transform: scale(0.35);
+      }
+      38% {
+        opacity: 1;
+        transform: scale(1.08);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(1.35);
+      }
+    }
+
+    .punch-impact-ray {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 5px;
+      height: 56px;
+      margin-left: -2.5px;
+      margin-top: -56px;
+      transform-origin: 50% 100%;
+      transform: rotate(var(--punch-ray-rot, 0deg)) scaleY(0.08);
+      border-radius: 3px;
+      background: linear-gradient(
+        to top,
+        rgba(35, 25, 18, 0) 0%,
+        rgba(255, 175, 95, 0.92) 32%,
+        rgba(255, 255, 255, 1) 52%,
+        rgba(255, 215, 160, 0.28) 100%
+      );
+      opacity: 0;
+    }
+
+    .punch-impact-root.show .punch-impact-ray {
+      animation: punchRayStrike 0.32s ease-out forwards;
+    }
+
+    @keyframes punchRayStrike {
+      0% {
+        opacity: 0;
+        transform: rotate(var(--punch-ray-rot, 0deg)) scaleY(0.06);
+      }
+      24% {
+        opacity: 1;
+        transform: rotate(var(--punch-ray-rot, 0deg)) scaleY(1);
+      }
+      100% {
+        opacity: 0;
+        transform: rotate(var(--punch-ray-rot, 0deg)) scaleY(0.75);
+      }
+    }
+    
+    .hit-impact-overlay {
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      z-index: 20;
+      background: radial-gradient(
+        ellipse 85% 75% at 50% 42%,
+        rgba(255, 255, 255, 0.88) 0%,
+        rgba(255, 220, 180, 0.45) 35%,
+        rgba(255, 80, 40, 0.2) 55%,
+        transparent 72%
+      );
+      mix-blend-mode: screen;
+      animation: hitImpactPop 0.26s ease-out forwards;
+    }
+    
+    @keyframes hitImpactPop {
+      0% {
+        opacity: 0;
+        transform: scale(0.88);
+      }
+      40% {
+        opacity: 1;
+        transform: scale(1.02);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(1.08);
+      }
+    }
+    
+    .hit-impact-overlay.hit-impact-blade {
+      background: radial-gradient(
+        ellipse 82% 72% at 50% 44%,
+        rgba(230, 240, 255, 0.78) 0%,
+        rgba(140, 168, 198, 0.32) 42%,
+        rgba(35, 48, 68, 0.16) 58%,
+        transparent 74%
+      );
+      mix-blend-mode: lighten;
     }
     
     .skill-bubble.show {
@@ -540,6 +878,11 @@
       text-align: center;
       letter-spacing: 0.06em;
       margin: 8px 0;
+    }
+
+    .battle-log-line.is-speed-extra {
+      color: #c9a227;
+      font-style: italic;
     }
 
     .battle-log-empty {
@@ -965,6 +1308,7 @@
   <script src="../js/utils/BattleHitRoll.js"></script>
   <script src="../js/utils/battleNarrative.js"></script>
   <script src="../js/utils/effects.js"></script>
+  <script src="../js/utils/attributeHelper.js"></script>
   <script src="character.js"></script>
   <script src="../js/data/enemies.js"></script>
   <script src="martialArtsData.js"></script>

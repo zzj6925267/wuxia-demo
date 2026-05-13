@@ -6,6 +6,10 @@
  * - `BattleSettlement`：战后 pending 奖励队列键名（阶段 2）。
  * - `BattleHitRoll.js`：队伍战「命中/闪避/招架/暴击」唯一实现（阶段 3 之一）。
  * - `BattleSystem.js`：主菜单 `Game` 单敌回合；阶段 4 再决定是否收敛形态。
+ * - **速度补段**：主序后 `runSpeedExtraActionsImmediatelyAfter`；「速补」气泡/日志仅用于该段，武学内追击（剑影等）保持原样。
+ *
+ * 全自动战斗的约定、奶位条件模板、多主动槽位顺序等扩展备忘：
+ * @see ../docs/combat-autobattle-design.md
  */
 
 // 战斗状态
@@ -14,6 +18,8 @@ let battleState = {
   enemyTeam: [],      // 敌方队伍
   turnOrder: [],      // 行动顺序
   currentTurnIndex: 0,
+  /** 速度补刀等非主序行动时，底部血条 HUD 显示谁（主序用 turnOrder[currentTurnIndex]） */
+  hudActorOverride: null,
   isAutoFighting: false,
   battleEnded: false,
   turnCount: 1,       // 回合数
@@ -27,8 +33,19 @@ let battleState = {
   }
 };
 
+/** 防止 `runBattleLoop` 被重复启动（并发会导致重复结算、重复刷新 UI） */
+let battleLoopRunning = false;
+
 /** 队伍战立轴排布按「每侧至多 4 人」设计（常态 2～3），不面向 5+ 做侧栏滚动等扩展。 */
 const BATTLE_PARTY_CAP_PER_SIDE = 4;
+
+/**
+ * 速度补刀：每名单位**主序行动刚结束**时立刻判定；相对「存活对位」最高速度每领先一档，多一次完整 `performAction`（再耗蓝、再走 D-3、可再判剑影等）。
+ * 每档之间角色先回位再出下一刀（与 `useSkill` 末尾 `showAttackReturn` 一致）；敌对称；档位与上限仅作初值。
+ * @see ../docs/combat-autobattle-design.md（D-5）
+ */
+const SPEED_EXTRA_ACTION_GAP = 36;
+const SPEED_EXTRA_ACTION_MAX_TIERS = 2;
 
 function mapBattleSourceToReturnHref(source) {
   if (!source) return 'forest_map.html';
@@ -80,6 +97,17 @@ function getMartialBonusForChar(char, attr) {
   return bonus;
 }
 
+/**
+ * 战斗内按角色取合并武学表（实现见 martialArtsData.js → getMergedMartialArtsListForCharId）。
+ */
+function getBattleMergedMartialArtsList(charId) {
+  if (typeof getMergedMartialArtsListForCharId === 'function') {
+    return getMergedMartialArtsListForCharId(charId);
+  }
+  console.warn('getMergedMartialArtsListForCharId 未定义，武学合并回退为空');
+  return [];
+}
+
 // 获取指定角色的装备加成（与角色面板一致的计算逻辑）
 function getEquipBonusForChar(char, attr) {
   let bonus = 0;
@@ -116,86 +144,91 @@ function getEquipBonusForChar(char, attr) {
   return bonus;
 }
 
-// 获取可用技能
+// 获取可用技能（数据驱动：当前装备的「武功」中唯一已解锁的「主动」+ 追击类被动）
 function getAvailableSkills(actor) {
   const skills = [];
-  
-  // 从武学系统获取已装备的武学和技能
-  let martialLevel = 3; // 默认等级
-  let hasYangGang = false;
-  let hasJianYing = false;
-  
   try {
-    if (typeof playerMartialArts !== 'undefined') {
-      for (const martial of playerMartialArts) {
-        if (martial.equipped && martial.type === '武功' && martial.skills) {
-          martialLevel = martial.currentLevel || 3;
-          console.log('=== getAvailableSkills ===');
-          console.log('武学名称:', martial.name);
-          console.log('武学等级:', martialLevel);
-          console.log('技能数量:', martial.skills.length);
-          
-          // 检查每个技能是否解锁
-          for (const skill of martial.skills) {
-            console.log('技能:', skill.name, '解锁等级:', skill.unlockLevel);
-            if (skill.name === '阳刚' && martialLevel >= (skill.unlockLevel || 4)) {
-              hasYangGang = true;
-              console.log('阳刚已激活!');
-            }
-            if (skill.name === '剑影' && martialLevel >= (skill.unlockLevel || 7)) {
-              hasJianYing = true;
-              console.log('剑影已激活!');
-            }
-          }
-        }
-      }
-    } else {
-      console.log('playerMartialArts 未定义');
+    const charId = actor && actor.id != null ? actor.id : 1;
+    const martialList = getBattleMergedMartialArtsList(charId);
+    if (!martialList || !martialList.length) {
+      return skills;
     }
+
+    let equippedMartial = null;
+    for (const martial of martialList) {
+      if (martial.equipped && martial.type === '武功' && martial.skills && martial.skills.length) {
+        equippedMartial = martial;
+        break;
+      }
+    }
+    if (!equippedMartial) return skills;
+
+    const martialLevel = equippedMartial.currentLevel || 1;
+    const activeSkill = equippedMartial.skills.find(function (s) {
+      return s && s.type === '主动' && martialLevel >= (s.unlockLevel || 1);
+    });
+    if (!activeSkill || !activeSkill.effect || activeSkill.effect.type !== 'damage') {
+      return skills;
+    }
+
+    const eff = activeSkill.effect;
+    const skillData = {
+      name: activeSkill.name,
+      mpCost: Math.max(1, Math.floor(Number(activeSkill.mpCost)) || 10),
+      effect: {
+        type: 'damage',
+        value: eff.value,
+        bonusAttr: eff.bonusAttr,
+        bonusPerPoint: eff.bonusPerPoint
+      }
+    };
+    if (activeSkill.plainFx) skillData.plainFx = true;
+    if (activeSkill.punchFx) skillData.punchFx = true;
+    if (activeSkill.bladeFx) skillData.bladeFx = true;
+
+    // 正阳·阳刚：对当前武功主动伤害倍率 +value（与旧版直刺逻辑一致）
+    for (const skill of equippedMartial.skills) {
+      if (skill.type === '被动' && martialLevel >= (skill.unlockLevel || 1) && skill.name === '阳刚' && skill.effect && skill.effect.type === 'buff' && skill.effect.stat === 'attack') {
+        skillData.effect.value += skill.effect.value || 0;
+      }
+    }
+
+    // 最后一个已解锁的「追击」被动（剑影 / 连环 / 回风 等）
+    let followSkill = null;
+    for (const skill of equippedMartial.skills) {
+      if (skill.type !== '被动' || !skill.effect || skill.effect.type !== 'followAttack') continue;
+      if (martialLevel < (skill.unlockLevel || 99)) continue;
+      followSkill = {
+        type: 'followAttack',
+        baseChance: skill.effect.baseChance,
+        damage: skill.effect.damage,
+        chanceAttr: skill.effect.chanceAttr,
+        chancePerPoint: skill.effect.chancePerPoint,
+        skillName: skill.name
+      };
+    }
+    if (followSkill) skillData.followSkill = followSkill;
+
+    skills.push(skillData);
   } catch (e) {
     console.warn('获取武学技能失败', e);
   }
-  
-  console.log('最终结果 - martialLevel:', martialLevel, 'hasYangGang:', hasYangGang, 'hasJianYing:', hasJianYing);
-  
-  // 只有武学等级 >=1 才能用直刺
-  if (martialLevel >= 1) {
-    const skillData = {
-      name: '直刺',
-      mpCost: 20,
-      effect: { type: 'damage', value: 1.2 }
-    };
-    
-    // 只有武学等级 >=7 才能触发剑影
-    if (hasJianYing) {
-      skillData.followSkill = { type: 'followAttack', baseChance: 0.2, damage: 0.8, chanceAttr: 'agility', chancePerPoint: 0.01 };
-    }
-    
-    // 只有武学等级 >=4 时阳刚才加攻击
-    if (hasYangGang) {
-      skillData.effect.value += 0.1; // 阳刚增加10%伤害
-    }
-    
-    skills.push(skillData);
-  }
-  
   return skills;
 }
 
-// 角色数据（从角色系统获取）
-function getYangGangBonus() {
+// 正阳·阳刚：按角色各自装备的武功判定（勿用全局 playerMartialArts）
+function getYangGangBonusForChar(charId) {
   let bonus = 1;
   try {
-    if (typeof playerMartialArts !== 'undefined') {
-      for (const martial of playerMartialArts) {
-        if (martial.equipped && martial.type === '武功' && martial.skills) {
-          const martialLevel = martial.currentLevel || 1;
-          for (const skill of martial.skills) {
-            if (skill.name === '阳刚' && martialLevel >= (skill.unlockLevel || 4)) {
-              bonus = 1.1;
-              console.log('阳刚被动激活，攻击力增加10%');
-              return bonus;
-            }
+    const list = getBattleMergedMartialArtsList(charId);
+    for (const martial of list) {
+      if (martial.equipped && martial.type === '武功' && martial.skills) {
+        const martialLevel = martial.currentLevel || 1;
+        for (const skill of martial.skills) {
+          if (skill.name === '阳刚' && martialLevel >= (skill.unlockLevel || 4)) {
+            bonus = 1.1;
+            console.log('角色', charId, '阳刚被动激活，攻击力×1.1');
+            return bonus;
           }
         }
       }
@@ -207,16 +240,20 @@ function getYangGangBonus() {
 }
 
 function getPlayerCharactersFromSave() {
+  if (typeof window.applyPlayerCharactersFromStorage === 'function') {
+    window.applyPlayerCharactersFromStorage();
+  }
   const maleAvatar = '../assets/shaoxia.png';
   const femaleAvatar = '../assets/suyao.png';
-  const yangGangBonus = getYangGangBonus();
+  const yangGangBonus1 = getYangGangBonusForChar(1);
+  const yangGangBonus2 = getYangGangBonusForChar(2);
   
   console.log('=== battle.js 检查角色系统 ===');
   console.log('typeof window.characters:', typeof window.characters);
   console.log('window.characters?.length:', window.characters?.length);
-  console.log('阳刚加成:', yangGangBonus);
+  console.log('阳刚加成(少侠/苏瑶):', yangGangBonus1, yangGangBonus2);
   
-  if (typeof window.characters !== 'undefined' && window.characters.length > 0) {
+  if (typeof window.characters !== 'undefined' && window.characters.length >= 2) {
     console.log('走角色系统路径');
     console.log('characters[0].name:', window.characters[0].name);
     console.log('characters[0].stats.hp:', window.characters[0].stats.hp);
@@ -287,12 +324,12 @@ function getPlayerCharactersFromSave() {
         maxHp: char1FinalMaxHp,
         mp: char1FinalMaxMp,
         maxMp: char1FinalMaxMp,
-        attack: Math.floor((50 + window.characters[0].stats.strength * 3) * yangGangBonus) + char1MartialAttack + char1InnerBonuses.attackBonus, 
+        attack: Math.floor((50 + window.characters[0].stats.strength * 3) * yangGangBonus1) + char1MartialAttack + char1InnerBonuses.attackBonus, 
         defense: (window.characters[0].stats.defense || 50) + char1InnerBonuses.defenseBonus, 
         speed: 50 + window.characters[0].stats.agility * 2 + char1MartialSpeed + char1InnerBonuses.speedBonus,
         hit: 70 + window.characters[0].stats.agility, 
         dodge: 20 + Math.floor(window.characters[0].stats.agility * 0.5) + char1MartialDodge + char1InnerBonuses.dodgeBonus, 
-        parry: window.characters[0].stats.parry || 20,
+        parry: (window.characters[0].stats.parry || 20) + (char1InnerBonuses.parryBonus || 0),
         stats: window.characters[0].stats
       },
       { 
@@ -304,12 +341,12 @@ function getPlayerCharactersFromSave() {
         maxHp: char2FinalMaxHp,
         mp: char2FinalMaxMp,
         maxMp: char2FinalMaxMp,
-        attack: Math.floor((50 + window.characters[1].stats.strength * 3) * yangGangBonus) + char2MartialAttack + char2InnerBonuses.attackBonus, 
+        attack: Math.floor((50 + window.characters[1].stats.strength * 3) * yangGangBonus2) + char2MartialAttack + char2InnerBonuses.attackBonus, 
         defense: (window.characters[1].stats.defense || 50) + char2InnerBonuses.defenseBonus, 
         speed: 50 + window.characters[1].stats.agility * 2 + char2MartialSpeed + char2InnerBonuses.speedBonus,
         hit: 70 + window.characters[1].stats.agility, 
         dodge: 20 + Math.floor(window.characters[1].stats.agility * 0.5) + char2MartialDodge + char2InnerBonuses.dodgeBonus, 
-        parry: window.characters[1].stats.parry || 20,
+        parry: (window.characters[1].stats.parry || 20) + (char2InnerBonuses.parryBonus || 0),
         stats: window.characters[1].stats
       }
     ];
@@ -320,7 +357,10 @@ function getPlayerCharactersFromSave() {
   if (savedChars) {
     try {
       const chars = JSON.parse(savedChars);
-      if (chars.length >= 2) {
+        chars.forEach((c, i) => {
+          if (c && (c.id == null || c.id === '')) c.id = i + 1;
+        });
+        if (chars.length >= 2) {
         // 角色1：少侠
         const char1Level = chars[0].level;
         const char1Bone = chars[0].stats.bone || 10;
@@ -358,6 +398,13 @@ function getPlayerCharactersFromSave() {
         const char2MpMartial = getMartialBonusForChar(chars[1], 'mp');
         const char2MpEquip = getEquipBonusForChar(chars[1], 'mp');
         const char2FinalMaxMp = char2MpBase + char2MpFourDim + char2MpMartial + char2MpEquip;
+
+        const b1Atk = getMartialBonusForChar(chars[0], 'attack');
+        const b1Spd = getMartialBonusForChar(chars[0], 'speed');
+        const b1Dod = getMartialBonusForChar(chars[0], 'dodge');
+        const b2Atk = getMartialBonusForChar(chars[1], 'attack');
+        const b2Spd = getMartialBonusForChar(chars[1], 'speed');
+        const b2Dod = getMartialBonusForChar(chars[1], 'dodge');
         
         return [
           { 
@@ -369,12 +416,12 @@ function getPlayerCharactersFromSave() {
             maxHp: char1FinalMaxHp,
             mp: char1FinalMaxMp,
             maxMp: char1FinalMaxMp,
-            attack: Math.floor((50 + char1Str * 3) * yangGangBonus), 
+            attack: Math.floor((50 + char1Str * 3) * yangGangBonus1) + b1Atk + char1InnerBonuses.attackBonus, 
             defense: (chars[0].stats.defense || 50) + char1InnerBonuses.defenseBonus, 
-            speed: 50 + char1Agi * 2,
+            speed: 50 + char1Agi * 2 + b1Spd + char1InnerBonuses.speedBonus,
             hit: 70 + char1Agi, 
-            dodge: 20 + Math.floor(char1Agi * 0.5), 
-            parry: chars[0].stats.parry || 20,
+            dodge: 20 + Math.floor(char1Agi * 0.5) + b1Dod + char1InnerBonuses.dodgeBonus, 
+            parry: (chars[0].stats.parry || 20) + (char1InnerBonuses.parryBonus || 0),
             stats: chars[0].stats
           },
           { 
@@ -386,12 +433,12 @@ function getPlayerCharactersFromSave() {
             maxHp: char2FinalMaxHp,
             mp: char2FinalMaxMp,
             maxMp: char2FinalMaxMp,
-            attack: Math.floor((50 + char2Str * 3) * yangGangBonus), 
+            attack: Math.floor((50 + char2Str * 3) * yangGangBonus2) + b2Atk + char2InnerBonuses.attackBonus, 
             defense: (chars[1].stats.defense || 50) + char2InnerBonuses.defenseBonus, 
-            speed: 50 + char2Agi * 2,
+            speed: 50 + char2Agi * 2 + b2Spd + char2InnerBonuses.speedBonus,
             hit: 70 + char2Agi, 
-            dodge: 20 + Math.floor(char2Agi * 0.5), 
-            parry: chars[1].stats.parry || 20,
+            dodge: 20 + Math.floor(char2Agi * 0.5) + b2Dod + char2InnerBonuses.dodgeBonus, 
+            parry: (chars[1].stats.parry || 20) + (char2InnerBonuses.parryBonus || 0),
             stats: chars[1].stats
           }
         ];
@@ -417,8 +464,8 @@ function getPlayerCharactersFromSave() {
     const char2Mp = char2Data ? 50 + char2Data.level * 5 + (char2Data.stats.qi || 10) * 2 : 130;
     
     return [
-      { id: 1, name: '少侠', avatar: maleAvatar, level: 10, hp: 250, maxHp: 250, mp: 120, maxMp: 120, attack: Math.floor(80 * yangGangBonus), defense: 52, speed: 72, hit: 80, dodge: 45, parry: 38, stats: { strength: 10, agility: 10, bone: 10, qi: 10, mp: 120, maxMp: 120 }, equipped: {} },
-      { id: 2, name: char2Data?.name || '苏瑶', avatar: femaleAvatar, level: char2Data?.level || 12, hp: char2Hp, maxHp: char2Hp, mp: char2Mp, maxMp: char2Mp, attack: Math.floor(80 * yangGangBonus), defense: 45, speed: 72, hit: 80, dodge: 45, parry: 28, stats: char2Data?.stats || { strength: 10, agility: 10, bone: 10, qi: 10, mp: char2Mp, maxMp: char2Mp }, equipped: char2Data?.equipped || {} }
+      { id: 1, name: '少侠', avatar: maleAvatar, level: 10, hp: 250, maxHp: 250, mp: 120, maxMp: 120, attack: Math.floor(80 * yangGangBonus1), defense: 52, speed: 72, hit: 80, dodge: 45, parry: 38, stats: { strength: 10, agility: 10, bone: 10, qi: 10, mp: 120, maxMp: 120 }, equipped: {} },
+      { id: 2, name: char2Data?.name || '苏瑶', avatar: femaleAvatar, level: char2Data?.level || 12, hp: char2Hp, maxHp: char2Hp, mp: char2Mp, maxMp: char2Mp, attack: Math.floor(80 * yangGangBonus2), defense: 45, speed: 72, hit: 80, dodge: 45, parry: 28, stats: char2Data?.stats || { strength: 10, agility: 10, bone: 10, qi: 10, mp: char2Mp, maxMp: char2Mp }, equipped: char2Data?.equipped || {} }
     ];
   }
   
@@ -436,7 +483,7 @@ function getPlayerCharactersFromSave() {
     // 使用正确的属性名：bone(根骨) 和 qi(内息)，而不是 vitality 和 spirit
     const maxHp = Math.floor(100 + (stats.bone || stats.vitality || 10) * 5 + level * 10);
     const maxMp = Math.floor(50 + (stats.qi || stats.spirit || 10) * 2 + level * 5);
-    const attack = Math.floor((50 + stats.strength * 3) * yangGangBonus);
+    const attack = Math.floor((50 + stats.strength * 3) * yangGangBonus1);
     const defense = stats.defense || 50;
     const speed = 50 + stats.agility * 2;
     const hit = 70 + stats.agility;
@@ -461,7 +508,7 @@ function getPlayerCharactersFromSave() {
     
     const char2MaxHp = Math.floor(100 + char2Level * 10 + char2Bone * 5);
     const char2MaxMp = Math.floor(50 + char2Level * 5 + char2Qi * 2);
-    const char2Attack = Math.floor((50 + char2Str * 3) * yangGangBonus);
+    const char2Attack = Math.floor((50 + char2Str * 3) * yangGangBonus2);
     const char2Defense = 45;
     const char2Speed = 50 + char2Agi * 2;
     const char2Hit = 70 + char2Agi;
@@ -520,8 +567,8 @@ function getPlayerCharactersFromSave() {
     const fallbackMp2 = Math.floor(50 + char2Level * 5 + char2Qi * 2);
     
     return [
-      { id: 1, name: '少侠', avatar: maleAvatar, level: 10, hp: 250, maxHp: 250, mp: fallbackMp1, maxMp: fallbackMp1, attack: Math.floor(80 * yangGangBonus), defense: 52, speed: 72, hit: 80, dodge: 45, parry: 38, stats: { strength: 10, agility: 10, bone: 10, qi: 10 }, equipped: {} },
-      { id: 2, name: char2Data?.name || '苏瑶', avatar: femaleAvatar, level: char2Level, hp: fallbackHp2, maxHp: fallbackHp2, mp: fallbackMp2, maxMp: fallbackMp2, attack: Math.floor((50 + char2Str * 3) * yangGangBonus), defense: 45, speed: 50 + char2Agi * 2, hit: 70 + char2Agi, dodge: 20 + Math.floor(char2Agi * 0.5), parry: 28, stats: { strength: char2Str, agility: char2Agi, bone: char2Bone, qi: char2Qi }, equipped: char2Data?.equipped || {} }
+      { id: 1, name: '少侠', avatar: maleAvatar, level: 10, hp: 250, maxHp: 250, mp: fallbackMp1, maxMp: fallbackMp1, attack: Math.floor(80 * yangGangBonus1), defense: 52, speed: 72, hit: 80, dodge: 45, parry: 38, stats: { strength: 10, agility: 10, bone: 10, qi: 10 }, equipped: {} },
+      { id: 2, name: char2Data?.name || '苏瑶', avatar: femaleAvatar, level: char2Level, hp: fallbackHp2, maxHp: fallbackHp2, mp: fallbackMp2, maxMp: fallbackMp2, attack: Math.floor((50 + char2Str * 3) * yangGangBonus2), defense: 45, speed: 50 + char2Agi * 2, hit: 70 + char2Agi, dodge: 20 + Math.floor(char2Agi * 0.5), parry: 28, stats: { strength: char2Str, agility: char2Agi, bone: char2Bone, qi: char2Qi }, equipped: char2Data?.equipped || {} }
     ];
   }
 }
@@ -580,10 +627,12 @@ async function initBattle() {
   battleState.turnOrder = [...battleState.allyTeam, ...battleState.enemyTeam];
   calculateTurnOrder();
   battleState.currentTurnIndex = 0;
+  battleState.hudActorOverride = null;
   battleState.battleEnded = false;
   battleState.turnCount = 1;
 
   clearBattleLog();
+  battleLoopRunning = false;
   renderTeams();
   updateTurnDisplay();
   addBattleLog('战斗开始！');
@@ -595,6 +644,46 @@ function calculateTurnOrder() {
   battleState.turnOrder.sort((a, b) => b.speed - a.speed);
 }
 
+/** 对位阵营（敌看我方、我看敌方）存活单位中的最高速度；全灭或未开战时 0。 */
+function getOpposingTeamMaxSpeed(actor) {
+  const opposing = actor.isAlly ? battleState.enemyTeam : battleState.allyTeam;
+  let maxS = 0;
+  for (const c of opposing) {
+    if (!c || c.isDead) continue;
+    const s = Number(c.speed) || 0;
+    if (s > maxS) maxS = s;
+  }
+  return maxS;
+}
+
+/**
+ * 紧随 `actor` 的主序行动：按速度优势插入至多两档补段，每档一次完整 `performAction`（出位→出招/连招→回位）。
+ * 表现：仅本路径传入 `presentation: 'speedExtra'`，气泡/日志走「速补」样式；武学内连招（如剑影）仍在 `useSkill` 内、不传该标记。
+ */
+async function runSpeedExtraActionsImmediatelyAfter(actor) {
+  if (!actor || actor.isDead || battleState.battleEnded) return;
+  for (let tier = 1; tier <= SPEED_EXTRA_ACTION_MAX_TIERS; tier++) {
+    if (battleState.battleEnded || actor.isDead) return;
+    const needLead = SPEED_EXTRA_ACTION_GAP * tier;
+    const lead = (Number(actor.speed) || 0) - getOpposingTeamMaxSpeed(actor);
+    if (lead < needLead) break;
+    const opposing = actor.isAlly ? battleState.enemyTeam : battleState.allyTeam;
+    if (!opposing.some(c => c && !c.isDead)) return;
+    const tag =
+      tier === 1 ? '身法占优，借势再出一招！' : '步法如电，再进一动！';
+    addBattleLogMaybeSpeed(`${actor.name} ${tag}`, true);
+    battleState.hudActorOverride = actor;
+    updateActiveHighlight(actor);
+    await performAction(actor, { presentation: 'speedExtra' });
+    battleState.hudActorOverride = null;
+    if (checkBattleEnd()) {
+      // 不在此重复 renderTeams：`runBattleLoop` 下一处 `checkBattleEnd` 会统一刷新，避免整卡重建两次导致头像连闪
+      return;
+    }
+    await sleep(400);
+  }
+}
+
 function renderTeams() {
   const allyContainer = document.getElementById('teamAlly');
   const enemyContainer = document.getElementById('teamEnemy');
@@ -604,8 +693,36 @@ function renderTeams() {
   updateActorBarsHud();
 }
 
+/**
+ * 战斗进行中/结束时就地更新立轴卡片（血、死、高亮），**不**整段替换 innerHTML，避免头像 img 反复卸载/重载造成连闪。
+ * 若缺少卡片节点则回退为 `renderTeams()`。
+ */
+function syncBattlePartyDomInPlace() {
+  const all = [...battleState.allyTeam, ...battleState.enemyTeam];
+  for (const char of all) {
+    if (!char || char.id == null) continue;
+    const card = document.getElementById(`char-${char.id}`);
+    if (!card) {
+      renderTeams();
+      return;
+    }
+    const wantActive =
+      !battleState.battleEnded &&
+      battleState.turnOrder[battleState.currentTurnIndex] === char;
+    card.classList.toggle('active', !!wantActive);
+    card.classList.toggle('dead', !!char.isDead);
+    const hpEl = card.querySelector('.hp-text');
+    if (hpEl) hpEl.textContent = String(char.hp != null ? char.hp : '');
+    const mpEl = card.querySelector('.mp-text');
+    if (mpEl && char.mp !== undefined) mpEl.textContent = String(char.mp);
+  }
+  updateActorBarsHud();
+}
+
 function renderCharacterCard(char) {
-  const isActive = battleState.turnOrder[battleState.currentTurnIndex] === char;
+  const isActive =
+    !battleState.battleEnded &&
+    battleState.turnOrder[battleState.currentTurnIndex] === char;
   const fallbackIcon = char.name === '少侠' ? '⚔️' : char.name === '苏瑶' ? '🌸' : (char.icon || '👤');
   const hasAvatar = char.avatar && char.avatar !== '';
 
@@ -623,7 +740,7 @@ function renderCharacterCard(char) {
         ${avatarHtml}
       </div>
       <div class="hp-text">${char.hp}</div>
-      ${char.mp !== undefined ? `<div class="mp-text">${char.mp}</div>` : ''}
+      ${char.mp !== undefined ? `<div class="mp-text" title="内力">${char.mp}</div>` : ''}
     </div>
   `;
 }
@@ -648,7 +765,10 @@ function addBattleLog(text, options = {}) {
   if (!container || text == null || text === '') return;
 
   const line = document.createElement('div');
-  line.className = 'battle-log-line' + (options.round ? ' is-round' : '');
+  line.className =
+    'battle-log-line' +
+    (options.round ? ' is-round' : '') +
+    (options.speedExtra ? ' is-speed-extra' : '');
   line.textContent = text;
   container.appendChild(line);
 
@@ -659,6 +779,11 @@ function addBattleLog(text, options = {}) {
   requestAnimationFrame(() => {
     container.scrollTop = container.scrollHeight;
   });
+}
+
+/** 速度补段专用日志前缀与样式；技能内连招/追击不走此套（见 `presentation: 'speedExtra'`）。 */
+function addBattleLogMaybeSpeed(text, isSpeedExtra) {
+  addBattleLog(isSpeedExtra ? `【速补】${text}` : text, isSpeedExtra ? { speedExtra: true } : {});
 }
 
 // 更新回合显示
@@ -674,7 +799,10 @@ function updateActorBarsHud() {
   const hud = document.getElementById('actorBarsHud');
   if (!hud || !battleState.turnOrder || battleState.turnOrder.length === 0) return;
 
-  const char = battleState.turnOrder[battleState.currentTurnIndex];
+  const char =
+    battleState.hudActorOverride != null
+      ? battleState.hudActorOverride
+      : battleState.turnOrder[battleState.currentTurnIndex];
   if (!char) {
     hud.style.visibility = 'hidden';
     return;
@@ -706,26 +834,24 @@ function updateActorBarsHud() {
   const hasMp = char.maxMp != null && char.mp != null;
   if (hasMp) {
     mpRow.style.display = 'flex';
-    const maxMp = Math.max(1, char.maxMp);
-    const curMp = Math.max(0, char.mp);
-    const mRatio = Math.max(0, Math.min(1, curMp / maxMp));
-    mpFill.style.width = `${mRatio * 100}%`;
-    mpNums.textContent = `${curMp} / ${maxMp}`;
-    if (mpTrack) {
-      mpTrack.setAttribute('aria-valuenow', String(Math.round(mRatio * 100)));
-      mpTrack.setAttribute('aria-valuetext', `${curMp} / ${maxMp}`);
-    }
+    const curMp = Math.max(0, Math.floor(Number(char.mp)) || 0);
+    if (mpTrack) mpTrack.style.display = 'none';
+    if (mpFill) mpFill.style.display = 'none';
+    mpNums.textContent = String(curMp);
   } else {
     mpRow.style.display = 'none';
+    if (mpTrack) mpTrack.style.display = '';
+    if (mpFill) mpFill.style.display = '';
   }
 }
 
-// 显示技能气泡
-function showSkillBubble(charId, skillName) {
+// 显示技能气泡（`bubbleOpts.variant === 'speedExtra'` 为速度补段专用样式；技能内追击等勿传此参）
+function showSkillBubble(charId, skillName, bubbleOpts) {
   const card = document.getElementById(`char-${charId}`);
   if (card) {
     const bubble = document.createElement('div');
-    bubble.className = 'skill-bubble';
+    const speed = bubbleOpts && bubbleOpts.variant === 'speedExtra';
+    bubble.className = 'skill-bubble' + (speed ? ' skill-bubble--speed-extra' : '');
     bubble.textContent = skillName;
     card.appendChild(bubble);
     setTimeout(() => bubble.classList.add('show'), 10);
@@ -735,7 +861,7 @@ function showSkillBubble(charId, skillName) {
   }
 }
 
-// 显示剑气特效
+// 显示剑气特效（仅剑光轨迹；受击反馈请用 showMeleeHitFeedback）
 function showSwordEffect(actor, target, effectType) {
   const container = document.querySelector('.battle-container');
   if (!container) return;
@@ -746,25 +872,24 @@ function showSwordEffect(actor, target, effectType) {
   
   const containerRect = container.getBoundingClientRect();
   
-  if (effectType === 'thrust') {
-    // 直刺特效 - 直接在目标头像上显示
+  if (effectType === 'thrust' || effectType === 'plain') {
     const targetRect = targetCard.getBoundingClientRect();
     const effect = document.createElement('div');
-    effect.className = 'sword-effect-thrust';
+    effect.className = effectType === 'plain' ? 'sword-effect-plain' : 'sword-effect-thrust';
     
     const targetX = targetRect.left + targetRect.width / 2 - containerRect.left;
     const targetY = targetRect.top + targetRect.height / 2 - containerRect.top;
     
-    // 计算角度（从攻击者指向目标）
     const actorRect = actorCard.getBoundingClientRect();
     const startX = actorRect.left + actorRect.width / 2 - containerRect.left;
     const startY = actorRect.top + actorRect.height / 2 - containerRect.top;
     const angle = Math.atan2(targetY - startY, targetX - startX) * 180 / Math.PI;
     
-    // 剑气中心点在目标位置，长度保持200px
-    effect.style.left = `${targetX - 100}px`;
+    const halfLen = effectType === 'plain' ? 70 : 100;
+    const barW = effectType === 'plain' ? 140 : 200;
+    effect.style.left = `${targetX - halfLen}px`;
     effect.style.top = `${targetY - 4}px`;
-    effect.style.width = '200px';
+    effect.style.width = `${barW}px`;
     effect.style.transform = `rotate(${angle}deg)`;
     effect.style.transformOrigin = 'center center';
     
@@ -776,12 +901,8 @@ function showSwordEffect(actor, target, effectType) {
     
     setTimeout(() => {
       effect.remove();
-    }, 500);
-    
-    // 受击震动
-    showHitShake(target);
+    }, effectType === 'plain' ? 380 : 500);
   } else if (effectType === 'shadow') {
-    // 剑影特效 - 竖着的剑气
     const effect = document.createElement('div');
     effect.className = 'sword-effect-shadow';
     
@@ -801,18 +922,119 @@ function showSwordEffect(actor, target, effectType) {
     setTimeout(() => {
       effect.remove();
     }, 600);
-    
-    // 受击震动
-    showHitShake(target);
   }
 }
 
-// 显示受击震动
-function showHitShake(target) {
+/** 朴素拳击命中：中心爆闪 + 短放射线（非剑光条） */
+function showPunchImpactEffect(actor, target) {
+  const container = document.querySelector('.battle-container');
+  if (!container) return;
+
+  const targetCard = document.getElementById(`char-${target.id}`);
+  if (!targetCard) return;
+
+  const containerRect = container.getBoundingClientRect();
+  const targetRect = targetCard.getBoundingClientRect();
+  const targetX = targetRect.left + targetRect.width / 2 - containerRect.left;
+  const targetY = targetRect.top + targetRect.height * 0.4 - containerRect.top;
+
+  const root = document.createElement('div');
+  root.className = 'punch-impact-root';
+  root.setAttribute('aria-hidden', 'true');
+  root.style.left = `${targetX}px`;
+  root.style.top = `${targetY}px`;
+
+  const core = document.createElement('div');
+  core.className = 'punch-impact-core';
+  root.appendChild(core);
+
+  const rayCount = 10;
+  for (let i = 0; i < rayCount; i++) {
+    const ray = document.createElement('div');
+    ray.className = 'punch-impact-ray';
+    ray.style.setProperty('--punch-ray-rot', `${(360 / rayCount) * i}deg`);
+    root.appendChild(ray);
+  }
+
+  container.appendChild(root);
+  requestAnimationFrame(() => {
+    root.classList.add('show');
+  });
+  setTimeout(() => {
+    root.remove();
+  }, 420);
+}
+
+/** 刀招：冷色刃风 + 细刃脊掠过头像（与拳的放射爆区分） */
+function showBladeChopEffect(actor, target) {
+  const card = document.getElementById(`char-${target.id}`);
+  if (!card) return;
+  const holder = card.querySelector('.character-avatar-container');
+  if (!holder) return;
+  if (getComputedStyle(holder).position === 'static') {
+    holder.style.position = 'relative';
+  }
+  const layer = document.createElement('div');
+  layer.className = 'blade-cut-layer';
+  layer.setAttribute('aria-hidden', 'true');
+  const wind = document.createElement('div');
+  wind.className = 'blade-cut-wind';
+  const spine = document.createElement('div');
+  spine.className = 'blade-cut-spine';
+  const glint = document.createElement('div');
+  glint.className = 'blade-cut-glint';
+  layer.appendChild(wind);
+  layer.appendChild(spine);
+  layer.appendChild(glint);
+  holder.appendChild(layer);
+  requestAnimationFrame(() => layer.classList.add('show'));
+  setTimeout(() => {
+    layer.remove();
+  }, 460);
+}
+
+/** 极轻全屏抖一下，强化拳落点体感 */
+function showScreenJolt() {
+  const el = document.querySelector('.battle-container');
+  if (!el) return;
+  el.classList.add('screen-jolt');
+  setTimeout(() => el.classList.remove('screen-jolt'), 220);
+}
+
+/** 命中瞬间：头像闪光 + 卡片震动（通用近战反馈） */
+function showHitImpactFlash(target, opts) {
+  const card = document.getElementById(`char-${target.id}`);
+  if (!card) return;
+  const holder = card.querySelector('.character-avatar-container') || card;
+  if (getComputedStyle(holder).position === 'static') {
+    holder.style.position = 'relative';
+  }
+  const flash = document.createElement('div');
+  flash.className =
+    opts && opts.bladeImpact ? 'hit-impact-overlay hit-impact-blade' : 'hit-impact-overlay';
+  flash.setAttribute('aria-hidden', 'true');
+  holder.appendChild(flash);
+  setTimeout(() => {
+    flash.remove();
+  }, 320);
+}
+
+function showMeleeHitFeedback(target, opts) {
+  showHitImpactFlash(target, opts);
+  showHitShake(target, opts);
+}
+
+// 显示受击震动（opts.strong：拳类等更重一档）
+function showHitShake(target, opts) {
   const card = document.getElementById(`char-${target.id}`);
   if (card) {
     card.classList.add('hit');
-    setTimeout(() => card.classList.remove('hit'), 300);
+    if (opts && opts.strong) card.classList.add('hit-strong');
+    const ms = opts && opts.strong ? 380 : 300;
+    setTimeout(() => {
+      card.classList.remove('hit');
+      card.classList.remove('hit-strong');
+    }, ms);
   }
 }
 
@@ -843,13 +1065,15 @@ function getInnerSkillPassiveBonuses(char) {
   let attackBonus = 0;
   let dodgeBonus = 0;
   let speedBonus = 0;
+  let parryBonus = 0;
 
   const stats = char && char.stats ? char.stats : {};
+  const charId = char && char.id != null ? char.id : 1;
 
   try {
-    if (typeof playerMartialArts !== 'undefined') {
-      for (const martial of playerMartialArts) {
-        if (martial.equipped && martial.skills) {
+    const martialList = getBattleMergedMartialArtsList(charId);
+    for (const martial of martialList) {
+      if (!martial.equipped || !martial.skills) continue;
           console.log(`处理武学: ${martial.name} (${martial.type}), 等级: ${martial.currentLevel}`);
           
           for (const skill of martial.skills) {
@@ -864,8 +1088,9 @@ function getInnerSkillPassiveBonuses(char) {
 
             // 根据效果类型处理加成
             switch (effect.type) {
-              case 'defenseBuff':
-                if (effect.stat === 'defense') {
+              case 'defenseBuff': {
+                const defStat = effect.stat;
+                if (defStat === 'defense' || defStat === undefined || defStat === null) {
                   let bonus = effect.baseValue || 0;
                   if (effect.bonusAttr) {
                     bonus += (stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
@@ -874,9 +1099,10 @@ function getInnerSkillPassiveBonuses(char) {
                   console.log(`${martial.name}-${skill.name} 生效: 防御+${Math.ceil(bonus)}`);
                 }
                 break;
+              }
 
               case 'maxHpBuff':
-                if (effect.stat === 'hp' || effect.stat === 'maxHp') {
+                if (!effect.stat || effect.stat === 'hp' || effect.stat === 'maxHp') {
                   let bonus = effect.baseValue || 0;
                   if (effect.bonusAttr) {
                     bonus += (stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
@@ -888,12 +1114,30 @@ function getInnerSkillPassiveBonuses(char) {
 
               case 'buff':
                 if (effect.stat === 'attack') {
-                  let bonus = effect.baseValue || 0;
-                  if (effect.bonusAttr) {
-                    bonus += (stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+                  let add = 0;
+                  if (effect.baseValue != null && effect.value == null) {
+                    let bonus = effect.baseValue || 0;
+                    if (effect.bonusAttr) {
+                      bonus += (stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+                    }
+                    add = Math.ceil(bonus);
+                  } else if (typeof effect.value === 'number') {
+                    const str = stats.strength || 0;
+                    const baseAtk = 50 + str * 3;
+                    let frac = effect.value;
+                    if (effect.bonusAttr && effect.bonusPerPoint != null) {
+                      frac += (stats[effect.bonusAttr] || 0) * effect.bonusPerPoint;
+                    }
+                    add = Math.floor(baseAtk * frac);
+                  } else {
+                    let bonus = effect.baseValue || 0;
+                    if (effect.bonusAttr) {
+                      bonus += (stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+                    }
+                    add = Math.ceil(bonus);
                   }
-                  attackBonus += Math.ceil(bonus);
-                  console.log(`${martial.name}-${skill.name} 生效: 攻击+${Math.ceil(bonus)}`);
+                  attackBonus += add;
+                  console.log(`${martial.name}-${skill.name} 生效: 攻击+${add}`);
                 } else if (effect.stat === 'dodge') {
                   let bonus = effect.baseValue || 0;
                   if (effect.bonusAttr) {
@@ -908,118 +1152,54 @@ function getInnerSkillPassiveBonuses(char) {
                   }
                   speedBonus += Math.ceil(bonus);
                   console.log(`${martial.name}-${skill.name} 生效: 速度+${Math.ceil(bonus)}`);
+                } else if (effect.stat === 'parry') {
+                  let bonus = effect.baseValue || 0;
+                  if (effect.bonusAttr) {
+                    bonus += (stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+                  }
+                  parryBonus += Math.ceil(bonus);
+                  console.log(`${martial.name}-${skill.name} 生效: 招架+${Math.ceil(bonus)}`);
                 }
                 break;
             }
           }
-        }
-      }
     }
-    console.log(`最终武学加成: 防御+${defenseBonus}, 气血+${maxHpBonus}, 攻击+${attackBonus}, 闪避+${dodgeBonus}, 速度+${speedBonus}`);
+    console.log(`最终武学加成: 防御+${defenseBonus}, 气血+${maxHpBonus}, 攻击+${attackBonus}, 闪避+${dodgeBonus}, 速度+${speedBonus}, 招架+${parryBonus}`);
   } catch (e) {
     console.warn('获取武学技能加成失败:', e);
   }
 
-  return { defenseBonus, maxHpBonus, attackBonus, dodgeBonus, speedBonus };
-}
-
-// 检查是否装备了内功
-function hasInnerSkillEquipped() {
-  try {
-    if (typeof playerMartialArts !== 'undefined') {
-      for (const martial of playerMartialArts) {
-        if (martial.equipped && martial.type === '内功') {
-          return { equipped: true, level: martial.currentLevel || 1, name: martial.name };
-        }
-      }
-    }
-  } catch (e) {
-    console.warn('检查内功装备失败:', e);
-  }
-  return { equipped: false, level: 0, name: '' };
-}
-
-// 恢复内力（只有装备内功时才恢复）
-function recoverMp(char) {
-  if (char.mp === undefined || !char.maxMp) return;
-  
-  const innerSkill = hasInnerSkillEquipped();
-  if (!innerSkill.equipped) {
-    console.log('未装备内功，不恢复内力');
-    return;
-  }
-  
-  // 根据内功等级计算恢复量（基础10% + 每级额外2%）
-  const baseRecoverRate = 0.1 + (innerSkill.level - 1) * 0.02;
-  const recover = Math.floor(char.maxMp * baseRecoverRate);
-  char.mp = Math.min(char.maxMp, char.mp + recover);
-  console.log(`${innerSkill.name}(${innerSkill.level}级) 恢复内力: +${recover}`);
-  updateMpDisplay(char.id, char.mp, true);
+  return { defenseBonus, maxHpBonus, attackBonus, dodgeBonus, speedBonus, parryBonus };
 }
 
 // 计算内功自动回血量
 function calculateInnerSkillHeal(char) {
   let healAmount = 0;
-  let martialArtsData = [];
-  
+
   try {
     console.log('=== 开始计算内功回血 ===');
-    
-    // 获取用户实际的武学等级（从 localStorage）
-    let savedMartialArts = [];
+
     const charId = char.id || 1;
-    const saved = localStorage.getItem('playerMartialArts_' + charId);
-    if (saved) {
-      savedMartialArts = JSON.parse(saved);
-      console.log('从 localStorage 获取到用户武学数据');
-    }
-    
-    // 使用 MARTIAL_ARTS_LIBRARY 的技能数据，但合并用户的等级
-    if (typeof MARTIAL_ARTS_LIBRARY !== 'undefined') {
-      martialArtsData = MARTIAL_ARTS_LIBRARY.map(martial => {
-        // 找到对应的保存数据
-        const savedMartial = savedMartialArts.find(m => m.id === martial.id);
-        if (savedMartial) {
-          // 使用用户保存的等级
-          return { ...martial, currentLevel: savedMartial.currentLevel, equipped: savedMartial.equipped };
-        }
-        return martial;
-      });
-      console.log('使用 MARTIAL_ARTS_LIBRARY 的技能数据 + localStorage 的等级');
-      
-      const zhengyang = martialArtsData.find(m => m.name === '正阳吐纳诀');
-      if (zhengyang) {
-        console.log('正阳吐纳诀技能顺序:', zhengyang.skills.map(s => s.name));
-        console.log('正阳吐纳诀当前等级:', zhengyang.currentLevel);
-      }
-    } else if (typeof playerMartialArts !== 'undefined') {
-      martialArtsData = playerMartialArts;
-      console.log('使用 playerMartialArts');
-    } else if (savedMartialArts.length > 0) {
-      martialArtsData = savedMartialArts;
-      console.log('使用 localStorage');
-    }
-    
+    const martialArtsData = getBattleMergedMartialArtsList(charId);
     console.log('武学数据:', martialArtsData);
-    
+
     for (const martial of martialArtsData) {
       if (martial.equipped && martial.type === '内功' && martial.skills) {
         console.log('装备的内功:', martial.name, '等级:', martial.currentLevel);
         console.log('技能数组:', martial.skills);
-        
+
         for (const skill of martial.skills) {
           console.log('技能:', skill.name, '解锁等级:', skill.unlockLevel);
-          
-          if (skill.name === '调息' && martial.currentLevel >= (skill.unlockLevel || 7)) {
-            const effect = skill.effect;
-            if (effect && effect.type === 'autoHeal') {
-              const base = effect.baseValue || 5;
-              const levelBonus = martial.currentLevel * (effect.levelMultiplier || 3);
-              const qiBonus = (char.stats && char.stats.qi || 0) * (effect.bonusPerPoint || 0.8);
-              healAmount = Math.floor(base + levelBonus + qiBonus);
-              console.log(`${martial.name}(${martial.currentLevel}级) 调息回血量: ${healAmount}`);
-              break;
-            }
+          if (martial.currentLevel < (skill.unlockLevel || 99)) continue;
+          const effect = skill.effect;
+          if (effect && effect.type === 'autoHeal') {
+            const base = effect.baseValue || 5;
+            const levelBonus = martial.currentLevel * (effect.levelMultiplier || 3);
+            const qiBonus = (char.stats && char.stats.qi) || 0;
+            const qiPart = qiBonus * (effect.bonusPerPoint || 0.8);
+            const h = Math.floor(base + levelBonus + qiPart);
+            healAmount += h;
+            console.log(`${martial.name}-${skill.name}(${martial.currentLevel}级) 回血段: +${h}`);
           }
         }
       }
@@ -1027,7 +1207,7 @@ function calculateInnerSkillHeal(char) {
   } catch (e) {
     console.warn('计算内功回血失败:', e);
   }
-  
+
   return healAmount;
 }
 
@@ -1127,28 +1307,35 @@ function updateMpDisplay(charId, mp, isRecover = false) {
   updateActorBarsHud();
 }
 
-// 检查剑影
-async function checkFollowAttack(actor, target, followSkill) {
+// 检查剑影等追击（若 `fxOpts.presentation === 'speedExtra'`，气泡/日志与当次速补段统一）
+async function checkFollowAttack(actor, target, followSkill, fxOpts) {
   if (!actor.stats) return;
+
+  const speedExtra = fxOpts && fxOpts.presentation === 'speedExtra';
   
   const agility = actor.stats.agility || 0;
   const chance = followSkill.baseChance + agility * followSkill.chancePerPoint;
   
   if (Math.random() < chance) {
-    // 显示剑影气泡
-    showSkillBubble(actor.id, '剑影');
+    const followLabel = followSkill.skillName || '追击';
+    showSkillBubble(
+      actor.id,
+      speedExtra ? `速补 · ${followLabel}` : followLabel,
+      speedExtra ? { variant: 'speedExtra' } : undefined
+    );
     await sleep(400);
-    
-    // 显示剑影特效
+
     showSwordEffect(actor, target, 'shadow');
-    
+
     const damage = Math.floor(actor.attack * followSkill.damage);
     showDamageNumber(target.id, -damage, false);
     target.hp = Math.max(0, target.hp - damage);
-    addBattleLog(
+    showMeleeHitFeedback(target);
+    addBattleLogMaybeSpeed(
       typeof BattleNarrative !== 'undefined'
         ? BattleNarrative.followAttack(actor, target, damage)
-        : `${actor.name} 触发剑影，额外造成 ${damage} 点伤害！`
+        : `${actor.name} 触发${followLabel}，额外造成 ${damage} 点伤害！`,
+      speedExtra
     );
     
     if (target.hp <= 0) {
@@ -1161,48 +1348,77 @@ async function checkFollowAttack(actor, target, followSkill) {
   }
 }
 
-// 使用技能
-async function useSkill(actor, skill, target) {
-  actor.mp -= skill.mpCost;
+// 使用技能（`fxOpts.presentation === 'speedExtra'`：气泡/日志走速补样式；**本段不扣内力**以便与主序同规格一次出手含追击判定；追击见 `checkFollowAttack` 并传入 `fxOpts`）
+async function useSkill(actor, skill, target, fxOpts) {
+  const speedPres = fxOpts && fxOpts.presentation === 'speedExtra';
+  const mpc = Math.max(0, Math.floor(Number(skill.mpCost)));
+  const cost = mpc > 0 ? mpc : 10;
+  const curMp = Math.floor(Number(actor.mp));
+  if (!speedPres) {
+    actor.mp = Math.max(0, (Number.isFinite(curMp) ? curMp : 0) - cost);
+  }
   updateMpDisplay(actor.id, actor.mp, false);
   
   // 1. 角色移动到中间
   await showAttackMove(actor);
   
   // 2. 显示技能气泡
-  showSkillBubble(actor.id, skill.name);
+  showSkillBubble(
+    actor.id,
+    speedPres ? `速补 · ${skill.name}` : skill.name,
+    speedPres ? { variant: 'speedExtra' } : undefined
+  );
   await sleep(400);
   
   // 3. 造成伤害
   if (skill.effect.type === 'damage') {
     let multiplier = skill.effect.value;
-    
-    // 显示直刺特效
-    showSwordEffect(actor, target, 'thrust');
-    
+    if (skill.effect.bonusAttr && actor.stats && typeof skill.effect.bonusPerPoint === 'number') {
+      const attr = skill.effect.bonusAttr;
+      multiplier += (actor.stats[attr] || 0) * skill.effect.bonusPerPoint;
+    }
+
+    if (skill.bladeFx) {
+      showBladeChopEffect(actor, target);
+    } else if (skill.punchFx) {
+      showPunchImpactEffect(actor, target);
+    } else if (skill.plainFx) {
+      showSwordEffect(actor, target, 'plain');
+    } else {
+      showSwordEffect(actor, target, 'thrust');
+    }
+
     const damage = Math.floor(actor.attack * multiplier);
     showDamageNumber(target.id, -damage);
     target.hp = Math.max(0, target.hp - damage);
-    addBattleLog(
+    if (skill.punchFx || skill.bladeFx) showScreenJolt();
+    showMeleeHitFeedback(
+      target,
+      skill.punchFx || skill.bladeFx
+        ? { strong: true, bladeImpact: !!skill.bladeFx }
+        : undefined
+    );
+    const dmgMsg =
       typeof BattleNarrative !== 'undefined'
         ? BattleNarrative.skillUse(actor, skill, target, damage)
-        : `${actor.name} 使用 ${skill.name}，造成 ${damage} 点伤害！`
-    );
+        : `${actor.name} 使用 ${skill.name}，造成 ${damage} 点伤害！`;
+    addBattleLogMaybeSpeed(dmgMsg, !!(fxOpts && fxOpts.presentation === 'speedExtra'));
     await sleep(300);
     
-    // 4. 检查剑影连击（角色还在中间）
+    // 4. 检查剑影连击（角色还在中间；速补段时追击气泡/日志与主招一致）
     if (skill.followSkill) {
-      await checkFollowAttack(actor, target, skill.followSkill);
+      await checkFollowAttack(actor, target, skill.followSkill, fxOpts);
     }
   }
   
   if (target.hp <= 0) {
     target.isDead = true;
     target.hp = 0;
-    addBattleLog(
+    addBattleLogMaybeSpeed(
       typeof BattleNarrative !== 'undefined'
         ? BattleNarrative.defeated(target.name)
-        : `${target.name} 被击败！`
+        : `${target.name} 被击败！`,
+      !!speedPres
     );
 
     const targetCard = document.getElementById(`char-${target.id}`);
@@ -1218,7 +1434,10 @@ async function useSkill(actor, skill, target) {
 }
 
 async function runBattleLoop() {
-  while (!battleState.battleEnded) {
+  if (battleLoopRunning) return;
+  battleLoopRunning = true;
+  try {
+    while (!battleState.battleEnded) {
     const currentChar = battleState.turnOrder[battleState.currentTurnIndex];
 
     if (!currentChar.isDead) {
@@ -1226,40 +1445,55 @@ async function runBattleLoop() {
     }
 
     if (checkBattleEnd()) {
-      renderTeams();
+      syncBattlePartyDomInPlace();
+      await sleep(500);
+      break;
+    }
+
+    if (!currentChar.isDead && !battleState.battleEnded) {
+      battleState.hudActorOverride = null;
+      await runSpeedExtraActionsImmediatelyAfter(currentChar);
+    }
+
+    if (checkBattleEnd()) {
+      syncBattlePartyDomInPlace();
       await sleep(500);
       break;
     }
 
     battleState.currentTurnIndex++;
-      if (battleState.currentTurnIndex >= battleState.turnOrder.length) {
-        battleState.currentTurnIndex = 0;
-        battleState.turnCount++;
-        if (battleState.turnCount > 99) battleState.turnCount = 99;
-        updateTurnDisplay();
-        calculateTurnOrder();
-        addBattleLog(`──────── 第 ${battleState.turnCount} 回合 ────────`, { round: true });
-        
-        // 从第二回合开始回血（第一回合不回血）
-        if (battleState.turnCount >= 2) {
-          console.log('=== 新回合开始，应用内功回血 ===');
-          console.log('当前回合:', battleState.turnCount);
-          await sleep(300);
-          battleState.allyTeam.forEach(char => {
-            if (!char.isDead) {
-              applyInnerSkillHeal(char);
-            }
-          });
-          await sleep(500);
-        }
+    if (battleState.currentTurnIndex >= battleState.turnOrder.length) {
+      battleState.hudActorOverride = null;
+      battleState.currentTurnIndex = 0;
+      battleState.turnCount++;
+      if (battleState.turnCount > 99) battleState.turnCount = 99;
+      updateTurnDisplay();
+      calculateTurnOrder();
+      addBattleLog(`──────── 第 ${battleState.turnCount} 回合 ────────`, { round: true });
+
+      // 从第二回合开始回血（第一回合不回血）
+      if (battleState.turnCount >= 2) {
+        console.log('=== 新回合开始，应用内功回血 ===');
+        console.log('当前回合:', battleState.turnCount);
+        await sleep(300);
+        battleState.allyTeam.forEach(char => {
+          if (!char.isDead) {
+            applyInnerSkillHeal(char);
+          }
+        });
+        await sleep(500);
       }
+    }
 
     // 只更新高亮状态，不重新渲染卡片
     updateActiveHighlight();
     await sleep(800);
-  }
+    }
 
-  await showSettlement();
+    await showSettlement();
+  } finally {
+    battleLoopRunning = false;
+  }
 }
 
 function checkBattleEnd() {
@@ -1273,7 +1507,10 @@ function checkBattleEnd() {
   return false;
 }
 
-async function performAction(actor) {
+async function performAction(actor, actionOpts) {
+  const isSpeedExtra = actionOpts && actionOpts.presentation === 'speedExtra';
+  const fxOpts = isSpeedExtra ? { presentation: 'speedExtra' } : undefined;
+
   const targetTeam = actor.isAlly ? battleState.enemyTeam : battleState.allyTeam;
   const aliveTargets = targetTeam.filter(char => !char.isDead);
   
@@ -1281,17 +1518,14 @@ async function performAction(actor) {
 
   const target = aliveTargets[0];
 
-  if (actor.isAlly) {
-      // 我方角色使用技能
+    if (actor.isAlly) {
+      // 我方角色使用技能（内力不在行动前回复，避免「刚扣又涨」看不出耗蓝；回内见回合开始处）
       const skills = getAvailableSkills(actor);
       let usedSkill = false;
-      
-      // 恢复内力
-      recoverMp(actor);
     
     for (const skill of skills) {
-      if (actor.mp >= skill.mpCost) {
-        await useSkill(actor, skill, target);
+      if (isSpeedExtra || actor.mp >= skill.mpCost) {
+        await useSkill(actor, skill, target, fxOpts);
         usedSkill = true;
         break;
       }
@@ -1300,25 +1534,34 @@ async function performAction(actor) {
     if (!usedSkill) {
       // 没有内力，普通攻击
       await showAttackMove(actor);
-      showSkillBubble(actor.id, '攻击');
+      showSkillBubble(
+        actor.id,
+        isSpeedExtra ? '速补 · 攻击' : '攻击',
+        isSpeedExtra ? { variant: 'speedExtra' } : undefined
+      );
       await sleep(400);
+
+      showSwordEffect(actor, target, 'plain');
       
       const damage = Math.floor(actor.attack * 0.6);
       showDamageNumber(target.id, -damage);
       target.hp = Math.max(0, target.hp - damage);
-      addBattleLog(
+      showMeleeHitFeedback(target);
+      addBattleLogMaybeSpeed(
         typeof BattleNarrative !== 'undefined'
           ? BattleNarrative.allyPlainAttack(actor, target, damage)
-          : `${actor.name} 普通攻击 ${target.name}，造成 ${damage} 点伤害！`
+          : `${actor.name} 普通攻击 ${target.name}，造成 ${damage} 点伤害！`,
+        isSpeedExtra
       );
       
       if (target.hp <= 0) {
         target.isDead = true;
         target.hp = 0;
-        addBattleLog(
+        addBattleLogMaybeSpeed(
           typeof BattleNarrative !== 'undefined'
             ? BattleNarrative.defeated(target.name)
-            : `${target.name} 被击败！`
+            : `${target.name} 被击败！`,
+          isSpeedExtra
         );
         
         const targetCard = document.getElementById(`char-${target.id}`);
@@ -1328,7 +1571,6 @@ async function performAction(actor) {
       }
       
       updateHpDisplay(target.id, target.hp);
-      showHitShake(target);
       
       await sleep(300);
       await showAttackReturn(actor);
@@ -1336,7 +1578,11 @@ async function performAction(actor) {
   } else {
     // 敌人回合
     await showAttackMove(actor);
-    showSkillBubble(actor.id, '攻击');
+    showSkillBubble(
+      actor.id,
+      isSpeedExtra ? '速补 · 攻击' : '攻击',
+      isSpeedExtra ? { variant: 'speedExtra' } : undefined
+    );
     await sleep(400);
     
     const result = window.BattleHitRoll.resolveDamage(actor, target);
@@ -1344,38 +1590,46 @@ async function performAction(actor) {
     if (result.isDodge) {
       showBattleText(target.id, '闪避', 'miss');
       await showDodgeAnimation(target);
-      addBattleLog(
+      addBattleLogMaybeSpeed(
         typeof BattleNarrative !== 'undefined'
           ? BattleNarrative.dodge(actor, target)
-          : `${actor.name} 攻击 ${target.name}，但被闪避了！`
+          : `${actor.name} 攻击 ${target.name}，但被闪避了！`,
+        isSpeedExtra
       );
     } else if (result.isParry) {
+      showSwordEffect(actor, target, 'plain');
       showBattleText(target.id, '招架', 'parry');
       showDamageNumber(target.id, -result.damage);
       target.hp = Math.max(0, target.hp - result.damage);
-      addBattleLog(
+      showMeleeHitFeedback(target);
+      addBattleLogMaybeSpeed(
         typeof BattleNarrative !== 'undefined'
           ? BattleNarrative.parry(actor, target, result.damage)
-          : `${actor.name} 攻击 ${target.name}，造成 ${result.damage} 点伤害（被招架）！`
+          : `${actor.name} 攻击 ${target.name}，造成 ${result.damage} 点伤害（被招架）！`,
+        isSpeedExtra
       );
     } else {
+      showSwordEffect(actor, target, 'plain');
       const critText = result.isCritical ? '暴击！' : '';
-      showDamageNumber(target.id, -result.damage, result.isCritical);
+      showDamageNumber(target.id, -result.damage, false, result.isCritical);
       target.hp = Math.max(0, target.hp - result.damage);
-      addBattleLog(
+      showMeleeHitFeedback(target);
+      addBattleLogMaybeSpeed(
         typeof BattleNarrative !== 'undefined'
           ? BattleNarrative.enemyHit(actor, target, result.damage, result.isCritical)
-          : `${actor.name} 攻击 ${target.name}，${critText}造成 ${result.damage} 点伤害！`
+          : `${actor.name} 攻击 ${target.name}，${critText}造成 ${result.damage} 点伤害！`,
+        isSpeedExtra
       );
     }
 
     if (target.hp <= 0) {
       target.isDead = true;
       target.hp = 0;
-      addBattleLog(
+      addBattleLogMaybeSpeed(
         typeof BattleNarrative !== 'undefined'
           ? BattleNarrative.defeated(target.name)
-          : `${target.name} 被击败！`
+          : `${target.name} 被击败！`,
+        isSpeedExtra
       );
       
       const targetCard = document.getElementById(`char-${target.id}`);
@@ -1385,7 +1639,6 @@ async function performAction(actor) {
     }
     
     updateHpDisplay(target.id, target.hp);
-    showHitShake(target);
     
     await sleep(300);
     await showAttackReturn(actor);
@@ -1467,14 +1720,15 @@ function updateHpDisplay(charId, hp) {
   updateActorBarsHud();
 }
 
-function updateActiveHighlight() {
+function updateActiveHighlight(actorOverride) {
   // 移除所有卡片的active类
   document.querySelectorAll('.character-card').forEach(card => {
     card.classList.remove('active');
   });
   
-  // 给当前回合的角色添加active类
-  const currentChar = battleState.turnOrder[battleState.currentTurnIndex];
+  // 给当前回合的角色添加active类（速度尾动时可传入 actorOverride）
+  const currentChar =
+    actorOverride != null ? actorOverride : battleState.turnOrder[battleState.currentTurnIndex];
   if (currentChar) {
     const currentCard = document.getElementById(`char-${currentChar.id}`);
     if (currentCard) {

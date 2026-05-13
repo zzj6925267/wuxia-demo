@@ -20,6 +20,16 @@
   ];
 
   const SKILL_OPENERS = {
+    钉小锤: [
+      '{actor}肩桥一沉，劲落如钉，「{skill}」自肋下翻出，抡向{target}——',
+      '{actor}肩沉半步，短劲里门，{skill}挟闷响直落{target}中线——',
+      '{actor}吐气开声，{skill}不求花巧，只往{target}胸口硬递——',
+    ],
+    开: [
+      '{actor}拧腰上步，「{skill}」势满，刀风自肩后翻出，直劈{target}中门——',
+      '{actor}足跟碾地，{skill}一刀外弧落下，刃口一线罩定{target}——',
+      '{actor}吐气沉肩，{skill}不求花巧，只把劲落在{target}胸口那寸——',
+    ],
     直刺: [
       '{actor}足尖轻点，身形如矢掠向{target}，「{skill}」飒然出手——',
       '{actor}一挽剑诀，寒芒陡现，{skill}直取{target}要害——',

@@ -84,11 +84,11 @@
         </defs>
       </svg>
       <div class="map-nodes" id="worldMapNodes"></div>
-      <div class="character-button-area">
-        <button class="btn-character" id="btnCharacter" onclick="toggleCharacterPanel()">👤 角色</button>
-        <button class="btn-character" id="btnMartialArts" onclick="openMartialArts()">⚔️ 武学</button>
-        <button class="btn-character" id="btnInventory" onclick="openInventory()">🎒 背包</button>
-        <button class="btn-character" id="btnTask" onclick="openTask()">📋 任务</button>
+      <div class="character-button-area character-button-area--submap" aria-label="快捷入口">
+        <button type="button" class="btn-character" id="btnCharacter" onclick="toggleCharacterPanel()">👤 角色</button>
+        <button type="button" class="btn-character" id="btnMartialArts" onclick="openMartialArts()">⚔️ 武学</button>
+        <button type="button" class="btn-character" id="btnInventory" onclick="openInventory()">🎒 背包</button>
+        <button type="button" class="btn-character" id="btnTask" onclick="openTask()">📋 任务</button>
       </div>
     </div>
 
@@ -410,6 +410,7 @@
   <script src="../js/data/dialogs.js"></script>
   <script src="../js/data/items.js"></script>
   <script src="../js/utils/helpers.js"></script>
+  <script src="../js/utils/attributeHelper.js"></script>
   <script src="../js/utils/battleSettlement.js"></script>
   <script src="zhengyangMapData.js"></script>
   <script src="npcData.js"></script>

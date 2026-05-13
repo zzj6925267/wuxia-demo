@@ -191,9 +191,11 @@ function getLocalMartialBonuses() {
   let arts = [];
 
   /**
-   * 规则（与「卸装不保留基础属性」一致）：
-   * - 拳脚/剑术/刀术/轻功/内功「修为」五项：凡已学且重数>0 即按 baseBonus 累计，与是否装备、是否激活无关。
-   * - attack/hit/hp/mp 等面板战斗属性及内功被动：仅当前已装备武学生效，卸下即不计入。
+   * 规则（与背包学习界面 `calculateCurrentBonuses` 一致）：
+   * - 拳脚/剑术/刀术/轻功/内功「修为」五项：凡已学且重数>0 即按 **baseBonus×重数** 累计，与是否装备无关。
+   * - 已装备武学的 **stats**：只叠加 **战斗属性**（如 hp、defense、attack…）；**不把 stats 里的拳脚剑刀轻内** 叠进修为五项（否则面板会比背包/条件判定虚高）。
+   * - stats.innerSkill 仅加 **内力 mp**（与注释「装备 innerSkill 加到内力」一致），不计入内功修为条。
+   * - attack/hit 等面板战斗属性及技能型被动：仍仅已装备武学生效；被动段由 getCharacterInnerSkillBonuses 处理，勿与此处重复。
    */
   
   // 获取当前角色ID
@@ -230,30 +232,21 @@ function getLocalMartialBonuses() {
 
     if (martial.stats && martial.currentLevel > 0) {
       Object.entries(martial.stats).forEach(([key, val]) => {
-        if (bonuses.hasOwnProperty(key)) {
-          bonuses[key] += val;
-        }
         if (key === 'innerSkill') {
           bonuses.mp += val;
+          return;
+        }
+        if (cultKeys.includes(key)) {
+          return;
+        }
+        if (bonuses.hasOwnProperty(key)) {
+          bonuses[key] += val;
         }
       });
     }
 
-    // 内功被动（气血/防御等）：仅已装备且达解锁等级时生效；与「修为」五项累计无关
-    if (martial.type === '内功' && martial.skills && martial.currentLevel > 0) {
-      // 获取内功被动效果（接口预留，方便后续扩展）
-      const passiveEffects = getInnerSkillPassiveEffects(martial, getCurrentCharacter());
-      
-      // 应用被动效果
-      if (passiveEffects.defense > 0) {
-        bonuses.defense += passiveEffects.defense;
-        console.log(`${martial.name}(${martial.currentLevel}级) 被动效果: 防御+${passiveEffects.defense}`);
-      }
-      if (passiveEffects.maxHp > 0) {
-        bonuses.hp += passiveEffects.maxHp;
-        console.log(`${martial.name}(${martial.currentLevel}级) 被动效果: 气血+${passiveEffects.maxHp}`);
-      }
-    }
+    // 技能型被动（maxHpBuff/defenseBuff 等）只由 loadCharacterData 里的 getCharacterInnerSkillBonuses → skillVal 计入，
+    // 勿在此处再调 getInnerSkillPassiveEffects 叠到 martialVal，否则与战斗 getMartialBonusForChar + getInnerSkillPassiveBonuses 各计一次不一致（面板虚高）。
   });
 
   Object.keys(bonuses).forEach(key => {
@@ -382,6 +375,36 @@ if (savedChars) {
   }
 } else {
   characters = createDefaultCharacters();
+}
+
+/**
+ * 从 localStorage 的 playerCharacters 重新载入队伍，并写回模块内 characters 与 window.characters。
+ * 大地图改点后若战斗页仍持有旧引用，战斗属性会与面板不一致；进入战斗前须调用。
+ */
+function applyPlayerCharactersFromStorage() {
+  try {
+    const raw = localStorage.getItem('playerCharacters');
+    if (!raw) return false;
+    const list = JSON.parse(raw);
+    if (!Array.isArray(list) || list.length === 0) return false;
+    list.forEach((c, i) => {
+      if (c && (c.id == null || c.id === '')) c.id = i + 1;
+    });
+    list.forEach(char => {
+      if (!char.stats) char.stats = {};
+      if (!char.health) char.health = { current: 100, max: 100 };
+      if (char.remainingPoints === undefined || char.remainingPoints === null) {
+        char.remainingPoints = 50;
+      }
+      refreshBaseStats(char);
+    });
+    characters = list;
+    window.characters = characters;
+    return true;
+  } catch (e) {
+    console.warn('applyPlayerCharactersFromStorage:', e);
+    return false;
+  }
 }
 
 const PLAYER_INVENTORY = {
@@ -829,6 +852,7 @@ function loadCharacterData() {
     else if (lowerAttr === 'dodge') skillVal = skillBonuses.dodgeBonus || 0;
     else if (lowerAttr === 'speed') skillVal = skillBonuses.speedBonus || 0;
     else if (lowerAttr === 'defense') skillVal = skillBonuses.defenseBonus || 0;
+    else if (lowerAttr === 'parry') skillVal = skillBonuses.parryBonus || 0;
     
     const total = baseVal + fourDimBonus + martialVal + skillVal + equipVal;
     
@@ -849,8 +873,8 @@ function loadCharacterData() {
     }
   });
 
-  // 显示修为（基础值+武学加成，直接显示最终值）
-  // 注意：修为目前只有一个途径：学习武学，装备的 innerSkill 加到内力上，不是内功修为
+  // 显示修为（角色基础修为 + 已学武学 baseBonus×重数；与背包学习条件一致）
+  // 已装备武学的 stats.innerSkill 只计入内力 mp，不计入本行的「内功修为」
   const skillKeys = ['Fist', 'Sword', 'Blade', 'Light', 'Inner'];
   const skillMap = { Fist: 'fist', Sword: 'sword', Blade: 'blade', Light: 'lightSkill', Inner: 'innerSkill' };
   
@@ -911,6 +935,8 @@ function updateFourDimDisplay(char) {
       previewBar.classList.add('active');
       baseBar.style.borderRadius = '6px 0 0 6px';
     } else {
+      previewBar.style.width = '0%';
+      previewBar.style.left = '0%';
       previewBar.classList.remove('active');
       baseBar.style.borderRadius = '6px';
     }
@@ -1563,6 +1589,40 @@ function previewCharPoint(attr, delta) {
 }
 
 /**
+ * 将 window.characters 与当前角色四维写入 playerCharacters 与 game_save_0。
+ * 须在 loadCharacterData() 之前调用，否则 loadFromSave 会用旧档里的 player.characters 盖掉刚点的四维。
+ */
+function persistCharactersAndGameSave() {
+  try {
+    localStorage.setItem('playerCharacters', JSON.stringify(window.characters));
+  } catch (e) {
+    console.warn('写入 playerCharacters 失败', e);
+  }
+  const char = getCurrentCharacter();
+  if (!char || !char.stats) return;
+  try {
+    const saveData = localStorage.getItem('game_save_0');
+    if (!saveData) return;
+    const save = JSON.parse(saveData);
+    if (!save.player) return;
+    save.player.characters = JSON.parse(JSON.stringify(window.characters));
+    save.player.strength = char.stats.strength;
+    save.player.agility = char.stats.agility;
+    save.player.bone = char.stats.bone;
+    save.player.qi = char.stats.qi;
+    save.player.remainingPoints = char.remainingPoints;
+    save.player.hp = char.health.current;
+    save.player.maxHp = char.health.max;
+    save.player.mp = char.stats.mp;
+    save.player.maxMp = char.stats.maxMp;
+    if (char.equipped) save.player.equipped = char.equipped;
+    localStorage.setItem('game_save_0', JSON.stringify(save));
+  } catch (e) {
+    console.error('同步 game_save_0 失败:', e);
+  }
+}
+
+/**
  * 确认属性点分配
  */
 function confirmCharPoint() {
@@ -1605,38 +1665,12 @@ function confirmCharPoint() {
   
   // 重置预览
   resetPointPreview();
-  
-  // 重新加载显示
+
+  // 先落盘再 loadCharacterData，避免 loadFromSave 用旧 player.characters 覆盖四维、条与数脱节
+  persistCharactersAndGameSave();
+
   loadCharacterData();
-  
-  // 保存到 localStorage（用于战斗系统读取）
-  localStorage.setItem('playerCharacters', JSON.stringify(window.characters));
-  
-  // 同步保存到 game_save_0，确保下次加载时不会被覆盖
-  try {
-    const saveData = localStorage.getItem('game_save_0');
-    if (saveData) {
-      const save = JSON.parse(saveData);
-      if (save.player) {
-        save.player.strength = char.stats.strength;
-        save.player.agility = char.stats.agility;
-        save.player.bone = char.stats.bone;
-        save.player.qi = char.stats.qi;
-        save.player.remainingPoints = char.remainingPoints;
-        save.player.hp = char.health.current;
-        save.player.maxHp = char.health.max;
-        save.player.mp = char.stats.mp;
-        save.player.maxMp = char.stats.maxMp;
-        // 同步装备数据
-        save.player.equipped = char.equipped;
-        localStorage.setItem('game_save_0', JSON.stringify(save));
-        console.log('属性点已同步到 game_save_0');
-      }
-    }
-  } catch (e) {
-    console.error('保存到 game_save_0 失败:', e);
-  }
-  
+
   showCharFloatText('属性分配成功！', '#4caf50');
 }
 
@@ -1683,10 +1717,14 @@ function updateStatsFromFour() {
   s.speed = s.baseSpeed + innerBonuses.speedBonus;
   s.hit = s.baseHit;
   s.dodge = s.baseDodge + innerBonuses.dodgeBonus;
-  s.defense = (s.defense || 10) + innerBonuses.defenseBonus;
+  // 防御：不把武学被动写入 stats.defense，避免与 loadCharacterData 里 skillVal 重复相加（旧档若曾叠过，开面板保存一次后会随 persist 逐渐正常）
+  let d = s.defense != null && s.defense !== '' ? Number(s.defense) : 10;
+  if (!Number.isFinite(d)) d = 10;
+  s.defense = Math.max(0, d);
 
+  const defenseTotalForPower = s.defense + innerBonuses.defenseBonus;
   // 更新战力（使用基础属性）
-  char.power = Math.floor(s.attack * 2 + s.defense + s.hp / 10 + s.speed);
+  char.power = Math.floor(s.attack * 2 + defenseTotalForPower + s.hp / 10 + s.speed);
 }
 
 // 获取角色内功被动加成
@@ -1696,16 +1734,22 @@ function getCharacterInnerSkillBonuses(char) {
   let attackBonus = 0;
   let dodgeBonus = 0;
   let speedBonus = 0;
+  let parryBonus = 0;
 
   const stats = char && char.stats ? char.stats : {};
   console.log('=== getCharacterInnerSkillBonuses ===');
   console.log('char.stats:', JSON.stringify(stats));
 
   try {
-    const charId = localStorage.getItem('currentMartialCharacterId') || '1';
-    const storageKey = `playerMartialArts_${charId}`;
-    const saved = localStorage.getItem(storageKey);
-    let martialArtsData = saved ? JSON.parse(saved) : [];
+    const charId = char && char.id != null ? String(char.id) : localStorage.getItem('currentMartialCharacterId') || '1';
+    let martialArtsData = [];
+    if (typeof getMergedMartialArtsListForCharId === 'function') {
+      martialArtsData = getMergedMartialArtsListForCharId(Number(charId));
+    } else {
+      const storageKey = `playerMartialArts_${charId}`;
+      const saved = localStorage.getItem(storageKey);
+      martialArtsData = saved ? JSON.parse(saved) : [];
+    }
 
     console.log('charId:', charId);
     console.log('martialArtsData.length:', martialArtsData.length);
@@ -1729,8 +1773,9 @@ function getCharacterInnerSkillBonuses(char) {
 
             // 根据效果类型处理加成
             switch (effect.type) {
-              case 'defenseBuff':
-                if (effect.stat === 'defense') {
+              case 'defenseBuff': {
+                const defStat = effect.stat;
+                if (defStat === 'defense' || defStat === undefined || defStat === null) {
                   let bonus = effect.baseValue || 0;
                   if (effect.bonusAttr) {
                     bonus += (stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
@@ -1739,9 +1784,10 @@ function getCharacterInnerSkillBonuses(char) {
                   console.log(`${martial.name}-${skill.name} 生效: 防御+${Math.ceil(bonus)}`);
                 }
                 break;
+              }
 
               case 'maxHpBuff':
-                if (effect.stat === 'hp' || effect.stat === 'maxHp') {
+                if (!effect.stat || effect.stat === 'hp' || effect.stat === 'maxHp') {
                   let bonus = effect.baseValue || 0;
                   if (effect.bonusAttr) {
                     bonus += (stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
@@ -1754,12 +1800,30 @@ function getCharacterInnerSkillBonuses(char) {
               case 'buff':
                 // 通用的 buff 处理，支持多种属性
                 if (effect.stat === 'attack') {
-                  let bonus = effect.baseValue || 0;
-                  if (effect.bonusAttr) {
-                    bonus += (stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+                  let add = 0;
+                  if (effect.baseValue != null && effect.value == null) {
+                    let bonus = effect.baseValue || 0;
+                    if (effect.bonusAttr) {
+                      bonus += (stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+                    }
+                    add = Math.ceil(bonus);
+                  } else if (typeof effect.value === 'number') {
+                    const str = stats.strength || 0;
+                    const baseAtk = 50 + str * 3;
+                    let frac = effect.value;
+                    if (effect.bonusAttr && effect.bonusPerPoint != null) {
+                      frac += (stats[effect.bonusAttr] || 0) * effect.bonusPerPoint;
+                    }
+                    add = Math.floor(baseAtk * frac);
+                  } else {
+                    let bonus = effect.baseValue || 0;
+                    if (effect.bonusAttr) {
+                      bonus += (stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+                    }
+                    add = Math.ceil(bonus);
                   }
-                  attackBonus += Math.ceil(bonus);
-                  console.log(`${martial.name}-${skill.name} 生效: 攻击+${Math.ceil(bonus)}`);
+                  attackBonus += add;
+                  console.log(`${martial.name}-${skill.name} 生效: 攻击+${add}`);
                 } else if (effect.stat === 'dodge') {
                   let bonus = effect.baseValue || 0;
                   if (effect.bonusAttr) {
@@ -1774,6 +1838,13 @@ function getCharacterInnerSkillBonuses(char) {
                   }
                   speedBonus += Math.ceil(bonus);
                   console.log(`${martial.name}-${skill.name} 生效: 速度+${Math.ceil(bonus)}`);
+                } else if (effect.stat === 'parry') {
+                  let bonus = effect.baseValue || 0;
+                  if (effect.bonusAttr) {
+                    bonus += (stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+                  }
+                  parryBonus += Math.ceil(bonus);
+                  console.log(`${martial.name}-${skill.name} 生效: 招架+${Math.ceil(bonus)}`);
                 }
                 break;
             }
@@ -1787,8 +1858,8 @@ function getCharacterInnerSkillBonuses(char) {
     console.warn('获取武学加成失败:', e);
   }
 
-  console.log(`最终武学加成: 防御+${defenseBonus}, 气血+${maxHpBonus}, 攻击+${attackBonus}, 闪避+${dodgeBonus}, 速度+${speedBonus}`);
-  return { defenseBonus, maxHpBonus, attackBonus, dodgeBonus, speedBonus };
+  console.log(`最终武学加成: 防御+${defenseBonus}, 气血+${maxHpBonus}, 攻击+${attackBonus}, 闪避+${dodgeBonus}, 速度+${speedBonus}, 招架+${parryBonus}`);
+  return { defenseBonus, maxHpBonus, attackBonus, dodgeBonus, speedBonus, parryBonus };
 }
 
 function updateAddButtons() {
@@ -2023,36 +2094,11 @@ function resetFourDimPoints() {
   
   // 重置预览
   resetPointPreview();
-  
-  // 重新加载显示
+
+  persistCharactersAndGameSave();
+
   loadCharacterData();
-  
-  // 保存到 localStorage
-  localStorage.setItem('playerCharacters', JSON.stringify(window.characters));
-  
-  // 同步保存到 game_save_0
-  try {
-    const saveData = localStorage.getItem('game_save_0');
-    if (saveData) {
-      const save = JSON.parse(saveData);
-      if (save.player) {
-        save.player.strength = char.stats.strength;
-        save.player.agility = char.stats.agility;
-        save.player.bone = char.stats.bone;
-        save.player.qi = char.stats.qi;
-        save.player.remainingPoints = char.remainingPoints;
-        save.player.hp = char.health.current;
-        save.player.maxHp = char.health.max;
-        save.player.mp = char.stats.mp;
-        save.player.maxMp = char.stats.maxMp;
-        localStorage.setItem('game_save_0', JSON.stringify(save));
-        console.log('重置属性点已同步到 game_save_0');
-      }
-    }
-  } catch (e) {
-    console.error('保存到 game_save_0 失败:', e);
-  }
-  
+
   showCharFloatText('属性点已重置！', '#ff9800');
 }
 
@@ -2074,4 +2120,5 @@ window.previewCharPoint = previewCharPoint;
 window.confirmCharPoint = confirmCharPoint;
 window.cancelCharPoint = cancelCharPoint;
 window.resetFourDimPoints = resetFourDimPoints;
+window.applyPlayerCharactersFromStorage = applyPlayerCharactersFromStorage;
 window.characters = characters;
