@@ -14,17 +14,24 @@
 
 // 战斗状态
 let battleState = {
-  allyTeam: [],       // 我方队伍
-  enemyTeam: [],      // 敌方队伍
-  turnOrder: [],      // 行动顺序
+  allyTeam: [],
+  enemyTeam: [],
+  turnOrder: [],
   currentTurnIndex: 0,
-  /** 速度补刀等非主序行动时，底部血条 HUD 显示谁（主序用 turnOrder[currentTurnIndex]） */
   hudActorOverride: null,
+  /** 非空：首次点「自动战斗」时播敌方气泡，播完再写「战斗开始」日志 */
+  pendingPreBattleIntro: null,
+  /** 是否已完成「战前气泡 + 战斗开始日志」阶段（停战后再次自动战斗不再重复） */
+  openingPrimed: false,
   isAutoFighting: false,
   battleEnded: false,
-  turnCount: 1,       // 回合数
+  turnCount: 1,
+  /** 已播放的 combatPerformances 键：`enemyId:perfId` */
+  combatPerformancesPlayed: {},
   /** 战后返回的小地图页（在 initBattle 清空 BattleEntry 前根据 battle_entry_source 写入） */
   returnMapHref: 'forest_map.html',
+  /** 进入战斗前页的 `battle_entry_source`，败北分支（如黑风寨）会用到 */
+  battleEntrySource: null,
   rewards: {
     exp: 0,
     gold: 0,
@@ -52,7 +59,8 @@ function mapBattleSourceToReturnHref(source) {
   const table = {
     forest_map: 'forest_map.html',
     zhengyang_map: 'zhengyang_map.html',
-    qingstone_map: 'qingstone_map.html'
+    qingstone_map: 'qingstone_map.html',
+    heifeng_dungeon: 'heifeng_dungeon.html'
   };
   return table[source] || 'forest_map.html';
 }
@@ -184,21 +192,107 @@ function getAvailableSkills(actor) {
     };
     if (activeSkill.plainFx) skillData.plainFx = true;
     if (activeSkill.punchFx) skillData.punchFx = true;
+    if (activeSkill.axeFx) skillData.axeFx = true;
     if (activeSkill.bladeFx) skillData.bladeFx = true;
+    attachSkillHitRollExtras(activeSkill, skillData);
 
     // 正阳·阳刚：对当前武功主动伤害倍率 +value（与旧版直刺逻辑一致）
     for (const skill of equippedMartial.skills) {
-      if (skill.type === '被动' && martialLevel >= (skill.unlockLevel || 1) && skill.name === '阳刚' && skill.effect && skill.effect.type === 'buff' && skill.effect.stat === 'attack') {
-        skillData.effect.value += skill.effect.value || 0;
+      if (skill.type === '被动' && martialLevel >= (skill.unlockLevel || 1)) {
+        skillData.effect.value += getYangGangDamageMultiplierDeltaFromSkill(skill);
       }
     }
 
-    // 最后一个已解锁的「追击」被动（剑影 / 连环 / 回风 等）
-    let followSkill = null;
-    for (const skill of equippedMartial.skills) {
-      if (skill.type !== '被动' || !skill.effect || skill.effect.type !== 'followAttack') continue;
-      if (martialLevel < (skill.unlockLevel || 99)) continue;
-      followSkill = {
+    // 最后一个已解锁的「追击」被动（剑影等：passiveIds 表或旧 effect.followAttack）
+    const followSkill = mergeFollowSkillFromMartialSkills(equippedMartial, martialLevel);
+    if (followSkill) skillData.followSkill = followSkill;
+
+    skills.push(skillData);
+  } catch (e) {
+    console.warn('获取武学技能失败', e);
+  }
+  return skills;
+}
+
+/** 副本/敌人：从 MARTIAL_ARTS_LIBRARY 取条目（与玩家共用表，勿硬编码招式数值） */
+function getMartialArtLibraryEntry(martialArtId) {
+  const lib =
+    typeof MARTIAL_ARTS_LIBRARY !== 'undefined'
+      ? MARTIAL_ARTS_LIBRARY
+      : typeof window !== 'undefined' && window.MARTIAL_ARTS_LIBRARY
+        ? window.MARTIAL_ARTS_LIBRARY
+        : [];
+  return lib.find(function (m) {
+    return m && m.id === martialArtId;
+  }) || null;
+}
+
+/** 主动上 useHitRoll / onMissFollow（被动表 onActiveMiss 或内联 onMissFollow）透传到战斗 skill 对象 */
+function attachSkillHitRollExtras(activeSkill, skillData) {
+  if (!activeSkill || !skillData) return;
+  const fromPassive =
+    typeof expandOnMissFollowFromSkill === 'function'
+      ? expandOnMissFollowFromSkill(activeSkill)
+      : null;
+  const missFollow = fromPassive || activeSkill.onMissFollow;
+  if (activeSkill.useHitRoll || missFollow) {
+    skillData.useHitRoll = true;
+  }
+  if (missFollow) {
+    const f = missFollow;
+    skillData.onMissFollow = {
+      baseChance: f.baseChance,
+      chanceAttr: f.chanceAttr,
+      chancePerPoint: f.chancePerPoint,
+      damage: f.damage,
+      skillName: f.skillName || '续刺'
+    };
+  }
+}
+
+/** 正阳·阳刚：对主动伤害倍率叠加的 value（如 0.1=+10%）；passiveIds→loadoutPassive 或旧内联 effect */
+function getYangGangDamageMultiplierDeltaFromSkill(skill) {
+  if (!skill || skill.type !== '被动' || skill.name !== '阳刚') return 0;
+  if (
+    skill.effect &&
+    skill.effect.type === 'buff' &&
+    skill.effect.stat === 'attack' &&
+    typeof skill.effect.value === 'number'
+  ) {
+    return Number(skill.effect.value) || 0;
+  }
+  const loadout =
+    typeof expandLoadoutPassiveStatBonuses === 'function'
+      ? expandLoadoutPassiveStatBonuses(skill)
+      : [];
+  for (let i = 0; i < loadout.length; i++) {
+    const fx = loadout[i];
+    if (
+      fx &&
+      fx.type === 'buff' &&
+      fx.stat === 'attack' &&
+      typeof fx.value === 'number' &&
+      (fx.baseValue == null || fx.baseValue === undefined)
+    ) {
+      return Number(fx.value) || 0;
+    }
+  }
+  return 0;
+}
+
+/** passiveIds 被动表优先于 skill.effect.followAttack（兼容旧存档内联 effect） */
+function mergeFollowSkillFromMartialSkills(martial, martialLevel) {
+  let followSkill = null;
+  if (!martial || !martial.skills) return null;
+  for (const skill of martial.skills) {
+    if (skill.type !== '被动' || martialLevel < (skill.unlockLevel || 99)) continue;
+    const fromPassive =
+      typeof expandFollowAttackFromPassiveSkill === 'function'
+        ? expandFollowAttackFromPassiveSkill(skill)
+        : null;
+    let fromLegacy = null;
+    if (skill.effect && skill.effect.type === 'followAttack') {
+      fromLegacy = {
         type: 'followAttack',
         baseChance: skill.effect.baseChance,
         damage: skill.effect.damage,
@@ -207,13 +301,440 @@ function getAvailableSkills(actor) {
         skillName: skill.name
       };
     }
-    if (followSkill) skillData.followSkill = followSkill;
-
-    skills.push(skillData);
-  } catch (e) {
-    console.warn('获取武学技能失败', e);
+    const pick = fromPassive || fromLegacy;
+    if (pick) followSkill = pick;
   }
+  return followSkill;
+}
+
+function computeSkillAttackPower(actor, multiplier) {
+  return Math.max(0, Math.floor((Number(actor.attack) || 0) * multiplier));
+}
+
+function rollAttackerForHitRoll(actor, effectiveAttack) {
+  return Object.assign({}, actor, { attack: effectiveAttack });
+}
+
+/** 命中卷结果 → 飘字、日志、扣血；返回是否造成有效伤害 */
+function applyHitRollResultToTarget(actor, target, result, fxOpts, logContext) {
+  const speedExtra = fxOpts && fxOpts.presentation === 'speedExtra';
+  const ctx = logContext || {};
+
+  if (result.isDodge) {
+    showBattleText(target.id, '闪避', 'miss');
+    showDodgeGlint(target);
+    void showDodgeAnimation(target);
+    addBattleLogMaybeSpeed(
+      typeof BattleNarrative !== 'undefined'
+        ? BattleNarrative.dodge(actor, target)
+        : `${target.name} 闪避了${actor.name}的「${ctx.verb || '攻击'}」！`,
+      speedExtra
+    );
+    return { kind: 'dodge', damage: 0 };
+  }
+  if (result.isParry) {
+    showBattleText(target.id, '招架', 'parry');
+    showDamageNumber(target.id, -result.damage);
+    target.hp = Math.max(0, target.hp - result.damage);
+    showMeleeHitFeedback(target);
+    addBattleLogMaybeSpeed(
+      typeof BattleNarrative !== 'undefined'
+        ? BattleNarrative.parry(actor, target, result.damage)
+        : `${target.name} 招架${ctx.verb || ''}，受到 ${result.damage} 点伤害！`,
+      speedExtra
+    );
+    return { kind: 'parry', damage: result.damage };
+  }
+  if (result.damage > 0) {
+    showDamageNumber(target.id, -result.damage, result.isCritical);
+    target.hp = Math.max(0, target.hp - result.damage);
+    showMeleeHitFeedback(target);
+    const msg =
+      ctx.onHitLog ||
+      (typeof BattleNarrative !== 'undefined' && ctx.battleNarrativeHit
+        ? ctx.battleNarrativeHit(actor, target, result.damage, result.isCritical)
+        : `${actor.name} ${ctx.verb || '命中'} ${target.name}，造成 ${result.damage} 点伤害！`);
+    addBattleLogMaybeSpeed(msg, speedExtra);
+    return { kind: 'hit', damage: result.damage, isCritical: result.isCritical };
+  }
+
+  showBattleText(target.id, '未中', 'miss');
+  addBattleLogMaybeSpeed(`${actor.name} 一招${ctx.verb || ''}未中！`, speedExtra);
+  return { kind: 'miss', damage: 0 };
+}
+
+function markTargetDeadIfNeeded(target, actor, fxOpts) {
+  if (target.hp > 0) return;
+  target.isDead = true;
+  target.hp = 0;
+  addBattleLogMaybeSpeed(
+    typeof BattleNarrative !== 'undefined'
+      ? BattleNarrative.defeated(target.name)
+      : `${target.name} 被击败！`,
+    !!(fxOpts && fxOpts.presentation === 'speedExtra')
+  );
+  const targetCard = document.getElementById(`char-${target.id}`);
+  if (targetCard) targetCard.classList.add('dead');
+  if (typeof clearCombatBuffFxForChar === 'function') {
+    clearCombatBuffFxForChar(target);
+  }
+}
+
+/** 落草剑经等：首刺被闪避后，按身法加成的概率续刺（与正阳「剑影」命中后追击区分） */
+async function checkFollowAttackOnMiss(actor, target, onMissFollow, fxOpts) {
+  if (!onMissFollow || !actor || !target || target.isDead) return;
+  const stats = actor.stats || {};
+  const attrVal = onMissFollow.chanceAttr ? stats[onMissFollow.chanceAttr] || 0 : 0;
+  const chance = Math.min(
+    1,
+    (Number(onMissFollow.baseChance) || 0) + attrVal * (Number(onMissFollow.chancePerPoint) || 0)
+  );
+  if (Math.random() >= chance) return;
+
+  const speedExtra = fxOpts && fxOpts.presentation === 'speedExtra';
+  const label = onMissFollow.skillName || '续刺';
+  showSkillBubble(
+    actor.id,
+    speedExtra ? `速补 · ${label}` : label,
+    speedExtra ? { variant: 'speedExtra' } : undefined
+  );
+  await sleep(400);
+  showSwordEffect(actor, target, 'plain');
+
+  const mult = onMissFollow.damage != null ? Number(onMissFollow.damage) : 0.85;
+  const power = computeSkillAttackPower(actor, mult);
+  const result = window.BattleHitRoll.resolveDamage(rollAttackerForHitRoll(actor, power), target);
+  applyHitRollResultToTarget(actor, target, result, fxOpts, {
+    verb: '续刺',
+    onHitLog:
+      typeof BattleNarrative !== 'undefined'
+        ? BattleNarrative.followAttack(actor, target, result.damage)
+        : `${actor.name} 续刺${result.damage > 0 ? '命中' : '落空'}${result.damage > 0 ? '，造成 ' + result.damage + ' 点伤害！' : '！'}`
+  });
+  markTargetDeadIfNeeded(target, actor, fxOpts);
+  updateHpDisplay(target.id, target.hp);
+  await sleep(300);
+}
+
+/** 敌人已解锁被动（如开合刀法「合」）计入 attack 等，开战时调用一次 */
+function applyEnemyMartialPassives(enemy) {
+  if (enemy == null || enemy.martialArtId == null) return enemy;
+  const martial = getMartialArtLibraryEntry(enemy.martialArtId);
+  if (!martial || !martial.skills) return enemy;
+  const martialLevel =
+    enemy.martialLevel != null && enemy.martialLevel > 0 ? enemy.martialLevel : 10;
+  const stats = enemy.stats || {};
+  for (const skill of martial.skills) {
+    if (skill.type !== '被动' || martialLevel < (skill.unlockLevel || 99)) continue;
+    const loadoutFx =
+      typeof expandLoadoutPassiveStatBonuses === 'function'
+        ? expandLoadoutPassiveStatBonuses(skill)
+        : [];
+    const effectsToApply =
+      loadoutFx.length > 0 ? loadoutFx : skill.effect ? [skill.effect] : [];
+    for (const eff of effectsToApply) {
+      if (!eff) continue;
+      if (eff.type === 'turnStartSelfBuff') continue;
+      if (eff.type === 'defenseBuff') {
+        const defStat = eff.stat;
+        if (defStat === 'defense' || defStat === undefined || defStat === null) {
+          let add = eff.baseValue || 0;
+          if (eff.bonusAttr) {
+            add += (stats[eff.bonusAttr] || 0) * (eff.bonusPerPoint || 0);
+          }
+          enemy.defense = Math.floor((enemy.defense || 0) + Math.ceil(add));
+        }
+      } else if (eff.type === 'maxHpBuff') {
+        let add = eff.baseValue || 0;
+        if (eff.bonusAttr) {
+          add += (stats[eff.bonusAttr] || 0) * (eff.bonusPerPoint || 0);
+        }
+        const inc = Math.ceil(add);
+        enemy.maxHp = Math.floor((enemy.maxHp || 0) + inc);
+        enemy.hp = Math.floor((enemy.hp || 0) + inc);
+      } else if (eff.type === 'buff' && eff.stat === 'attack') {
+        const add =
+          (eff.baseValue || 0) + (stats[eff.bonusAttr] || 0) * (eff.bonusPerPoint || 0);
+        enemy.attack = Math.floor((enemy.attack || 0) + add);
+      } else if (eff.type === 'buff' && eff.stat === 'hit') {
+        const basePct = typeof eff.value === 'number' ? eff.value : 0;
+        const baseHit = basePct < 1 ? Math.floor(basePct * 100) : Math.floor(basePct);
+        const perPoint = eff.bonusPerPoint != null ? eff.bonusPerPoint : 0;
+        const attrHit = Math.floor((stats[eff.bonusAttr] || 0) * (perPoint < 1 ? perPoint * 100 : perPoint));
+        enemy.hit = Math.floor((enemy.hit || 0) + baseHit + attrHit);
+      } else if (eff.type === 'buff' && eff.stat === 'parry') {
+        const add =
+          (eff.baseValue || 0) + (stats[eff.bonusAttr] || 0) * (eff.bonusPerPoint || 0);
+        enemy.parry = Math.floor((enemy.parry || 0) + add);
+      } else if (eff.type === 'buff' && eff.stat === 'speed') {
+        const add =
+          (eff.baseValue || 0) + (stats[eff.bonusAttr] || 0) * (eff.bonusPerPoint || 0);
+        enemy.speed = Math.floor((enemy.speed || 0) + add);
+      } else if (eff.type === 'buff' && eff.stat === 'dodge') {
+        const add =
+          (eff.baseValue || 0) + (stats[eff.bonusAttr] || 0) * (eff.bonusPerPoint || 0);
+        enemy.dodge = Math.floor((enemy.dodge || 0) + add);
+      }
+    }
+  }
+  return enemy;
+}
+
+function buildSkillDataFromMartialActive(activeSkill, martial, martialLevel) {
+  if (!activeSkill || !activeSkill.effect || activeSkill.effect.type !== 'damage') return null;
+  const eff = activeSkill.effect;
+  const skillData = {
+    name: activeSkill.name,
+    mpCost: Math.max(1, Math.floor(Number(activeSkill.mpCost)) || 10),
+    effect: {
+      type: 'damage',
+      value: eff.value,
+      bonusAttr: eff.bonusAttr,
+      bonusPerPoint: eff.bonusPerPoint
+    }
+  };
+  if (activeSkill.plainFx) skillData.plainFx = true;
+  if (activeSkill.punchFx) skillData.punchFx = true;
+  if (activeSkill.axeFx) skillData.axeFx = true;
+  if (activeSkill.bladeFx) skillData.bladeFx = true;
+  attachSkillHitRollExtras(activeSkill, skillData);
+  for (const skill of martial.skills) {
+    if (skill.type === '被动' && martialLevel >= (skill.unlockLevel || 1)) {
+      skillData.effect.value += getYangGangDamageMultiplierDeltaFromSkill(skill);
+    }
+  }
+  let followSkill = mergeFollowSkillFromMartialSkills(martial, martialLevel);
+  if (followSkill) skillData.followSkill = followSkill;
+  return skillData;
+}
+
+/** 敌人武学主动（内力够则与玩家同样 mpCost / 伤害公式） */
+function getAvailableSkillsForEnemy(enemy) {
+  const skills = [];
+  if (enemy == null || enemy.martialArtId == null) return skills;
+  const martial = getMartialArtLibraryEntry(enemy.martialArtId);
+  if (!martial || martial.type !== '武功' || !martial.skills || !martial.skills.length) {
+    return skills;
+  }
+  const martialLevel =
+    enemy.martialLevel != null && enemy.martialLevel > 0 ? enemy.martialLevel : 10;
+  const activeSkill = martial.skills.find(function (s) {
+    return s && s.type === '主动' && martialLevel >= (s.unlockLevel || 1);
+  });
+  const skillData = buildSkillDataFromMartialActive(activeSkill, martial, martialLevel);
+  if (skillData) skills.push(skillData);
   return skills;
+}
+
+function prepareEnemyForBattle(enemy) {
+  const e = Object.assign({}, enemy);
+  e.isAlly = false;
+  e.isDead = false;
+  e.maxHp = e.maxHp != null ? e.maxHp : e.hp;
+  e.hp = e.maxHp;
+  if (e.maxMp != null) {
+    e.mp = e.maxMp;
+  } else if (e.mp == null) {
+    e.mp = undefined;
+  }
+  if (!e.stats) {
+    const lv = e.level || 1;
+    e.stats = {
+      strength: Math.max(8, Math.floor(lv * 0.85)),
+      agility: 10,
+      bone: 10,
+      qi: 10
+    };
+  }
+  applyEnemyMartialPassives(e);
+  if (typeof initCombatBuffState === 'function') initCombatBuffState(e);
+  return e;
+}
+
+/** 从武学 passive 收集「回合开始自叠 Buff」：旧 effect.turnStartSelfBuff + passiveIds→battlePassives（定义见 battleBuffs.js） */
+function collectTurnStartSelfBuffPassives(char) {
+  const out = [];
+  if (!char) return out;
+
+  if (char.isAlly) {
+    const list = getBattleMergedMartialArtsList(char.id);
+    for (const martial of list) {
+      if (!martial.equipped || martial.type !== '武功' || !martial.skills) continue;
+      const lv = martial.currentLevel || 1;
+      for (const skill of martial.skills) {
+        if (skill.type !== '被动' || lv < (skill.unlockLevel || 99)) continue;
+        const eff = skill.effect;
+        if (eff && eff.type === 'turnStartSelfBuff' && eff.buffId) {
+          out.push({
+            buffId: eff.buffId,
+            fromTurn: eff.fromTurn != null ? eff.fromTurn : 2,
+            stacksPerTick: eff.stacksPerTick != null ? eff.stacksPerTick : 1,
+            skillName: skill.name
+          });
+        }
+        if (typeof expandTurnStartApplyBuffActions === 'function') {
+          for (const row of expandTurnStartApplyBuffActions(skill)) {
+            out.push({
+              buffId: row.buffId,
+              fromTurn: row.fromTurn,
+              stacksPerTick: row.stacksPerTick,
+              skillName: skill.name
+            });
+          }
+        }
+      }
+    }
+    return out;
+  }
+
+  if (char.martialArtId == null) return out;
+  const martial = getMartialArtLibraryEntry(char.martialArtId);
+  if (!martial || !martial.skills) return out;
+  const lv = char.martialLevel != null && char.martialLevel > 0 ? char.martialLevel : 10;
+  for (const skill of martial.skills) {
+    if (skill.type !== '被动' || lv < (skill.unlockLevel || 99)) continue;
+    const eff = skill.effect;
+    if (eff && eff.type === 'turnStartSelfBuff' && eff.buffId) {
+      out.push({
+        buffId: eff.buffId,
+        fromTurn: eff.fromTurn != null ? eff.fromTurn : 2,
+        stacksPerTick: eff.stacksPerTick != null ? eff.stacksPerTick : 1,
+        skillName: skill.name
+      });
+    }
+    if (typeof expandTurnStartApplyBuffActions === 'function') {
+      for (const row of expandTurnStartApplyBuffActions(skill)) {
+        out.push({
+          buffId: row.buffId,
+          fromTurn: row.fromTurn,
+          stacksPerTick: row.stacksPerTick,
+          skillName: skill.name
+        });
+      }
+    }
+  }
+  return out;
+}
+
+/** 供 battleBuffs.js 按武学 rank 选头像特效档（初/中/高绝 → CSS 或 Canvas） */
+function getMartialRankForCombatBuff(char, buffId) {
+  if (!char) return '初阶';
+  if (char.isAlly) {
+    const list = getBattleMergedMartialArtsList(char.id);
+    for (const martial of list) {
+      if (!martial.equipped || martial.type !== '武功' || !martial.skills) continue;
+      for (const skill of martial.skills) {
+        if (
+          typeof skillReferencesCombatBuffOnTurnStart === 'function' &&
+          skillReferencesCombatBuffOnTurnStart(skill, buffId)
+        ) {
+          return martial.rank || '初阶';
+        }
+      }
+    }
+    return '初阶';
+  }
+  if (char.martialArtId == null) return '初阶';
+  const martial = getMartialArtLibraryEntry(char.martialArtId);
+  return (martial && martial.rank) || '初阶';
+}
+
+if (typeof window !== 'undefined') {
+  window.getMartialRankForCombatBuff = getMartialRankForCombatBuff;
+}
+
+function getEnemyTemplateForBattleChar(char) {
+  if (!char || char.id == null) return null;
+  if (typeof getEnemyById === 'function') return getEnemyById(char.id);
+  if (typeof ENEMIES !== 'undefined' && ENEMIES[char.id]) return ENEMIES[char.id];
+  return null;
+}
+
+function findCombatPerformanceCue(char, turn, buffId, willBeFirstStack) {
+  const tpl = getEnemyTemplateForBattleChar(char);
+  if (!tpl || !Array.isArray(tpl.combatPerformances)) return null;
+  for (const cue of tpl.combatPerformances) {
+    if (!cue || !cue.id) continue;
+    if (cue.turn != null && cue.turn !== turn) continue;
+    if (cue.buffId && cue.buffId !== buffId) continue;
+    if (cue.beforeFirstStack && !willBeFirstStack) continue;
+    const key = char.id + ':' + cue.id;
+    if (cue.once !== false && battleState.combatPerformancesPlayed[key]) continue;
+    if (!cue.lines || !cue.lines.length) continue;
+    return cue;
+  }
+  return null;
+}
+
+function markCombatPerformancePlayed(char, cue) {
+  if (!char || !cue || !cue.id) return;
+  if (!battleState.combatPerformancesPlayed) battleState.combatPerformancesPlayed = {};
+  battleState.combatPerformancesPlayed[char.id + ':' + cue.id] = true;
+}
+
+async function playCombatPerformanceCue(char, cue) {
+  if (!char || !cue || !cue.lines || !cue.lines.length) return;
+  markCombatPerformancePlayed(char, cue);
+  const card = document.getElementById('char-' + char.id);
+  if (card) card.classList.add('battle-cue-speaking');
+  try {
+    await showEnemyBattleSpeechLines(char, cue.lines, { logPrefix: char.name });
+  } finally {
+    if (card) card.classList.remove('battle-cue-speaking');
+  }
+  await sleep(160);
+}
+
+/** 新回合开始：按武学 passive 引用叠 Buff（定义与表现见 js/data/battleBuffs.js） */
+async function applyTurnStartCombatBuffsForAll() {
+  if (typeof tryAddCombatBuffStack !== 'function') return false;
+  const all = [...battleState.allyTeam, ...battleState.enemyTeam];
+  let anyChanged = false;
+  const introUpdates = [];
+  for (const char of all) {
+    if (!char || char.isDead) continue;
+    const passives = collectTurnStartSelfBuffPassives(char);
+    for (const p of passives) {
+      if (battleState.turnCount < (p.fromTurn || 2)) continue;
+      if (char.isDead) continue;
+      const inst = char.combatBuffs && char.combatBuffs[p.buffId];
+      const prevStacks = inst && inst.stacks ? inst.stacks : 0;
+      const willBeFirstStack = prevStacks <= 0;
+      const cue = findCombatPerformanceCue(char, battleState.turnCount, p.buffId, willBeFirstStack);
+      if (cue) {
+        await playCombatPerformanceCue(char, cue);
+      }
+      const result = tryAddCombatBuffStack(char, p.buffId, p.stacksPerTick || 1);
+      if (!result.added) continue;
+      anyChanged = true;
+      const isFirstStack = result.newStacks === 1;
+      const logText =
+        typeof formatCombatBuffGainLog === 'function'
+          ? formatCombatBuffGainLog(char.name, p.buffId, result.newStacks)
+          : `${char.name}【${p.buffId}】×${result.newStacks}`;
+      addBattleLog(logText, { buff: true });
+      if (isFirstStack && !cue) await sleep(320);
+      if (typeof playCombatBuffGainFx === 'function') {
+        playCombatBuffGainFx(char, p.buffId, result.newStacks, { isFirstStack: isFirstStack });
+      }
+      introUpdates.push({ char: char, intro: isFirstStack });
+      if (isFirstStack) await sleep(cue ? 220 : 180);
+    }
+  }
+  if (anyChanged && typeof updateCombatBuffDomForChar === 'function') {
+    for (const item of introUpdates) {
+      updateCombatBuffDomForChar(item.char, { intro: item.intro });
+    }
+    for (const char of all) {
+      if (introUpdates.some(function (u) {
+        return u.char === char;
+      })) {
+        continue;
+      }
+      updateCombatBuffDomForChar(char);
+    }
+  }
+  return anyChanged;
 }
 
 // 正阳·阳刚：按角色各自装备的武功判定（勿用全局 playerMartialArts）
@@ -226,9 +747,12 @@ function getYangGangBonusForChar(charId) {
         const martialLevel = martial.currentLevel || 1;
         for (const skill of martial.skills) {
           if (skill.name === '阳刚' && martialLevel >= (skill.unlockLevel || 4)) {
-            bonus = 1.1;
-            console.log('角色', charId, '阳刚被动激活，攻击力×1.1');
-            return bonus;
+            const d = getYangGangDamageMultiplierDeltaFromSkill(skill);
+            if (d > 0) {
+              bonus = 1 + d;
+              console.log('角色', charId, '阳刚被动激活，攻击力×' + bonus);
+              return bonus;
+            }
           }
         }
       }
@@ -243,8 +767,14 @@ function getPlayerCharactersFromSave() {
   if (typeof window.applyPlayerCharactersFromStorage === 'function') {
     window.applyPlayerCharactersFromStorage();
   }
-  const maleAvatar = '../assets/shaoxia.png';
-  const femaleAvatar = '../assets/suyao.png';
+  const maleAvatar =
+    typeof window !== 'undefined' && window.PLAYER_PORTRAIT_MALE
+      ? window.PLAYER_PORTRAIT_MALE
+      : '../assets/images/UI/ma_ui_char_portrait_xiao_yunche.png';
+  const femaleAvatar =
+    typeof window !== 'undefined' && window.PLAYER_PORTRAIT_FEMALE
+      ? window.PLAYER_PORTRAIT_FEMALE
+      : '../assets/images/UI/ma_ui_char_portrait_su_qingli.png';
   const yangGangBonus1 = getYangGangBonusForChar(1);
   const yangGangBonus2 = getYangGangBonusForChar(2);
   
@@ -327,7 +857,7 @@ function getPlayerCharactersFromSave() {
         attack: Math.floor((50 + window.characters[0].stats.strength * 3) * yangGangBonus1) + char1MartialAttack + char1InnerBonuses.attackBonus, 
         defense: (window.characters[0].stats.defense || 50) + char1InnerBonuses.defenseBonus, 
         speed: 50 + window.characters[0].stats.agility * 2 + char1MartialSpeed + char1InnerBonuses.speedBonus,
-        hit: 70 + window.characters[0].stats.agility, 
+        hit: 70 + window.characters[0].stats.agility + (char1InnerBonuses.hitBonus || 0), 
         dodge: 20 + Math.floor(window.characters[0].stats.agility * 0.5) + char1MartialDodge + char1InnerBonuses.dodgeBonus, 
         parry: (window.characters[0].stats.parry || 20) + (char1InnerBonuses.parryBonus || 0),
         stats: window.characters[0].stats
@@ -344,7 +874,7 @@ function getPlayerCharactersFromSave() {
         attack: Math.floor((50 + window.characters[1].stats.strength * 3) * yangGangBonus2) + char2MartialAttack + char2InnerBonuses.attackBonus, 
         defense: (window.characters[1].stats.defense || 50) + char2InnerBonuses.defenseBonus, 
         speed: 50 + window.characters[1].stats.agility * 2 + char2MartialSpeed + char2InnerBonuses.speedBonus,
-        hit: 70 + window.characters[1].stats.agility, 
+        hit: 70 + window.characters[1].stats.agility + (char2InnerBonuses.hitBonus || 0), 
         dodge: 20 + Math.floor(window.characters[1].stats.agility * 0.5) + char2MartialDodge + char2InnerBonuses.dodgeBonus, 
         parry: (window.characters[1].stats.parry || 20) + (char2InnerBonuses.parryBonus || 0),
         stats: window.characters[1].stats
@@ -419,7 +949,7 @@ function getPlayerCharactersFromSave() {
             attack: Math.floor((50 + char1Str * 3) * yangGangBonus1) + b1Atk + char1InnerBonuses.attackBonus, 
             defense: (chars[0].stats.defense || 50) + char1InnerBonuses.defenseBonus, 
             speed: 50 + char1Agi * 2 + b1Spd + char1InnerBonuses.speedBonus,
-            hit: 70 + char1Agi, 
+            hit: 70 + char1Agi + (char1InnerBonuses.hitBonus || 0), 
             dodge: 20 + Math.floor(char1Agi * 0.5) + b1Dod + char1InnerBonuses.dodgeBonus, 
             parry: (chars[0].stats.parry || 20) + (char1InnerBonuses.parryBonus || 0),
             stats: chars[0].stats
@@ -436,7 +966,7 @@ function getPlayerCharactersFromSave() {
             attack: Math.floor((50 + char2Str * 3) * yangGangBonus2) + b2Atk + char2InnerBonuses.attackBonus, 
             defense: (chars[1].stats.defense || 50) + char2InnerBonuses.defenseBonus, 
             speed: 50 + char2Agi * 2 + b2Spd + char2InnerBonuses.speedBonus,
-            hit: 70 + char2Agi, 
+            hit: 70 + char2Agi + (char2InnerBonuses.hitBonus || 0), 
             dodge: 20 + Math.floor(char2Agi * 0.5) + b2Dod + char2InnerBonuses.dodgeBonus, 
             parry: (chars[1].stats.parry || 20) + (char2InnerBonuses.parryBonus || 0),
             stats: chars[1].stats
@@ -489,6 +1019,11 @@ function getPlayerCharactersFromSave() {
     const hit = 70 + stats.agility;
     const dodge = 20 + Math.floor(stats.agility * 0.5);
     const parry = stats.parry || 20;
+
+    const innerHit1 =
+      typeof getInnerSkillPassiveBonuses === 'function'
+        ? getInnerSkillPassiveBonuses({ id: 1, stats })
+        : { hitBonus: 0 };
     
     // 从存档读取或使用计算值
     const playerMp = player.mp || player.maxMp || maxMp;
@@ -514,6 +1049,15 @@ function getPlayerCharactersFromSave() {
     const char2Hit = 70 + char2Agi;
     const char2Dodge = 20 + Math.floor(char2Agi * 0.5);
     const char2Parry = 28;
+
+    const char2StatsForHit =
+      char2Data && char2Data.stats
+        ? char2Data.stats
+        : { strength: char2Str, agility: char2Agi, bone: char2Bone, qi: char2Qi };
+    const innerHit2 =
+      typeof getInnerSkillPassiveBonuses === 'function'
+        ? getInnerSkillPassiveBonuses({ id: 2, stats: char2StatsForHit })
+        : { hitBonus: 0 };
     
     return [
       { 
@@ -528,7 +1072,7 @@ function getPlayerCharactersFromSave() {
         attack: attack, 
         defense: defense, 
         speed: speed, 
-        hit: hit, 
+        hit: hit + (innerHit1.hitBonus || 0), 
         dodge: dodge, 
         parry: parry,
         stats: stats,
@@ -546,7 +1090,7 @@ function getPlayerCharactersFromSave() {
         attack: char2Attack, 
         defense: char2Defense, 
         speed: char2Speed,
-        hit: char2Hit, 
+        hit: char2Hit + (innerHit2.hitBonus || 0), 
         dodge: char2Dodge, 
         parry: char2Parry,
         stats: char2Data?.stats || { strength: char2Str, agility: char2Agi, bone: char2Bone, qi: char2Qi },
@@ -588,12 +1132,39 @@ async function initBattle() {
 
   const sourceKey = window.BattleEntry && window.BattleEntry.KEYS && window.BattleEntry.KEYS.source;
   const entrySource = sourceKey ? localStorage.getItem(sourceKey) : null;
+  battleState.battleEntrySource = entrySource;
   battleState.returnMapHref = mapBattleSourceToReturnHref(entrySource);
+
+  let dungeonIntroOverride = null;
+  try {
+    const dk =
+      window.BattleEntry && window.BattleEntry.KEYS && window.BattleEntry.KEYS.dungeonBattleContext;
+    if (dk) {
+      const raw = localStorage.getItem(dk);
+      if (raw) {
+        const o = JSON.parse(raw);
+        if (o && typeof o.battleIntro === 'string' && o.battleIntro.trim()) {
+          dungeonIntroOverride = o.battleIntro.trim();
+        }
+      }
+    }
+  } catch (e) {
+    /* ignore */
+  }
 
   let enemy = ENEMIES.shanze_louluo_1;
   if (enemyId && ENEMIES[enemyId]) {
     enemy = ENEMIES[enemyId];
   }
+
+  const introSource =
+    dungeonIntroOverride != null && dungeonIntroOverride !== ''
+      ? dungeonIntroOverride
+      : typeof enemy.battleIntro === 'string'
+        ? enemy.battleIntro
+        : '';
+  const introNorm = normalizeBattleIntroText(introSource);
+  battleState.pendingPreBattleIntro = introNorm ? introNorm : null;
 
   if (window.BattleEntry) {
     window.BattleEntry.clearEnemyLaunchContext();
@@ -609,20 +1180,28 @@ async function initBattle() {
     alliesForBattle = alliesForBattle.slice(0, BATTLE_PARTY_CAP_PER_SIDE);
   }
 
-  battleState.allyTeam = alliesForBattle.map(char => ({
-    ...char,
-    hp: char.maxHp,
-    mp: char.maxMp,
-    isAlly: true,
-    isDead: false
-  }));
+  battleState.allyTeam = alliesForBattle.map(char => {
+    const c = {
+      ...char,
+      hp: char.maxHp,
+      mp: char.maxMp,
+      isAlly: true,
+      isDead: false
+    };
+    if (typeof initCombatBuffState === 'function') initCombatBuffState(c);
+    return c;
+  });
 
-  battleState.enemyTeam = [{
-    ...enemy,
-    isAlly: false,
-    isDead: false,
-    hp: enemy.hp
-  }];
+  const encounterDefs =
+    typeof getEncounterEnemies === 'function'
+      ? getEncounterEnemies(enemyId || enemy.id)
+      : [enemy];
+  if (!encounterDefs.length) {
+    encounterDefs.push(enemy);
+  }
+  battleState.enemyTeam = encounterDefs.map(function (def) {
+    return prepareEnemyForBattle(def);
+  });
 
   battleState.turnOrder = [...battleState.allyTeam, ...battleState.enemyTeam];
   calculateTurnOrder();
@@ -630,18 +1209,177 @@ async function initBattle() {
   battleState.hudActorOverride = null;
   battleState.battleEnded = false;
   battleState.turnCount = 1;
+  battleState.combatPerformancesPlayed = {};
+  battleState.openingPrimed = false;
 
   clearBattleLog();
   battleLoopRunning = false;
   renderTeams();
   updateTurnDisplay();
-  addBattleLog('战斗开始！');
-  addBattleLog('──────── 第 1 回合 ────────', { round: true });
+  // 「战斗开始」与首回合分隔线：首次点击「自动战斗」后由 `primeOpeningAndRunBattleLoop` 写入
   // 第一回合不回血，从第二回合开始
 }
 
+/** 去掉首尾成套引号，便于气泡内展示 */
+function normalizeBattleIntroText(s) {
+  if (!s) return '';
+  let t = String(s).trim();
+  t = t.replace(/^[\s"'「“『]+/, '').replace(/[\s"'」”』]+$/, '');
+  return t.trim();
+}
+
+/**
+ * 战前台词拆段：优先按句末标点断句，过长句再按逗顿或硬切，避免单泡塞满小屏。
+ * @param {string} text
+ * @param {number} [maxLen] 单段大致上限（汉字计）
+ * @returns {string[]}
+ */
+function splitBattleIntroIntoChunks(text, maxLen) {
+  maxLen = Math.max(14, maxLen || 26);
+  const s = normalizeBattleIntroText(text);
+  if (!s) return [];
+
+  const chunks = [];
+
+  function pushLong(str) {
+    const t = str.trim();
+    if (!t) return;
+    if (t.length <= maxLen && t.length >= 18) {
+      const idx = t.indexOf('，');
+      if (idx > 5 && idx < t.length - 4) {
+        chunks.push(t.slice(0, idx + 1).trim());
+        pushLong(t.slice(idx + 1));
+        return;
+      }
+    }
+    if (t.length <= maxLen) {
+      chunks.push(t);
+      return;
+    }
+    let i = 0;
+    while (i < t.length) {
+      const rest = t.length - i;
+      if (rest <= maxLen) {
+        const last = t.slice(i).trim();
+        if (last) chunks.push(last);
+        break;
+      }
+      let slice = t.slice(i, i + maxLen);
+      let cut = -1;
+      for (let k = slice.length - 1; k > 6; k--) {
+        if ('。！？；'.indexOf(slice[k]) >= 0) {
+          cut = k + 1;
+          break;
+        }
+      }
+      if (cut < 0) {
+        for (let k = slice.length - 1; k > 6; k--) {
+          if ('，、：'.indexOf(slice[k]) >= 0) {
+            cut = k + 1;
+            break;
+          }
+        }
+      }
+      if (cut < 0) cut = maxLen;
+      const piece = t.slice(i, i + cut).trim();
+      if (piece) chunks.push(piece);
+      i += cut;
+    }
+  }
+
+  const segs = s.split(/(?<=[。！？；])/);
+  for (let si = 0; si < segs.length; si++) {
+    const seg = segs[si].trim();
+    if (!seg) continue;
+    pushLong(seg);
+  }
+  return chunks;
+}
+
+function emitBattleStartLogs() {
+  addBattleLog('战斗开始！');
+  addBattleLog('──────── 第 1 回合 ────────', { round: true });
+}
+
+/**
+ * 敌方台词气泡：逐句展示（战前 intro / 战中演出共用）
+ * @param {object} enemyChar
+ * @param {Array<string|{text:string,displayMs?:number}>} lines
+ * @param {{ displayMs?: number, logPrefix?: string }} [options]
+ */
+async function showEnemyBattleSpeechLines(enemyChar, lines, options) {
+  if (!enemyChar || enemyChar.id == null || !lines || !lines.length) return;
+  const card = document.getElementById('char-' + enemyChar.id);
+  if (!card) return;
+
+  const defaultDisplayMs = (options && options.displayMs) || 2500;
+  const FADE_MS = 220;
+  const BETWEEN_MS = 120;
+  const logPrefix = options && options.logPrefix ? options.logPrefix : enemyChar.name;
+
+  for (let c = 0; c < lines.length; c++) {
+    const raw = lines[c];
+    const line = typeof raw === 'string' ? { text: raw } : raw || {};
+    const text = line.text != null ? String(line.text).trim() : '';
+    if (!text) continue;
+
+    card.querySelectorAll('.battle-intro-bubble').forEach(function (el) {
+      el.remove();
+    });
+
+    const wrap = document.createElement('div');
+    wrap.className = 'battle-intro-bubble';
+    if (text.length <= 3) wrap.classList.add('battle-intro-bubble--shout');
+    wrap.setAttribute('role', 'status');
+    wrap.setAttribute('aria-live', 'polite');
+    wrap.setAttribute('aria-label', enemyChar.name + ' 台词');
+    const textEl = document.createElement('div');
+    textEl.className = 'battle-intro-bubble__text';
+    textEl.textContent = text;
+    wrap.appendChild(textEl);
+    card.appendChild(wrap);
+
+    addBattleLog(logPrefix + '：「' + text + '」', { cue: true });
+
+    await new Promise(function (r) {
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          wrap.classList.add('battle-intro-bubble--show');
+          r();
+        });
+      });
+    });
+
+    const displayMs =
+      line.displayMs != null
+        ? line.displayMs
+        : text.length <= 3
+          ? 1200
+          : defaultDisplayMs;
+
+    await sleep(displayMs);
+    wrap.classList.remove('battle-intro-bubble--show');
+    await sleep(FADE_MS);
+    try {
+      wrap.remove();
+    } catch (e) {}
+    if (c < lines.length - 1) await sleep(BETWEEN_MS);
+  }
+}
+
+/**
+ * 战前台词：多段气泡依次挂在敌方立绘上，每段展示约数秒后自动消失，无需点击。
+ * @returns {Promise<void>}
+ */
+async function showEnemyPreBattleIntroBubble(enemyChar, text) {
+  if (!enemyChar || !text) return;
+  const chunks = splitBattleIntroIntoChunks(text, 26);
+  if (!chunks.length) return;
+  await showEnemyBattleSpeechLines(enemyChar, chunks, { displayMs: 2500 });
+}
+
 function calculateTurnOrder() {
-  battleState.turnOrder.sort((a, b) => b.speed - a.speed);
+  battleState.turnOrder.sort((a, b) => getEffectiveSpeed(b) - getEffectiveSpeed(a));
 }
 
 /** 对位阵营（敌看我方、我看敌方）存活单位中的最高速度；全灭或未开战时 0。 */
@@ -650,7 +1388,7 @@ function getOpposingTeamMaxSpeed(actor) {
   let maxS = 0;
   for (const c of opposing) {
     if (!c || c.isDead) continue;
-    const s = Number(c.speed) || 0;
+    const s = getEffectiveSpeed(c);
     if (s > maxS) maxS = s;
   }
   return maxS;
@@ -665,7 +1403,7 @@ async function runSpeedExtraActionsImmediatelyAfter(actor) {
   for (let tier = 1; tier <= SPEED_EXTRA_ACTION_MAX_TIERS; tier++) {
     if (battleState.battleEnded || actor.isDead) return;
     const needLead = SPEED_EXTRA_ACTION_GAP * tier;
-    const lead = (Number(actor.speed) || 0) - getOpposingTeamMaxSpeed(actor);
+    const lead = getEffectiveSpeed(actor) - getOpposingTeamMaxSpeed(actor);
     if (lead < needLead) break;
     const opposing = actor.isAlly ? battleState.enemyTeam : battleState.allyTeam;
     if (!opposing.some(c => c && !c.isDead)) return;
@@ -690,6 +1428,11 @@ function renderTeams() {
 
   allyContainer.innerHTML = battleState.allyTeam.map(char => renderCharacterCard(char)).join('');
   enemyContainer.innerHTML = battleState.enemyTeam.map(char => renderCharacterCard(char)).join('');
+  if (typeof syncCombatBuffAvatarFx === 'function') {
+    [...battleState.allyTeam, ...battleState.enemyTeam].forEach(function (char) {
+      syncCombatBuffAvatarFx(char);
+    });
+  }
   updateActorBarsHud();
 }
 
@@ -715,6 +1458,7 @@ function syncBattlePartyDomInPlace() {
     if (hpEl) hpEl.textContent = String(char.hp != null ? char.hp : '');
     const mpEl = card.querySelector('.mp-text');
     if (mpEl && char.mp !== undefined) mpEl.textContent = String(char.mp);
+    updateCombatBuffDomForChar(char);
   }
   updateActorBarsHud();
 }
@@ -725,10 +1469,21 @@ function renderCharacterCard(char) {
     battleState.turnOrder[battleState.currentTurnIndex] === char;
   const fallbackIcon = char.name === '少侠' ? '⚔️' : char.name === '苏瑶' ? '🌸' : (char.icon || '👤');
   const hasAvatar = char.avatar && char.avatar !== '';
+  const flipMap =
+    typeof window !== 'undefined' && window.CHARACTER_PORTRAIT_FLIP_H_BY_ID
+      ? window.CHARACTER_PORTRAIT_FLIP_H_BY_ID
+      : {};
+  const avatarFlipClass = flipMap[char.id] ? ' character-avatar--flip-h' : '';
+  const avatarScale =
+    typeof char.avatarScale === 'number' && char.avatarScale > 0 ? char.avatarScale : 1;
+  const avatarScaleClass =
+    avatarScale !== 1 ? ' character-avatar--scaled' : '';
+  const avatarScaleStyle =
+    avatarScale !== 1 ? ` style="--avatar-scale:${avatarScale}"` : '';
 
   let avatarHtml = '';
   if (hasAvatar) {
-    avatarHtml = `<img class="character-avatar" src="${char.avatar}" alt="${char.name}" onError="handleAvatarError(this, '${fallbackIcon}')" />`;
+    avatarHtml = `<img class="character-avatar${avatarFlipClass}${avatarScaleClass}"${avatarScaleStyle} src="${char.avatar}" alt="${char.name}" onError="handleAvatarError(this, '${fallbackIcon}')" />`;
   } else {
     avatarHtml = `<div class="character-avatar-emoji">${fallbackIcon}</div>`;
   }
@@ -736,6 +1491,7 @@ function renderCharacterCard(char) {
   return `
     <div class="character-card ${isActive ? 'active' : ''} ${char.isDead ? 'dead' : ''}" id="char-${char.id}">
       <div class="character-name">${char.name}</div>
+      ${typeof renderCombatBuffRowHtml === 'function' ? renderCombatBuffRowHtml(char) : ''}
       <div class="character-avatar-container">
         ${avatarHtml}
       </div>
@@ -768,7 +1524,9 @@ function addBattleLog(text, options = {}) {
   line.className =
     'battle-log-line' +
     (options.round ? ' is-round' : '') +
-    (options.speedExtra ? ' is-speed-extra' : '');
+    (options.speedExtra ? ' is-speed-extra' : '') +
+    (options.cue ? ' is-cue' : '') +
+    (options.buff ? ' is-buff' : '');
   line.textContent = text;
   container.appendChild(line);
 
@@ -993,12 +1751,62 @@ function showBladeChopEffect(actor, target) {
   }, 460);
 }
 
-/** 极轻全屏抖一下，强化拳落点体感 */
-function showScreenJolt() {
+/** 斧招 axeFx：赭铁宽楔 + 短弧沉劈（比 bladeFx 刀脊更短、更沉、暖色） */
+function showAxeChopEffect(actor, target) {
+  const card = document.getElementById(`char-${target.id}`);
+  if (!card) return;
+  const holder = card.querySelector('.character-avatar-container');
+  if (!holder) return;
+  if (getComputedStyle(holder).position === 'static') {
+    holder.style.position = 'relative';
+  }
+  const layer = document.createElement('div');
+  layer.className = 'axe-chop-layer';
+  layer.setAttribute('aria-hidden', 'true');
+  const dust = document.createElement('div');
+  dust.className = 'axe-chop-dust';
+  const wedge = document.createElement('div');
+  wedge.className = 'axe-chop-wedge';
+  const arc = document.createElement('div');
+  arc.className = 'axe-chop-arc';
+  const spark = document.createElement('div');
+  spark.className = 'axe-chop-spark';
+  layer.appendChild(dust);
+  layer.appendChild(wedge);
+  layer.appendChild(arc);
+  layer.appendChild(spark);
+  holder.appendChild(layer);
+  requestAnimationFrame(() => layer.classList.add('show'));
+  setTimeout(() => {
+    layer.remove();
+  }, 520);
+}
+
+/** 极轻全屏抖一下，强化拳/刀/斧落点体感 */
+function showScreenJolt(mode) {
   const el = document.querySelector('.battle-container');
   if (!el) return;
-  el.classList.add('screen-jolt');
-  setTimeout(() => el.classList.remove('screen-jolt'), 220);
+  el.classList.add(mode === 'axe' ? 'screen-jolt-axe' : 'screen-jolt');
+  const cls = mode === 'axe' ? 'screen-jolt-axe' : 'screen-jolt';
+  setTimeout(() => el.classList.remove(cls), mode === 'axe' ? 280 : 220);
+}
+
+/** 闪避瞬间：头像极轻闪白（弱于受击 hit-impact，不配卡片 .hit 震动） */
+function showDodgeGlint(target) {
+  if (!target || target.id == null) return;
+  const card = document.getElementById(`char-${target.id}`);
+  if (!card) return;
+  const holder = card.querySelector('.character-avatar-container') || card;
+  if (getComputedStyle(holder).position === 'static') {
+    holder.style.position = 'relative';
+  }
+  const flash = document.createElement('div');
+  flash.className = 'dodge-glint-overlay';
+  flash.setAttribute('aria-hidden', 'true');
+  holder.appendChild(flash);
+  setTimeout(() => {
+    flash.remove();
+  }, 260);
 }
 
 /** 命中瞬间：头像闪光 + 卡片震动（通用近战反馈） */
@@ -1010,8 +1818,10 @@ function showHitImpactFlash(target, opts) {
     holder.style.position = 'relative';
   }
   const flash = document.createElement('div');
-  flash.className =
-    opts && opts.bladeImpact ? 'hit-impact-overlay hit-impact-blade' : 'hit-impact-overlay';
+  let impactClass = 'hit-impact-overlay';
+  if (opts && opts.axeImpact) impactClass += ' hit-impact-axe';
+  else if (opts && opts.bladeImpact) impactClass += ' hit-impact-blade';
+  flash.className = impactClass;
   flash.setAttribute('aria-hidden', 'true');
   holder.appendChild(flash);
   setTimeout(() => {
@@ -1066,6 +1876,7 @@ function getInnerSkillPassiveBonuses(char) {
   let dodgeBonus = 0;
   let speedBonus = 0;
   let parryBonus = 0;
+  let hitBonus = 0;
 
   const stats = char && char.stats ? char.stats : {};
   const charId = char && char.id != null ? char.id : 1;
@@ -1083,8 +1894,19 @@ function getInnerSkillPassiveBonuses(char) {
               continue;
             }
 
-            const effect = skill.effect;
-            if (!effect) continue;
+            const loadoutFx =
+              typeof expandLoadoutPassiveStatBonuses === 'function'
+                ? expandLoadoutPassiveStatBonuses(skill)
+                : [];
+            const effectsToApply =
+              loadoutFx.length > 0
+                ? loadoutFx
+                : skill.effect
+                  ? [skill.effect]
+                  : [];
+
+            for (const effect of effectsToApply) {
+              if (!effect) continue;
 
             // 根据效果类型处理加成
             switch (effect.type) {
@@ -1159,17 +1981,28 @@ function getInnerSkillPassiveBonuses(char) {
                   }
                   parryBonus += Math.ceil(bonus);
                   console.log(`${martial.name}-${skill.name} 生效: 招架+${Math.ceil(bonus)}`);
+                } else if (effect.stat === 'hit') {
+                  const basePct = typeof effect.value === 'number' ? effect.value : 0;
+                  const baseHit = basePct < 1 ? Math.floor(basePct * 100) : Math.floor(basePct);
+                  const perPoint = effect.bonusPerPoint != null ? effect.bonusPerPoint : 0;
+                  const attrHit = Math.floor(
+                    (stats[effect.bonusAttr] || 0) * (perPoint < 1 ? perPoint * 100 : perPoint)
+                  );
+                  const add = baseHit + attrHit;
+                  hitBonus += add;
+                  console.log(`${martial.name}-${skill.name} 生效: 命中+${add}`);
                 }
                 break;
             }
+            }
           }
     }
-    console.log(`最终武学加成: 防御+${defenseBonus}, 气血+${maxHpBonus}, 攻击+${attackBonus}, 闪避+${dodgeBonus}, 速度+${speedBonus}, 招架+${parryBonus}`);
+    console.log(`最终武学加成: 防御+${defenseBonus}, 气血+${maxHpBonus}, 攻击+${attackBonus}, 命中+${hitBonus}, 闪避+${dodgeBonus}, 速度+${speedBonus}, 招架+${parryBonus}`);
   } catch (e) {
     console.warn('获取武学技能加成失败:', e);
   }
 
-  return { defenseBonus, maxHpBonus, attackBonus, dodgeBonus, speedBonus, parryBonus };
+  return { defenseBonus, maxHpBonus, attackBonus, hitBonus, dodgeBonus, speedBonus, parryBonus };
 }
 
 // 计算内功自动回血量
@@ -1178,6 +2011,52 @@ function calculateInnerSkillHeal(char) {
 
   try {
     console.log('=== 开始计算内功回血 ===');
+
+    /** 敌人：enemies.js 配 innerSkillArtId + innerSkillLevel，读武学库内功 autoHeal（与玩家合并表分离） */
+    if (char && char.isAlly === false && char.innerSkillArtId != null) {
+      const innerMartial = getMartialArtLibraryEntry(char.innerSkillArtId);
+      const innerLv =
+        char.innerSkillLevel != null && char.innerSkillLevel > 0 ? char.innerSkillLevel : 10;
+      if (innerMartial && innerMartial.type === '内功' && innerMartial.skills) {
+        const stats = char.stats || {};
+        for (const skill of innerMartial.skills) {
+          if (innerLv < (skill.unlockLevel || 99)) continue;
+          const segs =
+            typeof expandTurnStartAutoHealActions === 'function'
+              ? expandTurnStartAutoHealActions(skill)
+              : [];
+          if (segs.length) {
+            for (const seg of segs) {
+              const h =
+                typeof computeInnerAutoHealOnce === 'function'
+                  ? computeInnerAutoHealOnce(stats, innerLv, seg)
+                  : 0;
+              healAmount += h;
+              console.log(
+                `${char.name} 内功(${innerMartial.name})-${skill.name}(${innerLv}级) 回血段(passive): +${h}`
+              );
+            }
+            continue;
+          }
+          const effect = skill.effect;
+          if (effect && effect.type === 'autoHeal') {
+            const h =
+              typeof computeInnerAutoHealOnce === 'function'
+                ? computeInnerAutoHealOnce(stats, innerLv, effect)
+                : Math.floor(
+                    (effect.baseValue || 5) +
+                      innerLv * (effect.levelMultiplier || 3) +
+                      (stats[effect.bonusAttr || 'qi'] || 0) * (effect.bonusPerPoint || 0.8)
+                  );
+            healAmount += h;
+            console.log(
+              `${char.name} 内功(${innerMartial.name})-${skill.name}(${innerLv}级) 回血段: +${h}`
+            );
+          }
+        }
+      }
+      return healAmount;
+    }
 
     const charId = char.id || 1;
     const martialArtsData = getBattleMergedMartialArtsList(charId);
@@ -1191,13 +2070,33 @@ function calculateInnerSkillHeal(char) {
         for (const skill of martial.skills) {
           console.log('技能:', skill.name, '解锁等级:', skill.unlockLevel);
           if (martial.currentLevel < (skill.unlockLevel || 99)) continue;
+          const stats = char.stats || {};
+          const segs =
+            typeof expandTurnStartAutoHealActions === 'function'
+              ? expandTurnStartAutoHealActions(skill)
+              : [];
+          if (segs.length) {
+            for (const seg of segs) {
+              const h =
+                typeof computeInnerAutoHealOnce === 'function'
+                  ? computeInnerAutoHealOnce(stats, martial.currentLevel, seg)
+                  : 0;
+              healAmount += h;
+              console.log(`${martial.name}-${skill.name}(${martial.currentLevel}级) 回血段(passive): +${h}`);
+            }
+            continue;
+          }
           const effect = skill.effect;
           if (effect && effect.type === 'autoHeal') {
-            const base = effect.baseValue || 5;
-            const levelBonus = martial.currentLevel * (effect.levelMultiplier || 3);
-            const qiBonus = (char.stats && char.stats.qi) || 0;
-            const qiPart = qiBonus * (effect.bonusPerPoint || 0.8);
-            const h = Math.floor(base + levelBonus + qiPart);
+            const h =
+              typeof computeInnerAutoHealOnce === 'function'
+                ? computeInnerAutoHealOnce(stats, martial.currentLevel, effect)
+                : Math.floor(
+                    (effect.baseValue || 5) +
+                      martial.currentLevel * (effect.levelMultiplier || 3) +
+                      ((char.stats && char.stats[effect.bonusAttr || 'qi']) || 0) *
+                        (effect.bonusPerPoint || 0.8)
+                  );
             healAmount += h;
             console.log(`${martial.name}-${skill.name}(${martial.currentLevel}级) 回血段: +${h}`);
           }
@@ -1338,11 +2237,7 @@ async function checkFollowAttack(actor, target, followSkill, fxOpts) {
       speedExtra
     );
     
-    if (target.hp <= 0) {
-      target.isDead = true;
-      target.hp = 0;
-    }
-    
+    markTargetDeadIfNeeded(target, actor, fxOpts);
     updateHpDisplay(target.id, target.hp);
     await sleep(300);
   }
@@ -1378,7 +2273,9 @@ async function useSkill(actor, skill, target, fxOpts) {
       multiplier += (actor.stats[attr] || 0) * skill.effect.bonusPerPoint;
     }
 
-    if (skill.bladeFx) {
+    if (skill.axeFx) {
+      showAxeChopEffect(actor, target);
+    } else if (skill.bladeFx) {
       showBladeChopEffect(actor, target);
     } else if (skill.punchFx) {
       showPunchImpactEffect(actor, target);
@@ -1388,45 +2285,63 @@ async function useSkill(actor, skill, target, fxOpts) {
       showSwordEffect(actor, target, 'thrust');
     }
 
-    const damage = Math.floor(actor.attack * multiplier);
-    showDamageNumber(target.id, -damage);
-    target.hp = Math.max(0, target.hp - damage);
-    if (skill.punchFx || skill.bladeFx) showScreenJolt();
-    showMeleeHitFeedback(
-      target,
-      skill.punchFx || skill.bladeFx
-        ? { strong: true, bladeImpact: !!skill.bladeFx }
-        : undefined
-    );
-    const dmgMsg =
-      typeof BattleNarrative !== 'undefined'
-        ? BattleNarrative.skillUse(actor, skill, target, damage)
-        : `${actor.name} 使用 ${skill.name}，造成 ${damage} 点伤害！`;
-    addBattleLogMaybeSpeed(dmgMsg, !!(fxOpts && fxOpts.presentation === 'speedExtra'));
-    await sleep(300);
-    
-    // 4. 检查剑影连击（角色还在中间；速补段时追击气泡/日志与主招一致）
-    if (skill.followSkill) {
-      await checkFollowAttack(actor, target, skill.followSkill, fxOpts);
+    if (skill.useHitRoll && window.BattleHitRoll) {
+      const power = computeSkillAttackPower(actor, multiplier);
+      const result = window.BattleHitRoll.resolveDamage(
+        rollAttackerForHitRoll(actor, power),
+        target
+      );
+      const outcome = applyHitRollResultToTarget(actor, target, result, fxOpts, {
+        verb: skill.name,
+        battleNarrativeHit: (a, t, dmg) =>
+          typeof BattleNarrative !== 'undefined'
+            ? BattleNarrative.skillUse(a, skill, t, dmg)
+            : `${a.name} 使用 ${skill.name}，造成 ${dmg} 点伤害！`
+      });
+      if (outcome.kind === 'hit' || outcome.kind === 'parry') {
+        if (skill.axeFx) showScreenJolt('axe');
+        else if (skill.punchFx || skill.bladeFx) showScreenJolt();
+        showMeleeHitFeedback(
+          target,
+          skill.axeFx
+            ? { strong: true, axeImpact: true }
+            : skill.punchFx || skill.bladeFx
+              ? { strong: true, bladeImpact: !!skill.bladeFx }
+              : undefined
+        );
+      }
+      await sleep(300);
+      if (outcome.kind === 'dodge' && skill.onMissFollow && !target.isDead) {
+        await checkFollowAttackOnMiss(actor, target, skill.onMissFollow, fxOpts);
+      }
+    } else {
+      const damage = computeSkillAttackPower(actor, multiplier);
+      showDamageNumber(target.id, -damage);
+      target.hp = Math.max(0, target.hp - damage);
+      if (skill.axeFx) showScreenJolt('axe');
+      else if (skill.punchFx || skill.bladeFx) showScreenJolt();
+      showMeleeHitFeedback(
+        target,
+        skill.axeFx
+          ? { strong: true, axeImpact: true }
+          : skill.punchFx || skill.bladeFx
+            ? { strong: true, bladeImpact: !!skill.bladeFx }
+            : undefined
+      );
+      const dmgMsg =
+        typeof BattleNarrative !== 'undefined'
+          ? BattleNarrative.skillUse(actor, skill, target, damage)
+          : `${actor.name} 使用 ${skill.name}，造成 ${damage} 点伤害！`;
+      addBattleLogMaybeSpeed(dmgMsg, !!(fxOpts && fxOpts.presentation === 'speedExtra'));
+      await sleep(300);
+
+      if (skill.followSkill) {
+        await checkFollowAttack(actor, target, skill.followSkill, fxOpts);
+      }
     }
   }
-  
-  if (target.hp <= 0) {
-    target.isDead = true;
-    target.hp = 0;
-    addBattleLogMaybeSpeed(
-      typeof BattleNarrative !== 'undefined'
-        ? BattleNarrative.defeated(target.name)
-        : `${target.name} 被击败！`,
-      !!speedPres
-    );
 
-    const targetCard = document.getElementById(`char-${target.id}`);
-    if (targetCard) {
-      targetCard.classList.add('dead');
-    }
-  }
-
+  markTargetDeadIfNeeded(target, actor, fxOpts);
   updateHpDisplay(target.id, target.hp);
 
   // 5. 角色回到原位
@@ -1468,11 +2383,12 @@ async function runBattleLoop() {
       battleState.turnCount++;
       if (battleState.turnCount > 99) battleState.turnCount = 99;
       updateTurnDisplay();
-      calculateTurnOrder();
       addBattleLog(`──────── 第 ${battleState.turnCount} 回合 ────────`, { round: true });
 
-      // 从第二回合开始回血（第一回合不回血）
+      // 从第二回合开始：战斗内 Buff（如绝尘叠层）→ 内功回血
       if (battleState.turnCount >= 2) {
+        await sleep(200);
+        await applyTurnStartCombatBuffsForAll();
         console.log('=== 新回合开始，应用内功回血 ===');
         console.log('当前回合:', battleState.turnCount);
         await sleep(300);
@@ -1481,8 +2397,14 @@ async function runBattleLoop() {
             applyInnerSkillHeal(char);
           }
         });
+        battleState.enemyTeam.forEach(char => {
+          if (!char.isDead) {
+            applyInnerSkillHeal(char);
+          }
+        });
         await sleep(500);
       }
+      calculateTurnOrder();
     }
 
     // 只更新高亮状态，不重新渲染卡片
@@ -1554,29 +2476,31 @@ async function performAction(actor, actionOpts) {
         isSpeedExtra
       );
       
-      if (target.hp <= 0) {
-        target.isDead = true;
-        target.hp = 0;
-        addBattleLogMaybeSpeed(
-          typeof BattleNarrative !== 'undefined'
-            ? BattleNarrative.defeated(target.name)
-            : `${target.name} 被击败！`,
-          isSpeedExtra
-        );
-        
-        const targetCard = document.getElementById(`char-${target.id}`);
-        if (targetCard) {
-          targetCard.classList.add('dead');
-        }
-      }
-      
+      markTargetDeadIfNeeded(target, actor, fxOpts);
       updateHpDisplay(target.id, target.hp);
       
       await sleep(300);
       await showAttackReturn(actor);
     }
   } else {
-    // 敌人回合
+    const enemySkills = getAvailableSkillsForEnemy(actor);
+    let usedEnemySkill = false;
+    for (const skill of enemySkills) {
+      const mpc = Math.max(0, Math.floor(Number(skill.mpCost)));
+      const cost = mpc > 0 ? mpc : 10;
+      const curMp = actor.mp != null ? Math.floor(Number(actor.mp)) : null;
+      if (curMp != null && curMp < cost) continue;
+      await useSkill(actor, skill, target, fxOpts);
+      usedEnemySkill = true;
+      break;
+    }
+
+    if (usedEnemySkill) {
+      await sleep(600);
+      return;
+    }
+
+    // 无武学或内力不足：物理普攻（命中卷）
     await showAttackMove(actor);
     showSkillBubble(
       actor.id,
@@ -1584,11 +2508,12 @@ async function performAction(actor, actionOpts) {
       isSpeedExtra ? { variant: 'speedExtra' } : undefined
     );
     await sleep(400);
-    
+
     const result = window.BattleHitRoll.resolveDamage(actor, target);
     
     if (result.isDodge) {
       showBattleText(target.id, '闪避', 'miss');
+      showDodgeGlint(target);
       await showDodgeAnimation(target);
       addBattleLogMaybeSpeed(
         typeof BattleNarrative !== 'undefined'
@@ -1622,22 +2547,7 @@ async function performAction(actor, actionOpts) {
       );
     }
 
-    if (target.hp <= 0) {
-      target.isDead = true;
-      target.hp = 0;
-      addBattleLogMaybeSpeed(
-        typeof BattleNarrative !== 'undefined'
-          ? BattleNarrative.defeated(target.name)
-          : `${target.name} 被击败！`,
-        isSpeedExtra
-      );
-      
-      const targetCard = document.getElementById(`char-${target.id}`);
-      if (targetCard) {
-        targetCard.classList.add('dead');
-      }
-    }
-    
+    markTargetDeadIfNeeded(target, actor, fxOpts);
     updateHpDisplay(target.id, target.hp);
     
     await sleep(300);
@@ -1771,12 +2681,19 @@ async function showSettlement() {
   const rewards = isVictory ? battleState.rewards : { exp: 0, gold: 0, expReward: 0 };
 
   if (isVictory) {
-    const enemy = battleState.enemyTeam[0];
-    rewards.exp = enemy.expReward || enemy.exp || 25;
-    rewards.gold = enemy.goldReward || enemy.gold || 10;
-    rewards.expReward = enemy.expReward || 17;
-
-    updateBanditTaskProgress(enemy);
+    let sumExp = 0;
+    let sumGold = 0;
+    let sumExpReward = 0;
+    for (const foe of battleState.enemyTeam) {
+      if (!foe) continue;
+      sumExp += foe.expReward || foe.exp || 25;
+      sumGold += foe.goldReward || foe.gold || 10;
+      sumExpReward += foe.expReward || 17;
+      updateBanditTaskProgress(foe);
+    }
+    rewards.exp = sumExp;
+    rewards.gold = sumGold;
+    rewards.expReward = sumExpReward;
 
     if (window.BattleSettlement) {
       window.BattleSettlement.setPendingRewards({
@@ -1820,6 +2737,19 @@ async function showSettlement() {
   }
 
   await playBattleExitBlackCover();
+
+  if (!isVictory && battleState.battleEntrySource === 'heifeng_dungeon') {
+    battleState.returnMapHref = 'forest_map.html';
+    try {
+      localStorage.setItem('preBattleLocation', 'heifeng_entrance');
+      localStorage.removeItem('heifeng_dungeon_run');
+      localStorage.removeItem('heifeng_post_battle_room');
+      localStorage.setItem('heifeng_forest_after_defeat', '1');
+      const dk =
+        window.BattleEntry && window.BattleEntry.KEYS && window.BattleEntry.KEYS.dungeonBattleContext;
+      if (dk) localStorage.removeItem(dk);
+    } catch (e) {}
+  }
 
   window.location.href = battleState.returnMapHref || 'forest_map.html';
 }
@@ -1896,11 +2826,89 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+/**
+ * 入场全屏黑幕淡出（与 battle.html 内联脚本一致），返回后可安全展示战前气泡。
+ * @returns {Promise<void>}
+ */
+function awaitBattleEnterCinematicIfAny() {
+  return new Promise(function (resolve) {
+    const cineEl = document.getElementById('battlePageCinematicBlack');
+    const cineKey = window.BattleEntry && window.BattleEntry.KEYS && window.BattleEntry.KEYS.battleEnterCinematic;
+    const clearEntryChrome = function () {
+      if (cineKey) {
+        try {
+          localStorage.removeItem(cineKey);
+        } catch (e) {}
+      }
+      document.documentElement.style.background = '';
+      document.body.style.background = '';
+      try {
+        if (cineEl && cineEl.parentNode) cineEl.remove();
+      } catch (e) {}
+    };
+
+    if (!cineEl) {
+      clearEntryChrome();
+      resolve();
+      return;
+    }
+
+    cineEl.style.transition = 'opacity 0.42s ease-out';
+    const onEnd = function (ev) {
+      if (ev.propertyName !== 'opacity') return;
+      cineEl.removeEventListener('transitionend', onEnd);
+      clearEntryChrome();
+      resolve();
+    };
+    cineEl.addEventListener('transitionend', onEnd);
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        cineEl.style.opacity = '0';
+      });
+    });
+    setTimeout(function () {
+      if (!cineEl.parentNode) return;
+      cineEl.removeEventListener('transitionend', onEnd);
+      clearEntryChrome();
+      resolve();
+    }, 700);
+  });
+}
+
 function toggleAutoBattle() {
   battleState.isAutoFighting = !battleState.isAutoFighting;
   const btn = document.getElementById('btnAuto');
   btn.textContent = battleState.isAutoFighting ? '停止战斗' : '自动战斗';
-  
+
+  if (battleState.isAutoFighting && !battleState.battleEnded) {
+    void primeOpeningAndRunBattleLoop();
+  }
+}
+
+/**
+ * 首次开启自动战斗：先播战前台词气泡（若有），再写战斗开始日志并进入主循环；停战后再开仅续跑循环。
+ */
+async function primeOpeningAndRunBattleLoop() {
+  if (battleLoopRunning) return;
+
+  if (!battleState.openingPrimed) {
+    const introText = battleState.pendingPreBattleIntro;
+    const foe = battleState.enemyTeam && battleState.enemyTeam[0];
+
+    if (introText && foe) {
+      battleState.pendingPreBattleIntro = null;
+      await showEnemyPreBattleIntroBubble(foe, introText);
+      if (!battleState.isAutoFighting || battleState.battleEnded) {
+        battleState.pendingPreBattleIntro = introText;
+        return;
+      }
+    } else {
+      battleState.pendingPreBattleIntro = null;
+    }
+    battleState.openingPrimed = true;
+    emitBattleStartLogs();
+  }
+
   if (battleState.isAutoFighting && !battleState.battleEnded) {
     runBattleLoop();
   }
@@ -1924,40 +2932,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  const cineEl = document.getElementById('battlePageCinematicBlack');
-  const cineKey = window.BattleEntry && window.BattleEntry.KEYS && window.BattleEntry.KEYS.battleEnterCinematic;
-
   setTimeout(async () => {
     await initBattle();
-    if (cineEl && cineKey) {
-      const clearEntryChrome = () => {
-        localStorage.removeItem(cineKey);
-        document.documentElement.style.background = '';
-        document.body.style.background = '';
-        try {
-          cineEl.remove();
-        } catch (e) {
-          /* ignore */
-        }
-      };
-      cineEl.style.transition = 'opacity 0.42s ease-out';
-      const onEnd = (ev) => {
-        if (ev.propertyName !== 'opacity') return;
-        cineEl.removeEventListener('transitionend', onEnd);
-        clearEntryChrome();
-      };
-      cineEl.addEventListener('transitionend', onEnd);
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          cineEl.style.opacity = '0';
-        });
-      });
-      setTimeout(() => {
-        if (!cineEl.parentNode) return;
-        cineEl.removeEventListener('transitionend', onEnd);
-        clearEntryChrome();
-      }, 700);
-    }
+    await awaitBattleEnterCinematicIfAny();
   }, 0);
 
   document.getElementById('btnAuto').addEventListener('click', toggleAutoBattle);

@@ -19,7 +19,7 @@
   function rememberReturnContextForQuickNav() {
     try {
       var base = currentHtmlName();
-      if (/^(qingstone_map|forest_map|zhengyang_map)\.html$/i.test(base)) {
+      if (/^(qingstone_map|forest_map|zhengyang_map|heifeng_dungeon)\.html$/i.test(base)) {
         sessionStorage.setItem(RETURN_HREF_KEY, base);
         sessionStorage.removeItem(MAP_RESTORE_VIEW_KEY);
         return;

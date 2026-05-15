@@ -1,0 +1,13 @@
+{
+  "name": "portrait-crop",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "install-sharp": "npm install",
+    "crop": "node crop_avatars.mjs",
+    "crop:strip": "node crop_avatars.mjs --strip"
+  },
+  "dependencies": {
+    "sharp": "^0.33.5"
+  }
+}

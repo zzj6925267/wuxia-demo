@@ -86,18 +86,37 @@ const TAB_CONFIG = {
   quest: { name: '任务', filter: item => item.category === 'quest' }
 };
 
+/** 装备等与 `items.js` 的 `quality` 字段对齐：残品→绝品（色：灰/绿/蓝/紫/橙）；秘籍仍用 chu_jie～jue_jie */
 const QUALITY_CONFIG = {
-  common: { name: '普通', class: 'quality-common' },
-  uncommon: { name: '优秀', class: 'quality-uncommon' },
-  rare: { name: '稀有', class: 'quality-rare' },
-  epic: { name: '史诗', class: 'quality-epic' },
-  legendary: { name: '传说', class: 'quality-legendary' },
+  common: { name: '残品', class: 'quality-common' },
+  uncommon: { name: '低品', class: 'quality-uncommon' },
+  rare: { name: '中品', class: 'quality-rare' },
+  epic: { name: '极品', class: 'quality-epic' },
+  legendary: { name: '绝品', class: 'quality-legendary' },
   // 与武学 `rank`（martialArtsData MARTIAL_ARTS_RANKS）一致，用于秘籍等待遇型物品
   chu_jie: { name: '初阶', class: 'quality-chu-jie' },
   zhong_jie: { name: '中阶', class: 'quality-zhong-jie' },
   gao_jie: { name: '高阶', class: 'quality-gao-jie' },
   jue_jie: { name: '绝阶', class: 'quality-jue-jie' }
 };
+
+/** 背包判定「能否装备」用：与战斗存档一致，优先 `game_save_0.player.level`，其次 `playerData.level` */
+function getProtagonistLevelForInventoryUi() {
+  try {
+    const raw = localStorage.getItem('game_save_0');
+    if (raw) {
+      const save = JSON.parse(raw);
+      const lv = save && save.player && save.player.level;
+      if (typeof lv === 'number' && lv > 0) return lv;
+    }
+  } catch (e) {
+    /* ignore */
+  }
+  if (window.playerData && typeof window.playerData.level === 'number' && window.playerData.level > 0) {
+    return window.playerData.level;
+  }
+  return 1;
+}
 
 // 初始化函数 - DOM加载完成后调用
 function init() {
@@ -332,7 +351,7 @@ function showItemDetail(item) {
   const itemData = window.ITEMS[item.id];
   if (!itemData) return;
   
-  const playerLevel = window.playerData?.level || 1;
+  const playerLevel = getProtagonistLevelForInventoryUi();
   const isHighLevel = itemData.requiredLevel && itemData.requiredLevel > playerLevel;
   const isEquipment = itemData.category === 'equipment';
   const isSkillbook = itemData.category === 'skillbook';
@@ -346,7 +365,7 @@ function showItemDetail(item) {
           ${itemData.requiredLevel ? `<div class="item-level ${isHighLevel ? 'high-level' : ''}">需要等级 ${itemData.requiredLevel}</div>` : ''}
         </div>
       </div>
-      ${itemData.quality ? `<div class="item-quality ${QUALITY_CONFIG[itemData.quality]?.class || 'quality-common'}">${QUALITY_CONFIG[itemData.quality]?.name || '普通'}</div>` : ''}
+      ${itemData.quality ? `<div class="item-quality ${QUALITY_CONFIG[itemData.quality]?.class || 'quality-common'}">${QUALITY_CONFIG[itemData.quality]?.name || '残品'}</div>` : ''}
       <div class="item-description">${itemData.description}</div>
   `;
   

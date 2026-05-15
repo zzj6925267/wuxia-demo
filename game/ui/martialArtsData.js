@@ -15,6 +15,25 @@ const MARTIAL_ARTS_TYPES = {
   QING_GONG: '轻功'
 };
 
+/** 玩家立绘（纯头像 PNG，无金框/名牌）：战斗 `avatar` 与武学顶栏内层 `img` 同源；武学另叠 `ma_ui_char_card` + 竖名条。 */
+const PLAYER_PORTRAIT_MALE = '../assets/images/UI/ma_ui_char_portrait_xiao_yunche.png';
+const PLAYER_PORTRAIT_FEMALE = '../assets/images/UI/ma_ui_char_portrait_su_qingli.png';
+if (typeof window !== 'undefined') {
+  window.PLAYER_PORTRAIT_MALE = PLAYER_PORTRAIT_MALE;
+  window.PLAYER_PORTRAIT_FEMALE = PLAYER_PORTRAIT_FEMALE;
+}
+
+/**
+ * 战斗 / 武学顶栏共用头像：须在画面中 **面朝右**。
+ * `scaleX(-1)` 用于「底图人物朝左」时翻成朝右；底图已朝右的 id 须为 `false`。
+ * 少侠侧资源多为已朝右；苏瑶若未跑 `crop_avatars.mjs` 的 flop，PNG 仍朝左，故默认仅 id2 翻转。
+ * 换图后请对照画面，把仍朝左的角色改为 `true`、已朝右的改为 `false`。
+ */
+const CHARACTER_PORTRAIT_FLIP_H_BY_ID = { 1: false, 2: true };
+if (typeof window !== 'undefined') {
+  window.CHARACTER_PORTRAIT_FLIP_H_BY_ID = CHARACTER_PORTRAIT_FLIP_H_BY_ID;
+}
+
 // 武学数据库
 const MARTIAL_ARTS_LIBRARY = [
   {
@@ -33,8 +52,8 @@ const MARTIAL_ARTS_LIBRARY = [
     stats: { attack: 25, hit: 10 },
     skills: [
       { id: 1, name: '直刺', type: '主动', unlockLevel: 1, icon: '🗡️', mpCost: 20, description: '基础剑招，直刺敌人，臂力越高伤害越高', effect: { type: 'damage', value: 1.2, bonusAttr: 'strength', bonusPerPoint: 0.02 }, detail: '基础伤害120%，每点臂力额外+2%伤害' },
-      { id: 2, name: '阳刚', type: '被动', unlockLevel: 4, icon: '☀️', description: '被动增加攻击，臂力越高加成越多', effect: { type: 'buff', stat: 'attack', value: 0.1, bonusAttr: 'strength', bonusPerPoint: 0.03 }, detail: '基础攻击+10%，每点臂力额外+3%' },
-      { id: 3, name: '剑影', type: '被动', unlockLevel: 7, icon: '✨', description: '直刺后有20%概率跟随一剑，身法越高触发概率越高', effect: { type: 'followAttack', baseChance: 0.2, damage: 0.8, chanceAttr: 'agility', chancePerPoint: 0.01 } }
+      { id: 2, name: '阳刚', type: '被动', unlockLevel: 4, icon: '☀️', description: '被动增加攻击，臂力越高加成越多', passiveIds: ['zhenyang_jianfa_yanggang'], detail: '基础攻击+10%，每点臂力额外+3%' },
+      { id: 3, name: '剑影', type: '被动', unlockLevel: 7, icon: '✨', description: '直刺后有20%概率跟随一剑，身法越高触发概率越高', passiveIds: ['jianying_follow'], detail: '直刺后有20%概率跟随一剑，身法越高触发概率越高（当前额外加成见浮窗）' }
     ]
   },
   {
@@ -52,9 +71,9 @@ const MARTIAL_ARTS_LIBRARY = [
     baseBonus: { innerSkill: 5 },
     stats: { hp: 50, defense: 10, innerSkill: 15 },
     skills: [
-      { id: 1, name: '培元', type: '被动', unlockLevel: 1, icon: '🔋', description: '固本培元，增加防御力', effect: { type: 'defenseBuff', baseValue: 30, bonusAttr: 'bone', bonusPerPoint: 0.5 }, detail: '基础防御+30，每点根骨额外+0.5' },
-      { id: 2, name: '固本', type: '被动', unlockLevel: 4, icon: '💪', description: '稳固根基，增加气血上限', effect: { type: 'maxHpBuff', baseValue: 50, bonusAttr: 'bone', bonusPerPoint: 0.5 }, detail: '气血上限+50，每点根骨额外+0.5' },
-      { id: 3, name: '调息', type: '被动', unlockLevel: 7, icon: '🧘', description: '吐纳调息，每回合自动恢复气血', effect: { type: 'autoHeal', baseValue: 5, levelMultiplier: 3, bonusAttr: 'qi', bonusPerPoint: 0.8 }, detail: '每回合恢复5+等级×3+内息×0.8点气血' }
+      { id: 1, name: '培元', type: '被动', unlockLevel: 1, icon: '🔋', description: '固本培元，增加防御力', passiveIds: ['zhenyang_tunxi_peiyuan'], detail: '基础防御+30，每点根骨额外+0.5' },
+      { id: 2, name: '固本', type: '被动', unlockLevel: 4, icon: '💪', description: '稳固根基，增加气血上限', passiveIds: ['zhenyang_tunxi_guben'], detail: '气血上限+50，每点根骨额外+0.5' },
+      { id: 3, name: '调息', type: '被动', unlockLevel: 7, icon: '🧘', description: '吐纳调息，每回合自动恢复气血', passiveIds: ['inner_tunxi_zhenyang'], detail: '每回合恢复5+等级×3+内息×0.8点气血' }
     ]
   },
   {
@@ -93,29 +112,66 @@ const MARTIAL_ARTS_LIBRARY = [
     baseBonus: { lightSkill: 5 },
     stats: { speed: 25, dodge: 20, attack: 10 },
     skills: [
-      { id: 1, name: '踏云', type: '被动', unlockLevel: 1, icon: '☁️', description: '脚踏祥云，增加闪避', effect: { type: 'buff', stat: 'dodge', baseValue: 15, bonusAttr: 'agility', bonusPerPoint: 0.5 }, detail: '基础闪避+15，每点身法额外+0.5' },
-      { id: 2, name: '逐日', type: '被动', unlockLevel: 4, icon: '☀️', description: '追逐烈日，增加攻击', effect: { type: 'buff', stat: 'attack', baseValue: 10, bonusAttr: 'strength', bonusPerPoint: 0.5 }, detail: '基础攻击+10，每点臂力额外+0.5' },
-      { id: 3, name: '凌虚', type: '被动', unlockLevel: 7, icon: '✨', description: '凌空虚步，增加速度', effect: { type: 'buff', stat: 'speed', baseValue: 15, bonusAttr: 'agility', bonusPerPoint: 0.6 }, detail: '基础速度+15，每点身法额外+0.6' }
+      { id: 1, name: '踏云', type: '被动', unlockLevel: 1, icon: '☁️', description: '脚踏祥云，增加闪避', passiveIds: ['zhenyang_tayun_tayun'], detail: '基础闪避+15，每点身法额外+0.5' },
+      { id: 2, name: '逐日', type: '被动', unlockLevel: 4, icon: '☀️', description: '追逐烈日，增加攻击', passiveIds: ['zhenyang_tayun_zhuri'], detail: '基础攻击+10，每点臂力额外+0.5' },
+      { id: 3, name: '凌虚', type: '被动', unlockLevel: 7, icon: '✨', description: '凌空虚步，增加速度', passiveIds: ['zhenyang_tayun_lingxu'], detail: '基础速度+15，每点身法额外+0.6' }
     ]
   },
   {
     id: 6,
-    name: '落草快剑',
+    name: '落草剑经',
     type: '武功',
     skillType: 'sword',
     rank: '初阶',
     school: '江湖',
-    description: '绿林里口口相传的几式快剑，狠辣不足，只求一个快字。',
+    description:
+      '绿林里口口相传的手抄剑经，共录三式：快刺、贴影、脱身。品阶虽仍是初阶，却比馆里教头的剑诀多一式，全在身法，不求势沉，落草之后第一本像样的剑谱。',
     currentLevel: 0,
     maxLevel: 10,
     practiceTimes: 0,
     equipped: false,
-    baseBonus: { sword: 4 },
-    stats: { attack: 22, hit: 12 },
+    /** 比武馆五本（sword+3）略高：绿林精品初阶 */
+    baseBonus: { sword: 5 },
+    stats: { attack: 26, hit: 14 },
     skills: [
-      { id: 1, name: '疾刺', type: '主动', unlockLevel: 1, icon: '⚔️', description: '抢步疾刺', effect: { type: 'damage', value: 1.12, bonusAttr: 'agility', bonusPerPoint: 0.018 }, detail: '基础伤害112%，每点身法额外+1.8%伤害' },
-      { id: 2, name: '缠斗', type: '被动', unlockLevel: 4, icon: '🪢', description: '黏住对手身形', effect: { type: 'buff', stat: 'hit', value: 0.05, bonusAttr: 'agility', bonusPerPoint: 0.02 }, detail: '基础命中+5%，每点身法额外+2%' },
-      { id: 3, name: '回风', type: '被动', unlockLevel: 7, icon: '🌀', description: '剑走偏锋，偶有一式回扫', effect: { type: 'followAttack', baseChance: 0.1, damage: 0.55, chanceAttr: 'agility', chancePerPoint: 0.006 } }
+      {
+        id: 1,
+        name: '疾刺',
+        type: '主动',
+        unlockLevel: 3,
+        icon: '⚔️',
+        mpCost: 10,
+        plainFx: true,
+        useHitRoll: true,
+        passiveIds: ['luocao_jici_miss_follow'],
+        description:
+          '抢步上前，剑尖抢在人反应之前先到；这一式要快，身法越高，剑越险。',
+        effect: { type: 'damage', value: 1.14, bonusAttr: 'agility', bonusPerPoint: 0.012 },
+        detail:
+          '消耗内力出刺，伤害随身法而增。对手若闪避过去，常能依身法再补一记「续刺」；续刺能否跟上，身法越高越易成。'
+      },
+      {
+        id: 2,
+        name: '缠影',
+        type: '被动',
+        unlockLevel: 6,
+        icon: '🪢',
+        description: '剑随身走，人影与剑影缠在一处；贴住了，便不易再让对手脱身。',
+        passiveIds: ['luocao_chanying_hit'],
+        detail: '剑路贴人，命中随身法而增，愈难刺空。'
+      },
+      {
+        id: 3,
+        name: '绝尘',
+        type: '被动',
+        unlockLevel: 9,
+        icon: '🍃',
+        description:
+          '刺出便退，脚步不沾尘；战局拖久，身法愈发轻灵，每一回合都比上一回合更快一线。',
+        passiveIds: ['juechen_turn_start'],
+        detail:
+          '从第二回合起，每回合开始时身法渐疾（战斗内「绝尘」Buff），最多叠三层；层数越高，行动越快。'
+      }
     ]
   },
   {
@@ -134,7 +190,7 @@ const MARTIAL_ARTS_LIBRARY = [
     stats: { attack: 18, hit: 8 },
     skills: [
       { id: 1, name: '对位刺', type: '主动', unlockLevel: 3, icon: '·', mpCost: 10, plainFx: true, description: '先对上身前那人的方位，再顺势递出一剑。', effect: { type: 'damage', value: 1.0, bonusAttr: 'strength', bonusPerPoint: 0.006 }, detail: '对正了人再刺，伤害与寻常一剑相仿。' },
-      { id: 2, name: '守拙', type: '被动', unlockLevel: 6, icon: '🛡️', description: '剑随身列，胸肋少露，人更扛打些。', effect: { type: 'defenseBuff', stat: 'defense', baseValue: 10 }, detail: '固定防御+10。' }
+      { id: 2, name: '守拙', type: '被动', unlockLevel: 6, icon: '🛡️', description: '剑随身列，胸肋少露，人更扛打些。', passiveIds: ['wuguan_zhenxing_shouzhuo'], detail: '固定防御+10。' }
     ]
   },
   {
@@ -171,7 +227,7 @@ const MARTIAL_ARTS_LIBRARY = [
         unlockLevel: 6,
         icon: '🛡️',
         description: '肩肘一沉，门户封得更死，敢贴身去架。',
-        effect: { type: 'buff', stat: 'parry', baseValue: 10, bonusAttr: 'bone', bonusPerPoint: 0.5 },
+        passiveIds: ['wuguan_chenqiao_chenjian'],
         detail: '招架 +10；每点根骨额外 +0.5。'
       }
     ]
@@ -210,8 +266,48 @@ const MARTIAL_ARTS_LIBRARY = [
         unlockLevel: 6,
         icon: '⚔️',
         description: '腕底一沉一拧，劲往刃口「合」；出手便带三分狠劲，刀才听人使唤。',
-        effect: { type: 'buff', stat: 'attack', baseValue: 10, bonusAttr: 'strength', bonusPerPoint: 0.5 },
+        passiveIds: ['wuguan_kaihe_he'],
         detail: '基础攻击+10；每点臂力额外+0.5。'
+      }
+    ]
+  },
+  {
+    id: 15,
+    name: '巡山斧诀',
+    type: '武功',
+    /** 无独立「斧」修为；短柄铁斧路数归入刀法门类，战斗走 axeFx（与 bladeFx 刀劈区分） */
+    skillType: 'blade',
+    rank: '初阶',
+    school: '江湖',
+    description: '绿林巡山头目惯用的短柄铁斧几式：腰胯带斧、势沉刃短，不求花巧，只求一斧砍实。暂无玩家秘籍，仅副本敌人引用。',
+    currentLevel: 0,
+    maxLevel: 10,
+    practiceTimes: 0,
+    equipped: false,
+    baseBonus: { blade: 3 },
+    stats: { attack: 20, hit: 9 },
+    skills: [
+      {
+        id: 1,
+        name: '劈风',
+        type: '主动',
+        unlockLevel: 3,
+        icon: '🪓',
+        mpCost: 10,
+        axeFx: true,
+        description: '借步拧腰，短斧自外弧劈落；旗侧巡山时最常用的开招。',
+        effect: { type: 'damage', value: 1.0, bonusAttr: 'strength', bonusPerPoint: 0.006 },
+        detail: '与武馆刀法主动同档（约一倍攻 + 臂力每点 +0.6%），耗蓝 10；axeFx 斧劈特效（与开合刀法 bladeFx 区分）。'
+      },
+      {
+        id: 2,
+        name: '贯劲',
+        type: '被动',
+        unlockLevel: 6,
+        icon: '⚒️',
+        description: '斧刃未至，劲已贯入；腕沉肘坠，劈砍才听得使唤。',
+        effect: { type: 'buff', stat: 'attack', baseValue: 12, bonusAttr: 'strength', bonusPerPoint: 0.5 },
+        detail: '基础攻击+12；每点臂力额外+0.5。'
       }
     ]
   },
@@ -237,7 +333,7 @@ const MARTIAL_ARTS_LIBRARY = [
         unlockLevel: 3,
         icon: '◇',
         description: '吐浊纳清，肩背略松；根骨厚实的人，胸腹间更能多容一口气血。',
-        effect: { type: 'maxHpBuff', baseValue: 30, bonusAttr: 'bone', bonusPerPoint: 0.45 },
+        passiveIds: ['wuguan_yangqi_naxi'],
         detail: '气血上限：基础+30，每点根骨额外+0.45（初阶可先调）。'
       },
       {
@@ -247,7 +343,7 @@ const MARTIAL_ARTS_LIBRARY = [
         unlockLevel: 6,
         icon: '🌿',
         description: '气机沉回丹田，像水渗进土里；每回合只回一小口，贵在细水长流。',
-        effect: { type: 'autoHeal', baseValue: 4, levelMultiplier: 2, bonusAttr: 'qi', bonusPerPoint: 0.35 },
+        passiveIds: ['inner_yangqi_guigen'],
         detail: '每回合回血：4 + 武学等级×2 + 内息×0.35（与「调息」同类，多件 autoHeal 可叠加求和；数值可先调）。'
       }
     ]
@@ -274,7 +370,7 @@ const MARTIAL_ARTS_LIBRARY = [
         unlockLevel: 3,
         icon: '👣',
         description: '脚尖里挪半寸，肩胯先让一线；来招常从衣角掠过，看着险，其实不沾身。',
-        effect: { type: 'buff', stat: 'dodge', baseValue: 10 },
+        passiveIds: ['wuguan_nuobu_nuocun'],
         detail: '基础闪避+10（初阶定数，后可调）。'
       },
       {
@@ -284,7 +380,7 @@ const MARTIAL_ARTS_LIBRARY = [
         unlockLevel: 6,
         icon: '🍃',
         description: '劲从侧卸、步随身转；脚下愈轻，愈跟得上自己的挪。',
-        effect: { type: 'buff', stat: 'speed', baseValue: 10 },
+        passiveIds: ['wuguan_nuobu_xiefeng'],
         detail: '基础速度+10（初阶定数，后可调）。'
       }
     ]
@@ -309,8 +405,8 @@ const INITIAL_PLAYER_MARTIAL_ARTS = [
     stats: { attack: 25, hit: 10 },
     skills: [
       { id: 1, name: '直刺', type: '主动', unlockLevel: 1, icon: '🗡️', mpCost: 20, description: '基础剑招，直刺敌人，臂力越高伤害越高', effect: { type: 'damage', value: 1.2, bonusAttr: 'strength', bonusPerPoint: 0.02 }, detail: '基础伤害120%，每点臂力额外+2%伤害' },
-      { id: 2, name: '阳刚', type: '被动', unlockLevel: 4, icon: '☀️', description: '被动增加攻击，臂力越高加成越多', effect: { type: 'buff', stat: 'attack', value: 0.1, bonusAttr: 'strength', bonusPerPoint: 0.03 }, detail: '基础攻击+10%，每点臂力额外+3%' },
-      { id: 3, name: '剑影', type: '被动', unlockLevel: 7, icon: '✨', description: '直刺后有20%概率跟随一剑，身法越高触发概率越高', effect: { type: 'followAttack', baseChance: 0.2, damage: 0.8, chanceAttr: 'agility', chancePerPoint: 0.01 } }
+      { id: 2, name: '阳刚', type: '被动', unlockLevel: 4, icon: '☀️', description: '被动增加攻击，臂力越高加成越多', passiveIds: ['zhenyang_jianfa_yanggang'], detail: '基础攻击+10%，每点臂力额外+3%' },
+      { id: 3, name: '剑影', type: '被动', unlockLevel: 7, icon: '✨', description: '直刺后有20%概率跟随一剑，身法越高触发概率越高', passiveIds: ['jianying_follow'], detail: '直刺后有20%概率跟随一剑，身法越高触发概率越高（当前额外加成见浮窗）' }
     ]
   },
   {
@@ -328,9 +424,9 @@ const INITIAL_PLAYER_MARTIAL_ARTS = [
     baseBonus: { innerSkill: 5 },
     stats: { hp: 50, defense: 10, innerSkill: 15 },
     skills: [
-      { id: 1, name: '培元', type: '被动', unlockLevel: 1, icon: '🔋', description: '固本培元，增加防御力', effect: { type: 'defenseBuff', baseValue: 30, bonusAttr: 'bone', bonusPerPoint: 0.5 }, detail: '基础防御+30，每点根骨额外+0.5' },
-      { id: 2, name: '固本', type: '被动', unlockLevel: 4, icon: '💪', description: '稳固根基，增加气血上限', effect: { type: 'maxHpBuff', baseValue: 50, bonusAttr: 'bone', bonusPerPoint: 0.5 }, detail: '气血上限+50，每点根骨额外+0.5' },
-      { id: 3, name: '调息', type: '被动', unlockLevel: 7, icon: '🧘', description: '吐纳调息，每回合自动恢复气血', effect: { type: 'autoHeal', baseValue: 5, levelMultiplier: 3, bonusAttr: 'qi', bonusPerPoint: 0.8 }, detail: '每回合恢复5+等级×3+内息×0.8点气血' }
+      { id: 1, name: '培元', type: '被动', unlockLevel: 1, icon: '🔋', description: '固本培元，增加防御力', passiveIds: ['zhenyang_tunxi_peiyuan'], detail: '基础防御+30，每点根骨额外+0.5' },
+      { id: 2, name: '固本', type: '被动', unlockLevel: 4, icon: '💪', description: '稳固根基，增加气血上限', passiveIds: ['zhenyang_tunxi_guben'], detail: '气血上限+50，每点根骨额外+0.5' },
+      { id: 3, name: '调息', type: '被动', unlockLevel: 7, icon: '🧘', description: '吐纳调息，每回合自动恢复气血', passiveIds: ['inner_tunxi_zhenyang'], detail: '每回合恢复5+等级×3+内息×0.8点气血' }
     ]
   },
   {
@@ -348,17 +444,17 @@ const INITIAL_PLAYER_MARTIAL_ARTS = [
     baseBonus: { lightSkill: 5 },
     stats: { speed: 25, dodge: 20, attack: 10 },
     skills: [
-      { id: 1, name: '踏云', type: '被动', unlockLevel: 1, icon: '☁️', description: '脚踏祥云，增加闪避', effect: { type: 'buff', stat: 'dodge', baseValue: 15, bonusAttr: 'agility', bonusPerPoint: 0.5 }, detail: '基础闪避+15，每点身法额外+0.5' },
-      { id: 2, name: '逐日', type: '被动', unlockLevel: 4, icon: '☀️', description: '追逐烈日，增加攻击', effect: { type: 'buff', stat: 'attack', baseValue: 10, bonusAttr: 'strength', bonusPerPoint: 0.5 }, detail: '基础攻击+10，每点臂力额外+0.5' },
-      { id: 3, name: '凌虚', type: '被动', unlockLevel: 7, icon: '✨', description: '凌空虚步，增加速度', effect: { type: 'buff', stat: 'speed', baseValue: 15, bonusAttr: 'agility', bonusPerPoint: 0.6 }, detail: '基础速度+15，每点身法额外+0.6' }
+      { id: 1, name: '踏云', type: '被动', unlockLevel: 1, icon: '☁️', description: '脚踏祥云，增加闪避', passiveIds: ['zhenyang_tayun_tayun'], detail: '基础闪避+15，每点身法额外+0.5' },
+      { id: 2, name: '逐日', type: '被动', unlockLevel: 4, icon: '☀️', description: '追逐烈日，增加攻击', passiveIds: ['zhenyang_tayun_zhuri'], detail: '基础攻击+10，每点臂力额外+0.5' },
+      { id: 3, name: '凌虚', type: '被动', unlockLevel: 7, icon: '✨', description: '凌空虚步，增加速度', passiveIds: ['zhenyang_tayun_lingxu'], detail: '基础速度+15，每点身法额外+0.6' }
     ]
   }
 ];
 
 // 角色列表（跟角色系统一致）
 const martialCharacters = [
-  { id: 1, name: '少侠', icon: '👨‍🦰' },
-  { id: 2, name: '苏瑶', icon: '👩' }
+  { id: 1, name: '少侠', portraitUrl: PLAYER_PORTRAIT_MALE, iconFallback: '👨‍🦰' },
+  { id: 2, name: '苏瑶', portraitUrl: PLAYER_PORTRAIT_FEMALE, iconFallback: '👩' }
 ];
 
 let currentMartialCharacterId = 1;
@@ -373,7 +469,111 @@ function normalizePlayerMartialArtsList(parsed) {
   const list = parsed.map((m) => {
     if (!m || typeof m.id !== 'number') return m;
     const tmpl = lib.find((x) => x && x.id === m.id);
-    // 《阵形剑诀》id10：旧档可能仍为垫步刺 / 守拙 buff%，从库同步技能表
+    // id3《正阳吐纳诀》：培元/固本表驱动 + 调息 passiveIds；旧档内联 effect 或缺 passiveIds 时从库同步
+    if (m.id === 3 && tmpl && Array.isArray(tmpl.skills)) {
+      const s0 = m.skills && m.skills[0];
+      const s1 = m.skills && m.skills[1];
+      const s2 = m.skills && m.skills[2];
+      const oldShape =
+        !s0 ||
+        s0.name !== '培元' ||
+        !Array.isArray(s0.passiveIds) ||
+        s0.passiveIds.indexOf('zhenyang_tunxi_peiyuan') < 0 ||
+        !s1 ||
+        s1.name !== '固本' ||
+        !Array.isArray(s1.passiveIds) ||
+        s1.passiveIds.indexOf('zhenyang_tunxi_guben') < 0 ||
+        !s2 ||
+        s2.name !== '调息' ||
+        s2.unlockLevel !== 7 ||
+        !Array.isArray(s2.passiveIds) ||
+        s2.passiveIds.indexOf('inner_tunxi_zhenyang') < 0;
+      if (oldShape) {
+        changed = true;
+        return { ...m, skills: JSON.parse(JSON.stringify(tmpl.skills)) };
+      }
+    }
+    // id1《正阳基础剑式》：阳刚表驱动 + 剑影 passiveIds；旧档内联 followAttack / 阳刚 effect 从库同步
+    if (m.id === 1 && tmpl && Array.isArray(tmpl.skills)) {
+      const s1 = m.skills && m.skills[1];
+      const s2 = m.skills && m.skills[2];
+      const oldShape =
+        !s1 ||
+        s1.name !== '阳刚' ||
+        !Array.isArray(s1.passiveIds) ||
+        s1.passiveIds.indexOf('zhenyang_jianfa_yanggang') < 0 ||
+        !s2 ||
+        s2.name !== '剑影' ||
+        s2.unlockLevel !== 7 ||
+        !Array.isArray(s2.passiveIds) ||
+        s2.passiveIds.indexOf('jianying_follow') < 0;
+      if (oldShape) {
+        changed = true;
+        return { ...m, skills: JSON.parse(JSON.stringify(tmpl.skills)) };
+      }
+    }
+    // id5《踏云步》：三被动表驱动；旧档内联 buff 从库同步
+    if (m.id === 5 && tmpl && Array.isArray(tmpl.skills)) {
+      const s0 = m.skills && m.skills[0];
+      const s1 = m.skills && m.skills[1];
+      const s2 = m.skills && m.skills[2];
+      const oldShape =
+        !s0 ||
+        s0.name !== '踏云' ||
+        !Array.isArray(s0.passiveIds) ||
+        s0.passiveIds.indexOf('zhenyang_tayun_tayun') < 0 ||
+        !s1 ||
+        s1.name !== '逐日' ||
+        !Array.isArray(s1.passiveIds) ||
+        s1.passiveIds.indexOf('zhenyang_tayun_zhuri') < 0 ||
+        !s2 ||
+        s2.name !== '凌虚' ||
+        !Array.isArray(s2.passiveIds) ||
+        s2.passiveIds.indexOf('zhenyang_tayun_lingxu') < 0;
+      if (oldShape) {
+        changed = true;
+        return { ...m, skills: JSON.parse(JSON.stringify(tmpl.skills)) };
+      }
+    }
+    // id6《落草剑经》：旧档名/旧三式（缠斗、1/4/7 解锁等）从库同步
+    if (m.id === 6 && tmpl && Array.isArray(tmpl.skills)) {
+      const s0 = m.skills && m.skills[0];
+      const s1 = m.skills && m.skills[1];
+      const s2 = m.skills && m.skills[2];
+      const oldShape =
+        m.name === '落草快剑' ||
+        m.name !== tmpl.name ||
+        !s0 ||
+        s0.name !== '疾刺' ||
+        s0.unlockLevel !== 3 ||
+        !s0.plainFx ||
+        !s0.useHitRoll ||
+        !Array.isArray(s0.passiveIds) ||
+        s0.passiveIds.indexOf('luocao_jici_miss_follow') < 0 ||
+        s0.mpCost == null ||
+        !s1 ||
+        s1.name !== '缠影' ||
+        s1.unlockLevel !== 6 ||
+        !Array.isArray(s1.passiveIds) ||
+        s1.passiveIds.indexOf('luocao_chanying_hit') < 0 ||
+        !s2 ||
+        s2.name !== '绝尘' ||
+        s2.unlockLevel !== 9 ||
+        !Array.isArray(s2.passiveIds) ||
+        s2.passiveIds.indexOf('juechen_turn_start') < 0;
+      if (oldShape) {
+        changed = true;
+        return {
+          ...m,
+          name: tmpl.name,
+          description: tmpl.description,
+          baseBonus: tmpl.baseBonus ? { ...tmpl.baseBonus } : m.baseBonus,
+          stats: tmpl.stats ? { ...tmpl.stats } : m.stats,
+          skills: JSON.parse(JSON.stringify(tmpl.skills))
+        };
+      }
+    }
+    // 《阵形剑诀》id10：旧档可能仍为垫步刺 / 守拙无 passiveIds，从库同步技能表
     if (m.id === 10 && tmpl && Array.isArray(tmpl.skills)) {
       const s0 = m.skills && m.skills[0];
       const s1 = m.skills && m.skills[1];
@@ -382,13 +582,14 @@ function normalizePlayerMartialArtsList(parsed) {
         s0.name !== '对位刺' ||
         !s1 ||
         s1.name !== '守拙' ||
-        s1.effect?.type !== 'defenseBuff';
+        !Array.isArray(s1.passiveIds) ||
+        s1.passiveIds.indexOf('wuguan_zhenxing_shouzhuo') < 0;
       if (oldShape) {
         changed = true;
         return { ...m, skills: JSON.parse(JSON.stringify(tmpl.skills)) };
       }
     }
-    // 《沉桥拳诀》id13：旧档技能名或被动非招架 buff，从库同步
+    // 《沉桥拳诀》id13：旧档技能名或被动非招架表驱动，从库同步
     if (m.id === 13 && tmpl && Array.isArray(tmpl.skills)) {
       const s0 = m.skills && m.skills[0];
       const s1 = m.skills && m.skills[1];
@@ -398,14 +599,14 @@ function normalizePlayerMartialArtsList(parsed) {
         !s0.punchFx ||
         !s1 ||
         s1.name !== '沉肩' ||
-        s1.effect?.type !== 'buff' ||
-        s1.effect?.stat !== 'parry';
+        !Array.isArray(s1.passiveIds) ||
+        s1.passiveIds.indexOf('wuguan_chenqiao_chenjian') < 0;
       if (oldShape) {
         changed = true;
         return { ...m, skills: JSON.parse(JSON.stringify(tmpl.skills)) };
       }
     }
-    // id14《开合刀法》：旧档「破荒/劈荒/砺锋」等或缺 bladeFx / 被动非「合」攻击 buff 时，从库同步
+    // id14《开合刀法》：旧档「破荒/劈荒/砺锋」等或缺 bladeFx / 被动非表驱动「合」时，从库同步
     if (m.id === 14 && tmpl && Array.isArray(tmpl.skills)) {
       const s0 = m.skills && m.skills[0];
       const s1 = m.skills && m.skills[1];
@@ -415,14 +616,14 @@ function normalizePlayerMartialArtsList(parsed) {
         !s0.bladeFx ||
         !s1 ||
         s1.name !== '合' ||
-        s1.effect?.type !== 'buff' ||
-        s1.effect?.stat !== 'attack';
+        !Array.isArray(s1.passiveIds) ||
+        s1.passiveIds.indexOf('wuguan_kaihe_he') < 0;
       if (oldShape) {
         changed = true;
         return { ...m, skills: JSON.parse(JSON.stringify(tmpl.skills)) };
       }
     }
-    // 《养气术》id11：旧档带主动/换气固元等，或「纳息」非 maxHpBuff+根骨，从库同步（现为两被动）
+    // 《养气术》id11：旧档带主动/换气固元等，或「纳息」非表驱动，从库同步（现为两被动）
     if (m.id === 11 && tmpl && Array.isArray(tmpl.skills)) {
       const s0 = m.skills && m.skills[0];
       const s1 = m.skills && m.skills[1];
@@ -430,17 +631,19 @@ function normalizePlayerMartialArtsList(parsed) {
         !s0 ||
         s0.name !== '纳息' ||
         s0.type !== '被动' ||
-        s0.effect?.type !== 'maxHpBuff' ||
-        s0.effect?.bonusAttr !== 'bone' ||
+        !Array.isArray(s0.passiveIds) ||
+        s0.passiveIds.indexOf('wuguan_yangqi_naxi') < 0 ||
         !s1 ||
         s1.name !== '归根' ||
-        s1.effect?.type !== 'autoHeal';
+        s1.unlockLevel !== 6 ||
+        !Array.isArray(s1.passiveIds) ||
+        s1.passiveIds.indexOf('inner_yangqi_guigen') < 0;
       if (oldShape) {
         changed = true;
         return { ...m, skills: JSON.parse(JSON.stringify(tmpl.skills)) };
       }
     }
-    // 《挪步诀》id12：旧档「抢位/挫步」主动或「卸风」非速度 buff 等，从库同步（现为双被动）
+    // 《挪步诀》id12：旧档「抢位/挫步」主动或被动非表驱动等，从库同步（现为双被动）
     if (m.id === 12 && tmpl && Array.isArray(tmpl.skills)) {
       const s0 = m.skills && m.skills[0];
       const s1 = m.skills && m.skills[1];
@@ -448,12 +651,12 @@ function normalizePlayerMartialArtsList(parsed) {
         !s0 ||
         s0.name !== '挪寸' ||
         s0.type !== '被动' ||
-        s0.effect?.type !== 'buff' ||
-        s0.effect?.stat !== 'dodge' ||
+        !Array.isArray(s0.passiveIds) ||
+        s0.passiveIds.indexOf('wuguan_nuobu_nuocun') < 0 ||
         !s1 ||
         s1.name !== '卸风' ||
-        s1.effect?.type !== 'buff' ||
-        s1.effect?.stat !== 'speed';
+        !Array.isArray(s1.passiveIds) ||
+        s1.passiveIds.indexOf('wuguan_nuobu_xiefeng') < 0;
       if (oldShape) {
         changed = true;
         return { ...m, skills: JSON.parse(JSON.stringify(tmpl.skills)) };

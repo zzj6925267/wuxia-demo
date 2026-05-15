@@ -11,7 +11,12 @@ const BattleEntry = {
     /** 可选：来源页面 id，便于日后统计/调试 */
     source: 'battle_entry_source',
     /** 地图过场黑屏切入后，战斗页做一次黑幕淡出 */
-    battleEnterCinematic: 'battle_enter_cinematic'
+    battleEnterCinematic: 'battle_enter_cinematic',
+    /**
+     * 副本进战上下文（JSON）。战斗页 init 会 clearEnemyLaunchContext，但不会删此键；
+     * 由地图页在战后结算/读档时消费并 remove。
+     */
+    dungeonBattleContext: 'dungeon_battle_context'
   },
 
   /**
@@ -35,6 +40,18 @@ const BattleEntry = {
     } else {
       localStorage.removeItem(this.KEYS.source);
     }
+    if (opts.dungeonBattleContext != null) {
+      try {
+        localStorage.setItem(
+          this.KEYS.dungeonBattleContext,
+          JSON.stringify(opts.dungeonBattleContext)
+        );
+      } catch (e) {
+        console.warn('BattleEntry.setPartyBattleContext: dungeonBattleContext 写入失败', e);
+      }
+    } else {
+      localStorage.removeItem(this.KEYS.dungeonBattleContext);
+    }
   },
 
   /**
@@ -57,6 +74,7 @@ const BattleEntry = {
   clearEnemyLaunchContext() {
     localStorage.removeItem(this.KEYS.enemyId);
     localStorage.removeItem(this.KEYS.source);
+    // 刻意不删 KEYS.dungeonBattleContext，供战后地图页推进副本用。
   }
 };
 

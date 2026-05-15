@@ -248,6 +248,39 @@
       font-size: 12px;
       margin-top: 4px;
     }
+
+    .dungeon-section {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #5d4037;
+    }
+    .dungeon-title {
+      color: #bcaaa4;
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+    .dungeon-sub {
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 10px;
+      line-height: 1.45;
+    }
+    .dungeon-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .enemy-item.dungeon-stage--locked {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+      border-color: #444;
+      background: rgba(40, 40, 40, 0.35);
+    }
+    .enemy-item.dungeon-stage--locked:hover {
+      transform: none;
+      background: rgba(40, 40, 40, 0.35);
+    }
     
     .herb-section {
       margin-top: 15px;
@@ -447,6 +480,23 @@
         <h3 class="enemy-title">⚔️ 此处敌人</h3>
         <div class="enemy-list" id="enemyList"></div>
       </div>
+
+      <div class="dungeon-section" id="heifengDungeonSection" style="display: none;">
+        <h3 class="dungeon-title">🏯 黑风寨副本</h3>
+        <p class="dungeon-sub">多房间山寨：逐房清剿王二柱、刁老炮、茅老獾后，从北口离开返回山林。</p>
+        <div class="dungeon-list">
+          <div class="enemy-item" onclick="openHeifengDungeon()" role="button" tabindex="0">
+            <span class="enemy-icon">⛩️</span>
+            <div class="enemy-info">
+              <div>
+                <span class="enemy-name">进入山寨</span>
+                <span class="enemy-level">子地图</span>
+              </div>
+              <div class="enemy-stats">加载黑风寨营地地图</div>
+            </div>
+          </div>
+        </div>
+      </div>
       
       <div class="herb-section" id="herbSection" style="display: none;">
         <h3 class="herb-title">🌿 采集区域</h3>
@@ -475,6 +525,16 @@
         // 飘字队列
         let floatTextQueue = [];
         let isShowingFloatText = false;
+
+        function openHeifengDungeon() {
+          window.location.href = 'heifeng_dungeon.html';
+        }
+
+        function updateHeifengDungeonSection() {
+          const sec = document.getElementById('heifengDungeonSection');
+          if (!sec) return;
+          sec.style.display = currentLocation === 'heifeng_entrance' ? 'block' : 'none';
+        }
 
         // 更新银两显示
         function updateGoldDisplay(gold) {
@@ -577,7 +637,7 @@
           }
         }
 
-        // 处理待处理的战斗奖励
+        /** @returns {boolean} 是否成功应用并清除了待领取的胜利奖励 */
         function applyPendingBattleRewards() {
           console.log('=== applyPendingBattleRewards 开始 ===');
           const pendingData = window.BattleSettlement
@@ -586,7 +646,7 @@
           console.log('pending_battle_rewards:', pendingData);
           if (!pendingData) {
             console.log('没有待处理的战斗奖励');
-            return;
+            return false;
           }
 
           try {
@@ -683,10 +743,11 @@
               localStorage.removeItem('pending_battle_rewards');
             }
             console.log('战斗奖励已应用');
+            return true;
           } catch (error) {
             console.error('应用战斗奖励失败:', error);
+            return false;
           }
-          console.log('=== applyPendingBattleRewards 结束 ===');
         }
 
         function runSmallMapBattleRewardFloat(text, color, onDone) {
@@ -729,7 +790,7 @@
           }, 1000);
         }
 
-        function playPostBattleMapRewardFloats() {
+        function playPostBattleMapRewardFloats(onDone) {
           let data = null;
           if (window.BattleSettlement && typeof BattleSettlement.takePostBattleMapRewardFloats === 'function') {
             data = BattleSettlement.takePostBattleMapRewardFloats();
@@ -744,7 +805,13 @@
               localStorage.removeItem('battle_map_reward_floats');
             }
           }
-          if (!data) return;
+          function finish() {
+            if (typeof onDone === 'function') onDone();
+          }
+          if (!data) {
+            finish();
+            return;
+          }
           const exp = parseInt(data.exp, 10) || 0;
           const gold = parseInt(data.gold, 10) || 0;
           const expReward = parseInt(data.expReward, 10) || 0;
@@ -752,9 +819,16 @@
           if (exp > 0) lines.push([`经验 +${exp}`, '#ffeb3b']);
           if (gold > 0) lines.push([`银两 +${gold}`, '#ff9800']);
           if (expReward > 0) lines.push([`阅历 +${expReward}`, '#9c27b0']);
+          if (lines.length === 0) {
+            finish();
+            return;
+          }
           let idx = 0;
           function next() {
-            if (idx >= lines.length) return;
+            if (idx >= lines.length) {
+              finish();
+              return;
+            }
             const pair = lines[idx++];
             runSmallMapBattleRewardFloat(pair[0], pair[1], () => {
               setTimeout(next, 380);
@@ -769,8 +843,8 @@
               ? BattleSettlement.attachPostBattleMapBlackout()
               : null;
 
-          applyPendingBattleRewards();
-          
+          const rewardsApplied = applyPendingBattleRewards();
+
           // 加载playerData
           const savedPlayerData = localStorage.getItem('playerData');
           if (savedPlayerData) {
@@ -780,24 +854,42 @@
               console.error('加载playerData失败:', e);
             }
           }
-          
+
           // 加载银两显示
           loadGoldFromSave();
-          
+
+          const forestAfterHeifeng = localStorage.getItem('forest_after_heifeng_exit');
+          if (forestAfterHeifeng && LOCATIONS[forestAfterHeifeng]) {
+            currentLocation = forestAfterHeifeng;
+            localStorage.removeItem('forest_after_heifeng_exit');
+          }
+
           // 检查是否有战斗前的位置，如果有则返回原地
           const preBattleLoc = localStorage.getItem('preBattleLocation');
           if (preBattleLoc && LOCATIONS[preBattleLoc]) {
             currentLocation = preBattleLoc;
             localStorage.removeItem('preBattleLocation');
           }
-          
+
+          if (localStorage.getItem('heifeng_forest_after_defeat') === '1') {
+            localStorage.removeItem('heifeng_forest_after_defeat');
+            try {
+              localStorage.removeItem('heifeng_dungeon_run');
+            } catch (e) {}
+            showFloatText('败退山林……已回到黑风山寨外。', '#78909c');
+          }
+
           renderMap();
           updatePanel();
 
+          const afterRewardFloats = function () {};
+
           if (exitBlack && window.BattleSettlement) {
-            BattleSettlement.dismissPostBattleMapBlackout(exitBlack, playPostBattleMapRewardFloats);
+            BattleSettlement.dismissPostBattleMapBlackout(exitBlack, () => {
+              playPostBattleMapRewardFloats(afterRewardFloats);
+            });
           } else {
-            playPostBattleMapRewardFloats();
+            playPostBattleMapRewardFloats(afterRewardFloats);
           }
         }
 
@@ -876,6 +968,7 @@
       }
       
       updateEnemyList();
+      updateHeifengDungeonSection();
       updateHerbList();
     }
 
@@ -1117,6 +1210,7 @@ function updateCollectTaskProgress() {
       } else {
         localStorage.setItem('battleEnemyId', enemyId);
         localStorage.setItem('preBattleLocation', currentLocation);
+        localStorage.removeItem('dungeon_battle_context');
       }
       window.location.href = 'battle.html';
     }

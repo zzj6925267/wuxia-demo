@@ -585,16 +585,17 @@ body {
 }
 
 .character-main {
-  padding: 20px;
-  max-height: calc(90vh - 80px);
+  padding: 12px 14px;
+  max-height: min(calc(100dvh - 72px), calc(90vh - 72px));
   overflow-y: auto;
+  min-height: 0;
 }
 
 .char-tabs {
   display: flex;
   gap: 10px;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
   border-bottom: 1px solid #444;
 }
 
@@ -673,7 +674,7 @@ body {
   justify-content: center;
   align-items: center;
   gap: 15px;
-  margin-bottom: 25px;
+  margin-bottom: 16px;
 }
 
 .char-equip-left,
@@ -689,10 +690,10 @@ body {
 }
 
 .char-icon {
-  font-size: 100px;
+  font-size: 80px;
   background: linear-gradient(135deg, #3d4345, #2d3436);
   border-radius: 50%;
-  padding: 25px;
+  padding: 18px;
   border: 3px solid #c9a227;
   box-shadow: 0 0 20px rgba(201, 162, 39, 0.3);
 }
@@ -769,8 +770,8 @@ body {
 .char-info {
   background: #3d4345;
   border-radius: 10px;
-  padding: 15px;
-  margin-bottom: 20px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
 }
 
 .info-row {
@@ -798,7 +799,7 @@ body {
 }
 
 .char-status {
-  margin-bottom: 25px;
+  margin-bottom: 14px;
 }
 
 .status-row {
@@ -844,7 +845,7 @@ body {
 }
 
 .char-skills {
-  margin-bottom: 25px;
+  margin-bottom: 14px;
 }
 
 .char-skills h3 {
@@ -864,9 +865,9 @@ body {
 .skill-item {
   background: #3d4345;
   border-radius: 10px;
-  padding: 15px;
+  padding: 12px;
   text-align: center;
-  min-width: 140px;
+  min-width: 120px;
   cursor: pointer;
   transition: all 0.3s;
   border: 2px solid transparent;
@@ -879,16 +880,16 @@ body {
 }
 
 .skill-item span:first-child {
-  font-size: 32px;
+  font-size: 28px;
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .skill-item span:nth-child(2) {
-  font-size: 13px;
+  font-size: 12px;
   color: #fff;
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 4px;
 }
 
 .skill-item span:last-child {
@@ -1036,7 +1037,7 @@ body {
 
 .char-modal-body {
   padding: 18px;
-  max-height: 450px;
+  max-height: min(52dvh, 450px);
   overflow-y: auto;
 }
 
@@ -1205,5 +1206,35 @@ body {
 
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* 角色弹层：视口较矮时压缩头像与留白，减少「整页找滚动条」感 */
+@media (max-height: 780px) {
+  .character-panel {
+    padding: 10px;
+  }
+
+  .character-header {
+    padding: 12px 14px;
+  }
+
+  .character-title {
+    font-size: 18px;
+  }
+
+  .char-icon {
+    font-size: 64px;
+    padding: 14px;
+  }
+
+  .char-display {
+    margin-bottom: 12px;
+    gap: 10px;
+  }
+
+  .char-equip-slot {
+    padding: 8px 12px;
+    min-width: 76px;
   }
 }

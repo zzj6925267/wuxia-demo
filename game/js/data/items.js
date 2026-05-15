@@ -307,6 +307,59 @@ const ITEMS = {
     price: 15
   },
 
+  /** 黑风寨茅老獾概率掉落：仅当 30% 命中后再随机白/绿/蓝三档之一 */
+  cubu_jinzhuang_bai: {
+    id: 'cubu_jinzhuang_bai',
+    name: '粗布劲装',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'armor',
+    quality: 'common',
+    requiredLevel: 20,
+    description: '二十级凡品。山贼私藏的粗布短打，耐磨不耐砍。',
+    icon: '👕',
+    bonus: {
+      defense: 14,
+      hp: 28
+    },
+    price: 40
+  },
+  cubu_jinzhuang_lv: {
+    id: 'cubu_jinzhuang_lv',
+    name: '粗布劲装',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'armor',
+    quality: 'uncommon',
+    requiredLevel: 20,
+    description: '二十级良品。纺线密实，筋骨处加了双层布。',
+    icon: '👕',
+    bonus: {
+      defense: 20,
+      hp: 45,
+      agility: 4
+    },
+    price: 85
+  },
+  cubu_jinzhuang_lan: {
+    id: 'cubu_jinzhuang_lan',
+    name: '粗布劲装',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'armor',
+    quality: 'rare',
+    requiredLevel: 20,
+    description: '二十级上品。浸过桐油的里衬，寻常劈砍不易透。',
+    icon: '👕',
+    bonus: {
+      defense: 28,
+      hp: 62,
+      agility: 6,
+      dodgeRate: 4
+    },
+    price: 160
+  },
+
   leather_armor: {
     id: 'leather_armor',
     name: '皮甲',
@@ -330,9 +383,9 @@ const ITEMS = {
     type: 'equipment',
     category: 'equipment',
     equipSlot: 'armor',
-    quality: 'uncommon',
-    requiredLevel: 8,
-    description: '山贼常用的夜行衣，虽破旧但灵活',
+    quality: 'legendary',
+    requiredLevel: 20,
+    description: '二十级绝品。山贼头目私藏的夜行衣，虽显破旧，裁缝里仍留着旧日身法的余劲。',
     icon: '🥷',
     bonus: {
       defense: 10,
@@ -461,6 +514,24 @@ const ITEMS = {
       spirit: 5
     },
     price: 150
+  },
+
+  /** 黑风寨刁老炮概率掉落占位（粗布护腕，20 级白装骨架，数值可再调） */
+  cubu_wrist: {
+    id: 'cubu_wrist',
+    name: '粗布护腕',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'accessory',
+    quality: 'common',
+    requiredLevel: 20,
+    description: '山贼堆里常见的粗布条缠腕，略挡擦刮。',
+    icon: '🧤',
+    bonus: {
+      defense: 4,
+      parry: 3
+    },
+    price: 12
   },
 
   jade_pendant: {

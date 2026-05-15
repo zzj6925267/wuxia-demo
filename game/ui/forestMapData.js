@@ -47,7 +47,7 @@ const FOREST_LOCATIONS = {
     x: 680, 
     y: 440, 
     connections: ['shanze_shed'], 
-    desc: '【副本入口】用原木围起的山寨营地，正中摆着木桌酒坛，旗杆上挂着破布黑旗，写着「黑风」二字。'
+    desc: '【副本入口】用原木围起的山寨营地。由此进入「黑风寨」子地图，逐房清剿后再从北口返回山林。'
   },
   luancao_slope: { 
     id: 'luancao_slope', 

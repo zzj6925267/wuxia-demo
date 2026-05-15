@@ -7,7 +7,9 @@ const AttributeHelper = {
   _lastWarnings: [], // 记录最后几个警告，避免重复
 
   // === 受保护的属性 ===
-  _protectedProps: ['remainingPoints', 'martialArts', 'equipped', 'stats'],
+  // 勿将 equipped 列入保护：否则 merge 存档后会把 equipped 恢复成合并前的内存，
+  // 导致卸下/换装已写入 game_save_0 仍被下一帧 loadFromSave 还原。
+  _protectedProps: ['remainingPoints', 'martialArts', 'stats'],
   
   // === 有效属性列表 ===
   _validAttrs: {

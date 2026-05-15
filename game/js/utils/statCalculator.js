@@ -201,15 +201,71 @@ const StatCalculator = {
     martialArts.forEach(martial => {
       if (martial.type === '内功' && martial.equipped && martial.skills) {
         martial.skills.forEach(skill => {
-          if (martial.currentLevel >= skill.unlockLevel && skill.effect) {
+          if (martial.currentLevel >= skill.unlockLevel) {
+            const segs =
+              typeof expandTurnStartAutoHealActions === 'function'
+                ? expandTurnStartAutoHealActions(skill)
+                : [];
+            if (segs.length) {
+              segs.forEach(seg => {
+                if (typeof computeInnerAutoHealOnce === 'function') {
+                  innerSkillEffects.autoHeal += computeInnerAutoHealOnce(
+                    player.stats,
+                    martial.currentLevel,
+                    seg
+                  );
+                }
+              });
+            }
+
+            const loadout =
+              typeof expandLoadoutPassiveStatBonuses === 'function'
+                ? expandLoadoutPassiveStatBonuses(skill)
+                : [];
+            if (loadout.length) {
+              loadout.forEach(effect => {
+                if (effect.type === 'maxHpBuff') {
+                  let hpBonus = effect.baseValue || 0;
+                  if (effect.bonusAttr) {
+                    hpBonus += (player.stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+                  }
+                  innerSkillEffects.maxHpBonus += Math.ceil(hpBonus);
+                } else if (effect.type === 'defenseBuff') {
+                  let defenseBonus = effect.baseValue || 0;
+                  if (effect.bonusAttr) {
+                    defenseBonus +=
+                      (player.stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+                  }
+                  innerSkillEffects.defenseBonus += Math.ceil(defenseBonus);
+                } else if (effect.type === 'buff') {
+                  innerSkillEffects.allBuffs.push({
+                    martialName: martial.name,
+                    skillName: skill.name,
+                    effect: effect
+                  });
+                }
+              });
+            }
+
+            if (loadout.length) return;
+
             const effect = skill.effect;
-            
+            if (!effect) return;
+
             if (effect.type === 'autoHeal') {
-              // 调息：每回合回血
-              const autoHealAmount = (effect.baseValue || 5) + 
-                martial.currentLevel * (effect.levelMultiplier || 1) + 
-                (player.stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
-              innerSkillEffects.autoHeal += Math.ceil(autoHealAmount);
+              if (typeof computeInnerAutoHealOnce === 'function') {
+                innerSkillEffects.autoHeal += computeInnerAutoHealOnce(
+                  player.stats,
+                  martial.currentLevel,
+                  effect
+                );
+              } else {
+                const autoHealAmount =
+                  (effect.baseValue || 5) +
+                  martial.currentLevel * (effect.levelMultiplier || 1) +
+                  (player.stats[effect.bonusAttr] || 0) * (effect.bonusPerPoint || 0);
+                innerSkillEffects.autoHeal += Math.ceil(autoHealAmount);
+              }
             } else if (effect.type === 'maxHpBuff') {
               // 固本：增加气血上限
               let hpBonus = effect.baseValue || 0;

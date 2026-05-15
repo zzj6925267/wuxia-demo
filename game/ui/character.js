@@ -550,12 +550,15 @@ function loadFromSave() {
       char.stats.maxMp = player.maxMp;
     }
     
-    // 从存档读取装备数据（如果有）
-    if (player.equipped !== undefined) {
+    // 根级 player.equipped 为旧版单角色字段；若已有 player.characters 则以队伍为准，避免陈旧根数据盖掉队伍装备。
+    if (
+      player.equipped !== undefined &&
+      (!player.characters || !Array.isArray(player.characters) || player.characters.length === 0)
+    ) {
       char.equipped = player.equipped;
-      console.log('从存档读取装备数据:', char.equipped);
+      console.log('从存档读取装备数据（根级）:', char.equipped);
     }
-    
+
     // 如果存档中有完整的角色数据，优先使用
     if (player.characters && Array.isArray(player.characters)) {
       console.log('=== 加载存档角色数据 ===');
@@ -852,6 +855,7 @@ function loadCharacterData() {
     else if (lowerAttr === 'dodge') skillVal = skillBonuses.dodgeBonus || 0;
     else if (lowerAttr === 'speed') skillVal = skillBonuses.speedBonus || 0;
     else if (lowerAttr === 'defense') skillVal = skillBonuses.defenseBonus || 0;
+    else if (lowerAttr === 'hit') skillVal = skillBonuses.hitBonus || 0;
     else if (lowerAttr === 'parry') skillVal = skillBonuses.parryBonus || 0;
     
     const total = baseVal + fourDimBonus + martialVal + skillVal + equipVal;
@@ -1313,9 +1317,10 @@ function bindEquipmentEventsDirect() {
         console.log('=== 装备项被点击 (addEventListener) ===');
         console.log('点击事件:', e);
         const type = this.getAttribute('data-type');
-        const itemId = parseInt(this.getAttribute('data-itemid'));
+        const rawId = this.getAttribute('data-itemid');
+        const itemId = rawId === '' || rawId == null ? null : Number.isNaN(Number(rawId)) ? rawId : Number(rawId);
         console.log('装备项点击，类型:', type, '物品ID:', itemId);
-        if (type && itemId) {
+        if (type && itemId !== '' && itemId != null) {
           equipCharItem(type, itemId);
         }
       });
@@ -1326,9 +1331,10 @@ function bindEquipmentEventsDirect() {
         console.log('=== 装备项被点击 (onclick) ===');
         console.log('点击事件:', e);
         const type = this.getAttribute('data-type');
-        const itemId = parseInt(this.getAttribute('data-itemid'));
+        const rawId = this.getAttribute('data-itemid');
+        const itemId = rawId === '' || rawId == null ? null : Number.isNaN(Number(rawId)) ? rawId : Number(rawId);
         console.log('装备项点击，类型:', type, '物品ID:', itemId);
-        if (type && itemId) {
+        if (type && itemId !== '' && itemId != null) {
           equipCharItem(type, itemId);
         }
       };
@@ -1363,9 +1369,10 @@ function handleEquipmentClick(e) {
     console.log('点击了装备项');
     // 从 data-* 属性获取装备类型和物品ID
     const type = equipItem.getAttribute('data-type');
-    const itemId = parseInt(equipItem.getAttribute('data-itemid'));
+    const rawId = equipItem.getAttribute('data-itemid');
+    const itemId = rawId === '' || rawId == null ? null : Number.isNaN(Number(rawId)) ? rawId : Number(rawId);
     console.log('穿戴装备类型:', type, '物品ID:', itemId);
-    if (type && itemId) {
+    if (type && itemId !== '' && itemId != null) {
       equipCharItem(type, itemId);
     }
     return;
@@ -1401,8 +1408,9 @@ function equipCharItem(type, itemId) {
   const char = getCurrentCharacter();
   console.log('当前角色:', char?.name);
   console.log('角色对象:', char);
-  
-  const item = PLAYER_INVENTORY[type].find(i => i.id === itemId);
+  if (!char.equipped) char.equipped = {};
+
+  const item = PLAYER_INVENTORY[type].find(i => String(i.id) === String(itemId));
   console.log('找到的物品:', item);
   
   if (item) {
@@ -1440,7 +1448,8 @@ function unequipCharItem(type) {
   const char = getCurrentCharacter();
   console.log('当前角色:', char?.name);
   console.log('当前装备:', char.equipped[type]);
-  
+  if (!char.equipped) char.equipped = {};
+
   char.equipped[type] = null;
   console.log('装备已卸下:', char.equipped);
   
@@ -1471,6 +1480,9 @@ function saveCharactersToLocalStorage() {
       if (save.player) {
         // 同步所有角色的数据（包括装备）
         save.player.characters = window.characters;
+        try {
+          delete save.player.equipped;
+        } catch (e) {}
         localStorage.setItem('game_save_0', JSON.stringify(save));
         console.log('所有角色数据已同步到 game_save_0');
         
@@ -1610,6 +1622,13 @@ function persistCharactersAndGameSave() {
     save.player.agility = char.stats.agility;
     save.player.bone = char.stats.bone;
     save.player.qi = char.stats.qi;
+    if (!save.player.stats || typeof save.player.stats !== 'object') {
+      save.player.stats = {};
+    }
+    save.player.stats.strength = char.stats.strength;
+    save.player.stats.agility = char.stats.agility;
+    save.player.stats.bone = char.stats.bone;
+    save.player.stats.qi = char.stats.qi;
     save.player.remainingPoints = char.remainingPoints;
     save.player.hp = char.health.current;
     save.player.maxHp = char.health.max;
@@ -1715,7 +1734,7 @@ function updateStatsFromFour() {
   s.maxHp = s.baseHp + innerBonuses.maxHpBonus;
   s.maxMp = s.baseMaxMp;
   s.speed = s.baseSpeed + innerBonuses.speedBonus;
-  s.hit = s.baseHit;
+  s.hit = s.baseHit + (innerBonuses.hitBonus || 0);
   s.dodge = s.baseDodge + innerBonuses.dodgeBonus;
   // 防御：不把武学被动写入 stats.defense，避免与 loadCharacterData 里 skillVal 重复相加（旧档若曾叠过，开面板保存一次后会随 persist 逐渐正常）
   let d = s.defense != null && s.defense !== '' ? Number(s.defense) : 10;
@@ -1735,6 +1754,7 @@ function getCharacterInnerSkillBonuses(char) {
   let dodgeBonus = 0;
   let speedBonus = 0;
   let parryBonus = 0;
+  let hitBonus = 0;
 
   const stats = char && char.stats ? char.stats : {};
   console.log('=== getCharacterInnerSkillBonuses ===');
@@ -1768,8 +1788,19 @@ function getCharacterInnerSkillBonuses(char) {
               continue;
             }
 
-            const effect = skill.effect;
-            if (!effect) continue;
+            const loadoutFx =
+              typeof expandLoadoutPassiveStatBonuses === 'function'
+                ? expandLoadoutPassiveStatBonuses(skill)
+                : [];
+            const effectsToApply =
+              loadoutFx.length > 0
+                ? loadoutFx
+                : skill.effect
+                  ? [skill.effect]
+                  : [];
+
+            for (const effect of effectsToApply) {
+              if (!effect) continue;
 
             // 根据效果类型处理加成
             switch (effect.type) {
@@ -1845,8 +1876,19 @@ function getCharacterInnerSkillBonuses(char) {
                   }
                   parryBonus += Math.ceil(bonus);
                   console.log(`${martial.name}-${skill.name} 生效: 招架+${Math.ceil(bonus)}`);
+                } else if (effect.stat === 'hit') {
+                  const basePct = typeof effect.value === 'number' ? effect.value : 0;
+                  const baseHit = basePct < 1 ? Math.floor(basePct * 100) : Math.floor(basePct);
+                  const perPoint = effect.bonusPerPoint != null ? effect.bonusPerPoint : 0;
+                  const attrHit = Math.floor(
+                    (stats[effect.bonusAttr] || 0) * (perPoint < 1 ? perPoint * 100 : perPoint)
+                  );
+                  const add = baseHit + attrHit;
+                  hitBonus += add;
+                  console.log(`${martial.name}-${skill.name} 生效: 命中+${add}`);
                 }
                 break;
+            }
             }
           }
         }
@@ -1858,8 +1900,8 @@ function getCharacterInnerSkillBonuses(char) {
     console.warn('获取武学加成失败:', e);
   }
 
-  console.log(`最终武学加成: 防御+${defenseBonus}, 气血+${maxHpBonus}, 攻击+${attackBonus}, 闪避+${dodgeBonus}, 速度+${speedBonus}, 招架+${parryBonus}`);
-  return { defenseBonus, maxHpBonus, attackBonus, dodgeBonus, speedBonus, parryBonus };
+  console.log(`最终武学加成: 防御+${defenseBonus}, 气血+${maxHpBonus}, 攻击+${attackBonus}, 命中+${hitBonus}, 闪避+${dodgeBonus}, 速度+${speedBonus}, 招架+${parryBonus}`);
+  return { defenseBonus, maxHpBonus, attackBonus, hitBonus, dodgeBonus, speedBonus, parryBonus };
 }
 
 function updateAddButtons() {

@@ -1,5 +1,80 @@
 // 武学系统逻辑
 
+/** 追击类被动：旧 effect.followAttack 或 passiveIds→battlePassives（武学页已引 battlePassives.js） */
+function getFollowAttackEffectForTooltip(skill) {
+  if (skill && skill.effect && skill.effect.type === 'followAttack') return skill.effect;
+  if (!skill || !skill.passiveIds || !skill.passiveIds.length) return null;
+  if (typeof getBattlePassivesByIds !== 'function') return null;
+  const passives = getBattlePassivesByIds(skill.passiveIds);
+  for (let i = 0; i < passives.length; i++) {
+    const p = passives[i];
+    if (!p || p.trigger !== 'afterActiveHit') continue;
+    const actions = p.actions || [];
+    for (let j = 0; j < actions.length; j++) {
+      const act = actions[j];
+      if (act && act.type === 'followAttack') return act;
+    }
+  }
+  return null;
+}
+
+function getInnerAutoHealEffectForTooltip(skill) {
+  if (skill && skill.effect && skill.effect.type === 'autoHeal') return skill.effect;
+  if (!skill || !skill.passiveIds || !skill.passiveIds.length) return null;
+  if (typeof expandTurnStartAutoHealActions !== 'function') return null;
+  const segs = expandTurnStartAutoHealActions(skill);
+  return segs.length ? segs[0] : null;
+}
+
+/** 守拙/纳息/挪步等 loadoutPassive：与 battlePassives 表 actions 同形，供浮窗数值 */
+function getLoadoutPassiveStatEffectForTooltip(skill) {
+  if (!skill || typeof expandLoadoutPassiveStatBonuses !== 'function') return null;
+  const arr = expandLoadoutPassiveStatBonuses(skill);
+  return arr && arr.length ? arr[0] : null;
+}
+
+/**
+ * 武学招式浮窗用：每次读取最新四维（勿把 stats 塞进 HTML 字符串，否则会停在旧值）。
+ * 优先当前武学页选中的 `window.characters` 条目；否则用 `game_save_0.player`，扁平字段覆盖 `player.stats`。
+ */
+function getPlayerStatsForMartialTooltip() {
+  const defaults = { strength: 10, agility: 10, bone: 10, qi: 10, level: 1 };
+  const charId =
+    typeof currentMartialCharacterId !== 'undefined' && currentMartialCharacterId != null
+      ? Number(currentMartialCharacterId)
+      : 1;
+  if (typeof window !== 'undefined' && Array.isArray(window.characters) && window.characters.length) {
+    const ch = window.characters.find((c) => c && Number(c.id) === charId);
+    if (ch && ch.stats) {
+      const s = ch.stats;
+      return {
+        strength: s.strength != null ? Number(s.strength) : defaults.strength,
+        agility: s.agility != null ? Number(s.agility) : defaults.agility,
+        bone: s.bone != null ? Number(s.bone) : s.vitality != null ? Number(s.vitality) : defaults.bone,
+        qi: s.qi != null ? Number(s.qi) : s.spirit != null ? Number(s.spirit) : defaults.qi,
+        level: ch.level != null ? Number(ch.level) : defaults.level
+      };
+    }
+  }
+  try {
+    const raw = localStorage.getItem('game_save_0');
+    if (!raw) return defaults;
+    const data = JSON.parse(raw);
+    const p = data.player;
+    if (!p) return defaults;
+    const merged = Object.assign({}, defaults, p.stats && typeof p.stats === 'object' ? p.stats : {});
+    if (typeof p.strength === 'number') merged.strength = p.strength;
+    if (typeof p.agility === 'number') merged.agility = p.agility;
+    if (typeof p.bone === 'number') merged.bone = p.bone;
+    if (typeof p.qi === 'number') merged.qi = p.qi;
+    if (p.level != null) merged.level = Number(p.level) || merged.level;
+    return merged;
+  } catch (e) {
+    console.warn('getPlayerStatsForMartialTooltip', e);
+    return defaults;
+  }
+}
+
 let currentType = '武功';
 let selectedMartialArt = null;
 
@@ -116,11 +191,22 @@ function initPage() {
 // 渲染角色选择器
 function renderCharacterList() {
   const container = document.getElementById('martialCharacterList');
-  container.innerHTML = martialCharacters.map((char, index) => `
+  const flipMap =
+    typeof window !== 'undefined' && window.CHARACTER_PORTRAIT_FLIP_H_BY_ID
+      ? window.CHARACTER_PORTRAIT_FLIP_H_BY_ID
+      : {};
+  container.innerHTML = martialCharacters.map((char) => `
     <div class="martial-char-item ${char.id === currentMartialCharacterId ? 'active' : ''}" 
          onclick="handleCharacterSwitch(${char.id})">
-      <span class="martial-char-icon">${char.icon}</span>
-      <span class="martial-char-name">${char.name}</span>
+      <div class="martial-char-card" aria-label="${char.name}">
+        <span class="martial-char-name-tag">${char.name}</span>
+        <div class="martial-char-portrait-wrap">
+          <img class="martial-char-portrait${flipMap[char.id] ? ' martial-char-portrait--flip-h' : ''}" src="${char.portraitUrl}" alt="" width="64" height="64" loading="lazy"
+               data-fallback="${char.iconFallback || ''}"
+               onerror="this.classList.add('martial-char-portrait--broken'); this.alt='';" />
+          <span class="martial-char-icon-fallback" aria-hidden="true">${char.iconFallback || '?'}</span>
+        </div>
+      </div>
     </div>
   `).join('');
 }
@@ -288,14 +374,25 @@ function renderDetail() {
     const skillName = skill.name || '未知招式';
     const skillType = skill.type || '被动';
     
+    const iconBlock = !isUnlocked
+      ? `<div class="skill-icon-wrap">
+           <div class="skill-icon-backing" aria-hidden="true"></div>
+           <div class="skill-icon">${skillIcon}</div>
+           <div class="skill-lock-visual" aria-hidden="true"></div>
+         </div>`
+      : `<div class="skill-icon">${skillIcon}</div>`;
+    const unlockCaption = !isUnlocked && skill.unlockLevel
+      ? `<div class="skill-unlock-caption"><span class="skill-unlock-text">${skill.unlockLevel}重解锁</span></div>`
+      : '';
+
     return `
       <div class="skill-item ${!isUnlocked ? 'locked' : ''}" 
-           onmouseenter="showSkillTooltip(event, ${JSON.stringify(skill).replace(/"/g, '&quot;')}, ${JSON.stringify(playerStats).replace(/"/g, '&quot;')})"
+           onmouseenter="showSkillTooltip(event, ${JSON.stringify(skill).replace(/"/g, '&quot;')})"
            onmouseleave="hideSkillTooltip()">
-        <div class="skill-icon">${skillIcon}</div>
+        ${iconBlock}
         <div class="skill-name">${skillName}</div>
         <div class="skill-type ${skillType === '主动' ? 'active' : 'passive'}">${skillType}</div>
-        ${!isUnlocked && skill.unlockLevel ? `<div class="skill-unlock">${skill.unlockLevel}重解锁</div>` : ''}
+        ${unlockCaption}
       </div>
     `;
   }).join('');
@@ -418,23 +515,34 @@ function createSkillTooltip() {
 }
 
 // 显示技能tooltip
-function showSkillTooltip(event, skill, playerStats) {
+function showSkillTooltip(event, skill) {
   const tooltip = document.getElementById('skillTooltip');
-  
+  const playerStats = getPlayerStatsForMartialTooltip();
+
   let effectDesc = '';
   
-  // 剑影技能特殊效果说明
-  if (skill.name === '剑影' && skill.effect) {
-    const agilityBonus = playerStats ? Math.ceil((skill.effect.chancePerPoint || 0.01) * playerStats.agility * 100) : 0;
-    effectDesc = `<div class="skill-tooltip-effect">基础${skill.effect.baseChance * 100}%概率，身法越高触发概率越高（当前额外+${agilityBonus}%）</div>`;
+  // 剑影等追击被动：数值来自 battlePassives 或旧内联 effect
+  const followFx = getFollowAttackEffectForTooltip(skill);
+  if (skill.name === '剑影' && followFx) {
+    const agilityBonus = playerStats
+      ? Math.ceil((followFx.chancePerPoint || 0.01) * playerStats.agility * 100)
+      : 0;
+    effectDesc = `<div class="skill-tooltip-effect">基础${(followFx.baseChance || 0) * 100}%概率，身法越高触发概率越高（当前额外+${agilityBonus}%）</div>`;
   }
   
+  const healPass = getInnerAutoHealEffectForTooltip(skill);
+  const loadoutStatFx = getLoadoutPassiveStatEffectForTooltip(skill);
+  const fx =
+    skill.effect ||
+    loadoutStatFx ||
+    (healPass ? Object.assign({ type: 'autoHeal' }, healPass) : null);
+
   // 其他技能的详细说明（使用detail字段，并根据玩家属性计算具体数值）
-  if (skill.detail && skill.effect) {
+  if (skill.detail && fx) {
     let calculatedDetail = skill.detail;
-    
+
     // 如果有baseValue或具体效果类型，只显示计算后的结果，不使用detail
-    if (skill.effect.baseValue || (skill.effect.type && ['defenseBuff', 'maxHpBuff', 'autoHeal', 'damage', 'buff'].indexOf(skill.effect.type) !== -1)) {
+    if (fx.baseValue || (fx.type && ['defenseBuff', 'maxHpBuff', 'autoHeal', 'damage', 'buff'].indexOf(fx.type) !== -1)) {
       let baseText = '';
       const statNames = {
         attack: '攻击',
@@ -442,42 +550,43 @@ function showSkillTooltip(event, skill, playerStats) {
         dodge: '闪避',
         parry: '招架',
         speed: '速度',
+        hit: '命中',
         maxHp: '气血上限',
         maxMp: '内力上限'
       };
-      if (skill.effect.type === 'defenseBuff') {
-        baseText = `基础防御+${skill.effect.baseValue}`;
-      } else if (skill.effect.type === 'maxHpBuff') {
-        baseText = `基础气血上限+${skill.effect.baseValue}`;
-      } else if (skill.effect.type === 'autoHeal') {
-        baseText = `每回合恢复${skill.effect.baseValue}`;
-      } else if (skill.effect.type === 'damage') {
-        baseText = `基础伤害${skill.effect.value * 100}%`;
-      } else if (skill.effect.type === 'buff') {
-        const statName = statNames[skill.effect.stat] || skill.effect.stat;
-        baseText = `基础${statName}+${skill.effect.baseValue || Math.ceil(skill.effect.value * 100)}`;
+      if (fx.type === 'defenseBuff') {
+        baseText = `基础防御+${fx.baseValue}`;
+      } else if (fx.type === 'maxHpBuff') {
+        baseText = `基础气血上限+${fx.baseValue}`;
+      } else if (fx.type === 'autoHeal') {
+        baseText = `每回合恢复${fx.baseValue}`;
+      } else if (fx.type === 'damage') {
+        baseText = `基础伤害${fx.value * 100}%`;
+      } else if (fx.type === 'buff') {
+        const statName = statNames[fx.stat] || fx.stat;
+        baseText = `基础${statName}+${fx.baseValue || Math.ceil(fx.value * 100)}`;
       }
 
       // 如果有bonusAttr和bonusPerPoint，添加玩家当前属性加成
-      if (skill.effect.bonusAttr && skill.effect.bonusPerPoint && playerStats) {
+      if (fx.bonusAttr && fx.bonusPerPoint && playerStats) {
         const attrs = window.ATTRIBUTES || { STRENGTH: 'strength', AGILITY: 'agility', BONE: 'bone', QI: 'qi' };
         const attrName = {
           [attrs.STRENGTH]: '臂力',
           [attrs.AGILITY]: '身法',
           [attrs.BONE]: '根骨',
           [attrs.QI]: '内息'
-        }[skill.effect.bonusAttr] || skill.effect.bonusAttr;
+        }[fx.bonusAttr] || fx.bonusAttr;
 
-        const attrValue = playerStats[skill.effect.bonusAttr] || 0;
-        
+        const attrValue = playerStats[fx.bonusAttr] || 0;
+
         // 根据配置类型决定显示格式
-        if (skill.effect.baseValue !== undefined) {
+        if (fx.baseValue !== undefined) {
           // 数值加成类型：显示具体数值
-          const bonusValue = Math.ceil(attrValue * skill.effect.bonusPerPoint);
+          const bonusValue = Math.ceil(attrValue * fx.bonusPerPoint);
           calculatedDetail = baseText + `（${attrName}${attrValue}点，额外+${bonusValue}）`;
         } else {
           // 百分比加成类型：显示百分比
-          const bonusPercent = Math.ceil(attrValue * skill.effect.bonusPerPoint * 100);
+          const bonusPercent = Math.ceil(attrValue * fx.bonusPerPoint * 100);
           calculatedDetail = baseText + `（当前${attrName}${attrValue}点，额外+${bonusPercent}%）`;
         }
       } else {
@@ -487,7 +596,7 @@ function showSkillTooltip(event, skill, playerStats) {
       // 其他情况使用detail字段
       calculatedDetail = skill.detail;
     }
-    
+
     effectDesc = `<div class="skill-tooltip-effect">${calculatedDetail}</div>`;
   } else if (skill.detail) {
     effectDesc = `<div class="skill-tooltip-effect">${skill.detail}</div>`;

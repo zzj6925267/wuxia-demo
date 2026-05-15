@@ -4,6 +4,7 @@
 
 # 本地备份目录，勿提交
 _backup_battle_merge_*/
+_backup_battle_passive_refactor_*/
 
 # VS Code
 .vscode/
