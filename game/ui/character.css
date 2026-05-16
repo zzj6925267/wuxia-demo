@@ -825,7 +825,7 @@ body {
   max-width: 320px;
   color: #fff;
   font-size: 14px;
-  z-index: 2000;
+  z-index: 10050;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
   pointer-events: none;
   display: none;

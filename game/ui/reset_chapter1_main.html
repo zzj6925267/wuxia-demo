@@ -18,7 +18,7 @@
   <h1>重置到第一章（主线从头）</h1>
   <p>本页会改写浏览器里本站点域名下的 <code>localStorage.playerState</code>：</p>
   <ul>
-    <li>删除主线 <code>main_b_01</code>～<code>main_b_09</code> 在 <code>activeTasks</code> 中的记录（任务页会从「青石初履」重新开始）。</li>
+    <li>删除主线 <code>main_b_01</code>～<code>main_b_10</code> 在 <code>activeTasks</code> 中的记录（任务页会从「青石初履」重新开始）。</li>
     <li>退出门派标记、清空已学武式列表、门派贡献归零、清空门派差事完成档与进行中的三条差事键。</li>
     <li>将 <code>currentLocation</code> 设为 <code>qingstone_town</code>，方便从大地图进青石镇再测。</li>
   </ul>
@@ -26,7 +26,9 @@
   <button type="button" id="btnReset">确认重置第一章</button>
   <p id="msg" class="ok" hidden></p>
   <p style="margin-top: 24px;">
-    <a href="map.html">江湖舆图</a>
+    <a href="dev_new_game.html">新局全量重置</a>（等级/阅历/任务/武学全清）
+    · <a href="dev_chapter_skip.html">主线章节跳过器</a>（跳到指定节再测）
+    · <a href="map.html">江湖舆图</a>
     · <a href="qingstone_map.html">青石镇小地图</a>
     · <a href="task.html">任务</a>
   </p>
@@ -34,7 +36,7 @@
     (function () {
       var MAIN_IDS = [
         'main_b_01', 'main_b_02', 'main_b_03', 'main_b_04', 'main_b_05',
-        'main_b_06', 'main_b_07', 'main_b_08', 'main_b_09'
+        'main_b_06', 'main_b_07', 'main_b_08', 'main_b_09', 'main_b_10'
       ];
       var FACTION_ACTIVE = ['collect_herbs', 'bandit_clear', 'organize_books'];
 
@@ -60,6 +62,8 @@
         state.factionContribution = 0;
         state.completedFactionQuests = {};
         delete state.currentTask;
+        delete state.heifu_gate_story_ack;
+        delete state.forest_b07_dispatch_intro_ack;
         localStorage.setItem('playerState', JSON.stringify(state));
         localStorage.setItem('currentLocation', 'qingstone_town');
       }

@@ -4,7 +4,14 @@
 
 // 山林NPC数据
 const FOREST_NPCS = {
-  // 暂时没有NPC，只有敌人
+  meng_qingsong: {
+    id: 'meng_qingsong',
+    name: '孟青松',
+    title: '北峰猎户',
+    icon: '🧍',
+    location: ['shanze_shed'],
+    note: '山贼窝棚线人；对话逻辑见 forest_map.html HEIFU_GATE_NPC'
+  }
 };
 
 // 山林敌人数据

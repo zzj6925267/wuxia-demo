@@ -51,7 +51,7 @@ const MARTIAL_ARTS_LIBRARY = [
     baseBonus: { sword: 5 },
     stats: { attack: 25, hit: 10 },
     skills: [
-      { id: 1, name: '直刺', type: '主动', unlockLevel: 1, icon: '🗡️', mpCost: 20, description: '基础剑招，直刺敌人，臂力越高伤害越高', effect: { type: 'damage', value: 1.2, bonusAttr: 'strength', bonusPerPoint: 0.02 }, detail: '基础伤害120%，每点臂力额外+2%伤害' },
+      { id: 1, name: '直刺', type: '主动', unlockLevel: 1, icon: '🗡️', mpCost: 20, description: '基础剑招，直刺敌人，臂力越高伤害越高', detail: '基础伤害120%，每点臂力额外+2%伤害' },
       { id: 2, name: '阳刚', type: '被动', unlockLevel: 4, icon: '☀️', description: '被动增加攻击，臂力越高加成越多', passiveIds: ['zhenyang_jianfa_yanggang'], detail: '基础攻击+10%，每点臂力额外+3%' },
       { id: 3, name: '剑影', type: '被动', unlockLevel: 7, icon: '✨', description: '直刺后有20%概率跟随一剑，身法越高触发概率越高', passiveIds: ['jianying_follow'], detail: '直刺后有20%概率跟随一剑，身法越高触发概率越高（当前额外加成见浮窗）' }
     ]
@@ -146,7 +146,6 @@ const MARTIAL_ARTS_LIBRARY = [
         passiveIds: ['luocao_jici_miss_follow'],
         description:
           '抢步上前，剑尖抢在人反应之前先到；这一式要快，身法越高，剑越险。',
-        effect: { type: 'damage', value: 1.14, bonusAttr: 'agility', bonusPerPoint: 0.012 },
         detail:
           '消耗内力出刺，伤害随身法而增。对手若闪避过去，常能依身法再补一记「续刺」；续刺能否跟上，身法越高越易成。'
       },
@@ -189,7 +188,7 @@ const MARTIAL_ARTS_LIBRARY = [
     baseBonus: { sword: 3 },
     stats: { attack: 18, hit: 8 },
     skills: [
-      { id: 1, name: '对位刺', type: '主动', unlockLevel: 3, icon: '·', mpCost: 10, plainFx: true, description: '先对上身前那人的方位，再顺势递出一剑。', effect: { type: 'damage', value: 1.0, bonusAttr: 'strength', bonusPerPoint: 0.006 }, detail: '对正了人再刺，伤害与寻常一剑相仿。' },
+      { id: 1, name: '对位刺', type: '主动', unlockLevel: 3, icon: '·', mpCost: 10, plainFx: true, description: '先对上身前那人的方位，再顺势递出一剑。', detail: '对正了人再刺，伤害与寻常一剑相仿。' },
       { id: 2, name: '守拙', type: '被动', unlockLevel: 6, icon: '🛡️', description: '剑随身列，胸肋少露，人更扛打些。', passiveIds: ['wuguan_zhenxing_shouzhuo'], detail: '固定防御+10。' }
     ]
   },
@@ -217,7 +216,6 @@ const MARTIAL_ARTS_LIBRARY = [
         mpCost: 10,
         punchFx: true,
         description: '劲落如钉，小抡一拳自肋下翻出；教头要的是短劲里门，不是花架子。',
-        effect: { type: 'damage', value: 1.0, bonusAttr: 'strength', bonusPerPoint: 0.006 },
         detail: '抡拳短打：与武馆诸主动同档（约一倍攻 + 臂力每点 +0.6%），耗蓝 10；朴素拳击命中特效。'
       },
       {
@@ -256,7 +254,6 @@ const MARTIAL_ARTS_LIBRARY = [
         mpCost: 10,
         bladeFx: true,
         description: '借步拧腰，一刀自外弧劈出，势先「开」满；教头只问落点准不准。',
-        effect: { type: 'damage', value: 1.0, bonusAttr: 'strength', bonusPerPoint: 0.006 },
         detail: '与武馆诸主动同档（约一倍攻 + 臂力每点 +0.6%），耗蓝 10；刀类 bladeFx 头像劈斩特效。'
       },
       {
@@ -296,7 +293,6 @@ const MARTIAL_ARTS_LIBRARY = [
         mpCost: 10,
         axeFx: true,
         description: '借步拧腰，短斧自外弧劈落；旗侧巡山时最常用的开招。',
-        effect: { type: 'damage', value: 1.0, bonusAttr: 'strength', bonusPerPoint: 0.006 },
         detail: '与武馆刀法主动同档（约一倍攻 + 臂力每点 +0.6%），耗蓝 10；axeFx 斧劈特效（与开合刀法 bladeFx 区分）。'
       },
       {
@@ -404,7 +400,7 @@ const INITIAL_PLAYER_MARTIAL_ARTS = [
     baseBonus: { sword: 5 },
     stats: { attack: 25, hit: 10 },
     skills: [
-      { id: 1, name: '直刺', type: '主动', unlockLevel: 1, icon: '🗡️', mpCost: 20, description: '基础剑招，直刺敌人，臂力越高伤害越高', effect: { type: 'damage', value: 1.2, bonusAttr: 'strength', bonusPerPoint: 0.02 }, detail: '基础伤害120%，每点臂力额外+2%伤害' },
+      { id: 1, name: '直刺', type: '主动', unlockLevel: 1, icon: '🗡️', mpCost: 20, description: '基础剑招，直刺敌人，臂力越高伤害越高', detail: '基础伤害120%，每点臂力额外+2%伤害' },
       { id: 2, name: '阳刚', type: '被动', unlockLevel: 4, icon: '☀️', description: '被动增加攻击，臂力越高加成越多', passiveIds: ['zhenyang_jianfa_yanggang'], detail: '基础攻击+10%，每点臂力额外+3%' },
       { id: 3, name: '剑影', type: '被动', unlockLevel: 7, icon: '✨', description: '直刺后有20%概率跟随一剑，身法越高触发概率越高', passiveIds: ['jianying_follow'], detail: '直刺后有20%概率跟随一剑，身法越高触发概率越高（当前额外加成见浮窗）' }
     ]
@@ -688,8 +684,8 @@ function getPlayerMartialArts(charId) {
       }
       // 更新版本号
       localStorage.setItem('martialDataVersion', MARTIAL_DATA_VERSION.toString());
-      console.log('武学数据已清理，使用新数据');
-      return [...INITIAL_PLAYER_MARTIAL_ARTS];
+      console.log('武学数据已清理，新局无已学武学');
+      return [];
     }
 
     const saved = localStorage.getItem(`playerMartialArts_${charId}`);
@@ -706,13 +702,12 @@ function getPlayerMartialArts(charId) {
         }
         return list;
       }
-      console.warn('武学数据格式错误（非数组），使用初始数据');
+      console.warn('武学数据格式错误（非数组），视为未学');
     }
   } catch (e) {
-    console.warn('解析武学数据失败，使用初始数据', e);
+    console.warn('解析武学数据失败，视为未学', e);
   }
-  // 默认初始武学（只有基础武学）
-  return [...INITIAL_PLAYER_MARTIAL_ARTS];
+  return [];
 }
 
 /**
@@ -735,33 +730,142 @@ function getMergedMartialArtsListForCharId(charId) {
     console.warn('getMergedMartialArtsListForCharId: 解析失败', e);
   }
 
+  if (!savedMartialArts.length) {
+    return [];
+  }
+
   if (typeof MARTIAL_ARTS_LIBRARY === 'undefined' || !MARTIAL_ARTS_LIBRARY.length) {
     if (typeof getPlayerMartialArts === 'function') return getPlayerMartialArts(cid);
     return savedMartialArts;
   }
 
-  return MARTIAL_ARTS_LIBRARY.map(function (martial) {
-    if (!martial) return martial;
-    const savedMartial = savedMartialArts.find(function (m) {
-      return m && m.id === martial.id;
-    });
-    if (savedMartial) {
-      return Object.assign({}, martial, {
-        currentLevel: savedMartial.currentLevel != null ? savedMartial.currentLevel : martial.currentLevel,
-        equipped: !!savedMartial.equipped,
-        practiceTimes: savedMartial.practiceTimes != null ? savedMartial.practiceTimes : martial.practiceTimes
+  return savedMartialArts
+    .map(function (savedMartial) {
+      if (!savedMartial || typeof savedMartial.id !== 'number') return savedMartial;
+      const martial = MARTIAL_ARTS_LIBRARY.find(function (x) {
+        return x && x.id === savedMartial.id;
       });
-    }
-    return Object.assign({}, martial);
-  });
+      if (!martial) return savedMartial;
+      return Object.assign({}, martial, {
+        currentLevel:
+          savedMartial.currentLevel != null ? savedMartial.currentLevel : 0,
+        equipped: !!savedMartial.equipped,
+        practiceTimes:
+          savedMartial.practiceTimes != null
+            ? savedMartial.practiceTimes
+            : martial.practiceTimes
+      });
+    })
+    .filter(Boolean);
 }
 
 window.getMergedMartialArtsListForCharId = getMergedMartialArtsListForCharId;
 
+/** 苏瑶传授：写入 playerMartialArts_{charId}（武学页/战斗读此键，勿只写 playerState.learnedSkills） */
+function grantZhengyangIntroMartialArt(charId, skillName) {
+  const martialId =
+    typeof getZhengyangIntroMartialIdBySkillName === 'function'
+      ? getZhengyangIntroMartialIdBySkillName(skillName)
+      : null;
+  if (!martialId) return { ok: false, reason: 'unknown_skill' };
+  if (typeof MARTIAL_ARTS_LIBRARY === 'undefined' || !MARTIAL_ARTS_LIBRARY.length) {
+    return { ok: false, reason: 'no_library' };
+  }
+  const lib = MARTIAL_ARTS_LIBRARY.find(function (m) {
+    return m && m.id === martialId;
+  });
+  if (!lib) return { ok: false, reason: 'not_in_library' };
+
+  const cid = charId == null || isNaN(Number(charId)) ? 1 : Number(charId);
+  let list = getPlayerMartialArts(cid);
+  if (list.some(function (m) {
+    return m && Number(m.id) === martialId;
+  })) {
+    return { ok: true, already: true };
+  }
+
+  list = list.map(function (m) {
+    if (!m) return m;
+    if (m.type === lib.type && m.equipped) {
+      return Object.assign({}, m, { equipped: false });
+    }
+    return m;
+  });
+
+  list.push({
+    id: lib.id,
+    name: lib.name,
+    type: lib.type,
+    skillType: lib.skillType,
+    rank: lib.rank,
+    school: lib.school,
+    description: lib.description,
+    currentLevel: 1,
+    maxLevel: lib.maxLevel != null ? lib.maxLevel : 10,
+    practiceTimes: 0,
+    equipped: true,
+    baseBonus: lib.baseBonus ? Object.assign({}, lib.baseBonus) : {},
+    stats: lib.stats ? Object.assign({}, lib.stats) : {},
+    skills: Array.isArray(lib.skills)
+      ? lib.skills.map(function (s) {
+          return Object.assign({}, s);
+        })
+      : []
+  });
+
+  try {
+    localStorage.setItem('playerMartialArts_' + cid, JSON.stringify(list));
+  } catch (e) {
+    console.warn('grantZhengyangIntroMartialArt: 写入失败', e);
+    return { ok: false, reason: 'persist_failed' };
+  }
+
+  if (lib.skillType) {
+    try {
+      const raw = localStorage.getItem('playerCharacters');
+      if (raw) {
+        const chars = JSON.parse(raw);
+        const c = Array.isArray(chars) ? chars.find(function (x) {
+          return x && Number(x.id) === cid;
+        }) : null;
+        if (c) {
+          if (!c.stats) c.stats = {};
+          c.stats[lib.skillType] = (c.stats[lib.skillType] || 0) + 5;
+          localStorage.setItem('playerCharacters', JSON.stringify(chars));
+        }
+      }
+    } catch (e2) {
+      console.warn('grantZhengyangIntroMartialArt: 修为同步失败', e2);
+    }
+  }
+
+  return { ok: true, already: false };
+}
+
+/** 已扣贡献且 learnedSkills 有记录但武学列表缺失时补写（不扣贡献） */
+function repairZhengyangIntroMartialsFromLearnedSkills(charId) {
+  let state;
+  try {
+    state = JSON.parse(localStorage.getItem('playerState') || '{}');
+  } catch (e) {
+    return 0;
+  }
+  const names = state.learnedSkills || [];
+  let fixed = 0;
+  names.forEach(function (name) {
+    const r = grantZhengyangIntroMartialArt(charId, name);
+    if (r.ok && !r.already) fixed += 1;
+  });
+  return fixed;
+}
+
+window.grantZhengyangIntroMartialArt = grantZhengyangIntroMartialArt;
+window.repairZhengyangIntroMartialsFromLearnedSkills = repairZhengyangIntroMartialsFromLearnedSkills;
+
 function getPlayerExperience() {
   const saved = localStorage.getItem('playerExperience');
-  if (saved) return parseInt(saved);
-  return 200;
+  if (saved != null && saved !== '') return parseInt(saved, 10) || 0;
+  return 0;
 }
 
 function resetPlayerExperience() {

@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>主线章节跳过器（自测）</title>
+  <style>
+    body {
+      font-family: "Microsoft YaHei", sans-serif;
+      max-width: 640px;
+      margin: 32px auto;
+      padding: 0 16px 48px;
+      line-height: 1.55;
+      color: #e8e8e8;
+      background: #14181c;
+    }
+    h1 { font-size: 1.35rem; color: #ce93d8; margin-bottom: 8px; }
+    .sub { color: #9e9e9e; font-size: 14px; margin-bottom: 20px; }
+    label { display: block; margin: 12px 0 6px; font-size: 14px; color: #bdbdbd; }
+    select, button {
+      font-size: 15px;
+      font-family: inherit;
+      border-radius: 8px;
+      border: 1px solid #444;
+    }
+    select {
+      width: 100%;
+      padding: 10px 12px;
+      background: #1e2228;
+      color: #eee;
+    }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+    button {
+      padding: 10px 18px;
+      cursor: pointer;
+      background: linear-gradient(145deg, #5e35b1, #4527a0);
+      color: #fff;
+      border: none;
+    }
+    button.secondary { background: #333; }
+    button:hover { filter: brightness(1.08); }
+    .ok { color: #81c784; margin-top: 16px; font-size: 14px; }
+    .warn {
+      color: #ffab91;
+      font-size: 13px;
+      margin: 16px 0;
+      padding: 12px;
+      background: rgba(255, 152, 0, 0.08);
+      border-radius: 8px;
+      border: 1px solid rgba(255, 152, 0, 0.25);
+    }
+    .detail {
+      font-size: 13px;
+      color: #aaa;
+      margin-top: 8px;
+      padding: 10px;
+      background: #1a1f24;
+      border-radius: 8px;
+      min-height: 48px;
+    }
+    a { color: #90caf9; }
+    code { font-size: 12px; background: #252a30; padding: 2px 6px; border-radius: 4px; }
+    ul.links { margin-top: 24px; padding-left: 1.2em; font-size: 14px; }
+    ul.links li { margin: 6px 0; }
+    input[type="checkbox"] { margin-right: 8px; vertical-align: middle; }
+    .chk { font-size: 14px; color: #bbb; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <h1>主线章节跳过器</h1>
+  <p class="sub">写入 <code>localStorage.playerState</code>，把主线推进到所选章节<strong>起点</strong>（该节未完成，前一节已完成）。不修改 <code>game_save_0</code>（等级、背包、银两照旧）。</p>
+
+  <label for="chapterSelect">跳转到章节（测试起点）</label>
+  <select id="chapterSelect" aria-label="选择章节"></select>
+  <div id="chapterDetail" class="detail" aria-live="polite"></div>
+
+  <p class="chk">
+    <label><input type="checkbox" id="chkClearBattle" checked /> 清理战后残留键（pending_battle、黑风寨进度等）</label>
+  </p>
+  <p class="chk">
+    <label><input type="checkbox" id="chkGo" /> 应用后自动打开推荐页面</label>
+  </p>
+
+  <p class="warn">
+    武馆问径（第 2 节）若需完整教头流程，请选「仅第 2 节」且勿勾选下方「强制标为武馆考校已完成」。第 3 节及以后会写入 <code>qingstoneDojoTutorial.phase=spar_done</code>。
+  </p>
+
+  <p class="chk">
+    <label><input type="checkbox" id="chkForceDojoDone" /> 强制标为武馆考校已完成（跳过教头喂招，适合测第 3 节及以后）</label>
+  </p>
+
+  <div class="row">
+    <button type="button" id="btnApply">应用章节跳过</button>
+    <button type="button" class="secondary" id="btnResetAll">重置主线（等同从头）</button>
+  </div>
+
+  <h2 style="font-size:1.05rem;color:#90caf9;margin:28px 0 8px;">快捷调试</h2>
+  <p class="sub" style="margin-top:0">改 <code>playerState</code> 贡献与 <code>playerMartialArts_*</code> 武学列表（不改 <code>game_save_0</code> 等级/背包）。</p>
+  <div class="row">
+    <button type="button" id="btnContribStrip">+500 贡献，并移除正阳三门武学</button>
+  </div>
+  <p id="contribMsg" class="ok" hidden></p>
+
+  <p id="msg" class="ok" hidden></p>
+
+  <ul class="links">
+    <li><a href="reset_chapter1_main.html">重置第一章（仅清主线/门派状态）</a></li>
+    <li><a href="dev_reset_martial_yueli.html">重置任务+武学阅历</a></li>
+    <li><a href="qingstone_map.html">青石镇</a> · <a href="map.html">江湖舆图</a> · <a href="forest_map.html">山林</a> · <a href="task.html">任务</a></li>
+  </ul>
+
+  <script src="taskData.js"></script>
+  <script>
+    (function () {
+      var MAIN_IDS = [
+        'main_b_01', 'main_b_02', 'main_b_03', 'main_b_04', 'main_b_05',
+        'main_b_06', 'main_b_07', 'main_b_08', 'main_b_09', 'main_b_10'
+      ];
+      var FACTION_ACTIVE = ['collect_herbs', 'bandit_clear', 'organize_books'];
+      var ENTRY_SKILLS = ['正阳基础剑式', '正阳吐纳诀', '踏云步'];
+      /** 武学库 id：正阳基础剑式 / 正阳吐纳诀 / 踏云步 */
+      var ENTRY_MARTIAL_IDS = [1, 3, 5];
+
+      var BATTLE_KEYS = [
+        'pending_battle_rewards',
+        'battle_map_reward_floats',
+        'battle_exit_cinematic',
+        'battle_enter_cinematic',
+        'battleEnemyId',
+        'battle_entry_source',
+        'dungeon_battle_context',
+        'heifeng_dungeon_run',
+        'heifeng_post_battle_room',
+        'forest_after_heifeng_exit',
+        'heifeng_forest_after_defeat',
+        'preBattleLocation'
+      ];
+
+      function questMeta(id) {
+        if (typeof ALL_TASKS === 'undefined' || !ALL_TASKS.main) return { name: id, location: '' };
+        var t = ALL_TASKS.main.find(function (x) { return x.id === id; });
+        return t ? { name: t.name, location: t.location || '' } : { name: id, location: '' };
+      }
+
+      /** @type {Array<object>} */
+      var PRESETS = [
+        {
+          key: 'start',
+          label: '0 · 全新开始（主线从头）',
+          targetId: 'main_b_01',
+          completeCount: 0,
+          location: 'qingstone_town',
+          zhengyangBuilding: null,
+          forestSpawn: null,
+          openZhengyang: false,
+          joinedFaction: false,
+          factionContribution: 0,
+          learnedSkills: [],
+          heifuGateAck: false,
+          forceDojoDone: false
+        },
+        {
+          key: 'b01',
+          label: '1 · 青石初履（main_b_01）',
+          targetId: 'main_b_01',
+          completeCount: 0,
+          location: 'qingstone_town',
+          qingstoneNode: 'bluestone_street',
+          goHref: 'qingstone_map.html',
+          joinedFaction: false,
+          factionContribution: 0,
+          learnedSkills: [],
+          heifuGateAck: false,
+          forceDojoDone: false
+        },
+        {
+          key: 'b02',
+          label: '2 · 武馆问径（main_b_02）',
+          targetId: 'main_b_02',
+          completeCount: 1,
+          location: 'qingstone_town',
+          qingstoneNode: 'qingstone_dojo',
+          goHref: 'qingstone_map.html',
+          joinedFaction: false,
+          factionContribution: 0,
+          learnedSkills: [],
+          heifuGateAck: false,
+          forceDojoDone: false
+        },
+        {
+          key: 'b03',
+          label: '3 · 图开山门（main_b_03）',
+          targetId: 'main_b_03',
+          completeCount: 2,
+          location: 'qingstone_town',
+          qingstoneNode: 'qingstone_gate',
+          goHref: 'map.html',
+          joinedFaction: false,
+          factionContribution: 0,
+          learnedSkills: [],
+          heifuGateAck: false,
+          forceDojoDone: true
+        },
+        {
+          key: 'b04',
+          label: '4 · 正阳入籍（main_b_04）',
+          targetId: 'main_b_04',
+          completeCount: 3,
+          location: 'zhengyang_clan',
+          goHref: 'map.html',
+          openZhengyang: true,
+          zhengyangBuilding: 'ningyang_bieyuan',
+          joinedFaction: false,
+          factionContribution: 0,
+          learnedSkills: [],
+          heifuGateAck: false,
+          forceDojoDone: true
+        },
+        {
+          key: 'b05',
+          label: '5 · 贡献与艺（main_b_05）',
+          targetId: 'main_b_05',
+          completeCount: 4,
+          location: 'zhengyang_clan',
+          goHref: 'map.html',
+          openZhengyang: true,
+          zhengyangBuilding: 'chengxin_tang',
+          joinedFaction: true,
+          factionContribution: 0,
+          learnedSkills: [],
+          heifuGateAck: false,
+          forceDojoDone: true
+        },
+        {
+          key: 'b06',
+          label: '6 · 三事九回（main_b_06）',
+          targetId: 'main_b_06',
+          completeCount: 5,
+          location: 'zhengyang_clan',
+          goHref: 'map.html',
+          openZhengyang: true,
+          zhengyangBuilding: 'chengxin_tang',
+          joinedFaction: true,
+          factionContribution: 0,
+          learnedSkills: [],
+          heifuGateAck: false,
+          forceDojoDone: true
+        },
+        {
+          key: 'b07',
+          label: '7 · 授式入门（main_b_07）',
+          targetId: 'main_b_07',
+          completeCount: 6,
+          location: 'zhengyang_clan',
+          goHref: 'map.html',
+          openZhengyang: true,
+          zhengyangBuilding: 'ningyang_bieyuan',
+          joinedFaction: true,
+          factionContribution: 0,
+          learnedSkills: [],
+          heifuGateAck: false,
+          forceDojoDone: true
+        },
+        {
+          key: 'b08',
+          label: '8 · 林樾试锋（main_b_08）',
+          targetId: 'main_b_08',
+          completeCount: 7,
+          location: 'forest',
+          goHref: 'forest_map.html',
+          forestSpawn: 'qingcang_entrance',
+          joinedFaction: true,
+          factionContribution: 300,
+          learnedSkills: ENTRY_SKILLS.slice(),
+          heifuGateAck: false,
+          forceDojoDone: true
+        },
+        {
+          key: 'b09',
+          label: '9 · 北峰问讯（main_b_09）',
+          targetId: 'main_b_09',
+          completeCount: 8,
+          location: 'forest',
+          goHref: 'forest_map.html',
+          forestSpawn: 'shanze_shed',
+          joinedFaction: true,
+          factionContribution: 300,
+          learnedSkills: ENTRY_SKILLS.slice(),
+          heifuGateAck: false,
+          forceDojoDone: true
+        },
+        {
+          key: 'b10',
+          label: '10 · 清剿黑风寨（main_b_10）',
+          targetId: 'main_b_10',
+          completeCount: 9,
+          location: 'forest',
+          goHref: 'forest_map.html',
+          forestSpawn: 'heifeng_entrance',
+          joinedFaction: true,
+          factionContribution: 300,
+          learnedSkills: ENTRY_SKILLS.slice(),
+          heifuGateAck: true,
+          forceDojoDone: true
+        },
+        {
+          key: 'done',
+          label: '11 · 主线十节已全部完成',
+          targetId: null,
+          completeCount: 10,
+          location: 'forest',
+          goHref: 'forest_map.html',
+          forestSpawn: 'heifeng_entrance',
+          joinedFaction: true,
+          factionContribution: 300,
+          learnedSkills: ENTRY_SKILLS.slice(),
+          heifuGateAck: true,
+          forceDojoDone: true
+        }
+      ];
+
+      var selectEl = document.getElementById('chapterSelect');
+      var detailEl = document.getElementById('chapterDetail');
+      var msgEl = document.getElementById('msg');
+
+      PRESETS.forEach(function (p, i) {
+        var opt = document.createElement('option');
+        opt.value = String(i);
+        opt.textContent = p.label;
+        selectEl.appendChild(opt);
+      });
+
+      function getPreset() {
+        return PRESETS[parseInt(selectEl.value, 10) || 0];
+      }
+
+      function renderDetail() {
+        var p = getPreset();
+        var lines = [];
+        if (p.targetId) {
+          var m = questMeta(p.targetId);
+          lines.push('当前测试节：「' + m.name + '」（' + p.targetId + '）');
+          lines.push('地点提示：' + (m.location || '—'));
+        } else {
+          lines.push('将全部 9 节主线标为已完成。');
+        }
+        lines.push('已完成前置节数：' + p.completeCount);
+        lines.push(
+          '门派：' +
+            (p.joinedFaction ? '已入正阳' : '未入派') +
+            ' · 贡献 ' +
+            p.factionContribution
+        );
+        if (p.goHref) lines.push('推荐入口：' + p.goHref);
+        detailEl.textContent = lines.join('\n');
+      }
+
+      selectEl.addEventListener('change', renderDetail);
+      renderDetail();
+
+      function loadState() {
+        try {
+          return JSON.parse(localStorage.getItem('playerState') || '{}');
+        } catch (e) {
+          return {};
+        }
+      }
+
+      function markMainDone(state, id) {
+        if (!state.activeTasks) state.activeTasks = {};
+        state.activeTasks[id] = { completed: true, isCompleted: true };
+      }
+
+      function clearMainAndFaction(state) {
+        if (!state.activeTasks) state.activeTasks = {};
+        MAIN_IDS.forEach(function (id) {
+          delete state.activeTasks[id];
+        });
+        FACTION_ACTIVE.forEach(function (id) {
+          delete state.activeTasks[id];
+        });
+      }
+
+      function clearBattleKeys() {
+        BATTLE_KEYS.forEach(function (k) {
+          try {
+            localStorage.removeItem(k);
+          } catch (e) {}
+        });
+      }
+
+      function applyDojoTutorial(state, forceDone) {
+        if (forceDone) {
+          state.qingstoneDojoTutorial = {
+            phase: 'spar_done',
+            skillbookId: 'skillbook_liuyun',
+            weaponId: 'mu_jian',
+            martialArtId: 10
+          };
+          try {
+            localStorage.setItem('qingstone_dojo_spar_victory', '1');
+          } catch (e) {}
+        } else {
+          delete state.qingstoneDojoTutorial;
+          try {
+            localStorage.removeItem('qingstone_dojo_spar_victory');
+          } catch (e) {}
+        }
+      }
+
+      function applyPreset(preset) {
+        var forceDojo =
+          document.getElementById('chkForceDojoDone').checked || preset.forceDojoDone;
+        var state = loadState();
+        clearMainAndFaction(state);
+
+        for (var i = 0; i < preset.completeCount && i < MAIN_IDS.length; i++) {
+          markMainDone(state, MAIN_IDS[i]);
+        }
+
+        state.joinedFaction = !!preset.joinedFaction;
+        state.factionContribution = preset.factionContribution || 0;
+        state.learnedSkills = (preset.learnedSkills || []).slice();
+        state.completedFactionQuests = {};
+        delete state.currentTask;
+
+        if (preset.heifuGateAck) state.heifu_gate_story_ack = true;
+        else delete state.heifu_gate_story_ack;
+
+        applyDojoTutorial(state, forceDojo);
+
+        localStorage.setItem('playerState', JSON.stringify(state));
+        localStorage.setItem('currentLocation', preset.location || 'qingstone_town');
+
+        try {
+          localStorage.removeItem('dev_qingstone_node');
+          localStorage.removeItem('dev_zhengyang_building');
+          localStorage.removeItem('dev_forest_spawn');
+          sessionStorage.removeItem('game_map_restore_view');
+        } catch (e) {}
+
+        if (preset.qingstoneNode) {
+          localStorage.setItem('dev_qingstone_node', preset.qingstoneNode);
+        }
+        if (preset.zhengyangBuilding) {
+          localStorage.setItem('dev_zhengyang_building', preset.zhengyangBuilding);
+        }
+        if (preset.forestSpawn) {
+          localStorage.setItem('dev_forest_spawn', preset.forestSpawn);
+        }
+        if (preset.openZhengyang) {
+          try {
+            sessionStorage.setItem('game_map_restore_view', 'zhengyang');
+          } catch (e) {}
+        }
+
+        if (document.getElementById('chkClearBattle').checked) {
+          clearBattleKeys();
+        }
+
+        return preset;
+      }
+
+      function showMsg(text) {
+        msgEl.hidden = false;
+        msgEl.textContent = text;
+      }
+
+      document.getElementById('btnApply').addEventListener('click', function () {
+        var p = getPreset();
+        var label = p.label;
+        if (
+          !window.confirm(
+            '将主线推进到：\n' +
+              label +
+              '\n\n（不修改 game_save_0）\n确定？'
+          )
+        ) {
+          return;
+        }
+        applyPreset(p);
+        var go = document.getElementById('chkGo').checked && p.goHref;
+        showMsg(
+          '已写入 playerState。' +
+            (go ? ' 正在打开 ' + p.goHref + ' …' : ' 请手动打开游戏页面并刷新。')
+        );
+        if (go) {
+          setTimeout(function () {
+            window.location.href = p.goHref;
+          }, 400);
+        }
+      });
+
+      document.getElementById('btnResetAll').addEventListener('click', function () {
+        if (!window.confirm('重置为「全新开始」？')) return;
+        selectEl.value = '0';
+        renderDetail();
+        document.getElementById('chkForceDojoDone').checked = false;
+        applyPreset(PRESETS[0]);
+        showMsg('已重置主线。可从青石镇 / 任务页开始。');
+      });
+
+      function applyContribAndStripZhengyang() {
+        var state = loadState();
+        var beforeContrib = state.factionContribution || 0;
+        state.factionContribution = beforeContrib + 500;
+        if (!state.learnedSkills) state.learnedSkills = [];
+        state.learnedSkills = state.learnedSkills.filter(function (name) {
+          return ENTRY_SKILLS.indexOf(name) < 0;
+        });
+        localStorage.setItem('playerState', JSON.stringify(state));
+
+        var strippedTotal = 0;
+        var charKeys = [];
+        for (var i = 0; i < localStorage.length; i++) {
+          var k = localStorage.key(i);
+          if (k && k.indexOf('playerMartialArts_') === 0) charKeys.push(k);
+        }
+        charKeys.forEach(function (key) {
+          try {
+            var raw = localStorage.getItem(key);
+            if (!raw) return;
+            var list = JSON.parse(raw);
+            if (!Array.isArray(list)) return;
+            var before = list.length;
+            var filtered = list.filter(function (m) {
+              return !m || ENTRY_MARTIAL_IDS.indexOf(Number(m.id)) < 0;
+            });
+            strippedTotal += before - filtered.length;
+            localStorage.setItem(key, JSON.stringify(filtered));
+          } catch (e) {}
+        });
+        try {
+          localStorage.removeItem('playerMartialArts');
+        } catch (e2) {}
+
+        return {
+          contrib: state.factionContribution,
+          strippedTotal: strippedTotal,
+          charKeys: charKeys.length
+        };
+      }
+
+      function showContribMsg(text) {
+        var el = document.getElementById('contribMsg');
+        el.hidden = false;
+        el.textContent = text;
+      }
+
+      document.getElementById('btnContribStrip').addEventListener('click', function () {
+        if (
+          !window.confirm(
+            '将增加 500 门派贡献，并从所有角色的武学列表中移除：\n' +
+              ENTRY_SKILLS.join('、') +
+              '\n\n（苏瑶「已学」记录一并清除）\n确定？'
+          )
+        ) {
+          return;
+        }
+        var r = applyContribAndStripZhengyang();
+        showContribMsg(
+          '已写入：门派贡献 ' +
+            r.contrib +
+            '；自 ' +
+            r.charKeys +
+            ' 份武学存档共移除 ' +
+            r.strippedTotal +
+            ' 条。请刷新武学页 / 正阳地图后再测苏瑶换武。'
+        );
+      });
+
+      try {
+        if (/[?&]apply=contrib_strip\b/.test(window.location.search || '')) {
+          var auto = applyContribAndStripZhengyang();
+          showContribMsg(
+            '（URL 自动执行）贡献 ' +
+              auto.contrib +
+              '；移除武学条目 ' +
+              auto.strippedTotal +
+              ' 条。'
+          );
+        }
+      } catch (autoErr) {}
+    })();
+  </script>
+</body>
+</html>

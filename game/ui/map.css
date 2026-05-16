@@ -897,6 +897,14 @@ body {
   color: #c9a227;
 }
 
+.skill-item--empty span:nth-child(2) {
+  color: #9e9e9e;
+}
+
+.skill-item--empty span:last-child {
+  color: #666;
+}
+
 .char-desc {
   background: #3d4345;
   border-radius: 10px;

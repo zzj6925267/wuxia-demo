@@ -649,9 +649,10 @@ body {
 
 .skills-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 10px;
   margin-bottom: 20px;
+  align-items: start;
 }
 
 .skill-item {
@@ -715,6 +716,94 @@ body {
 .skill-icon {
   font-size: 32px;
   margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  min-height: 48px;
+}
+
+.skill-icon-img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+}
+
+.skill-icon-emoji {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.skill-item--icon-only .skill-name,
+.skill-item--icon-only .skill-type {
+  display: none;
+}
+
+/* 纯图标：不要程序侧「外圈」米色格/描边，只显示 PNG 自带框体 */
+.skill-item--icon-only {
+  padding: 0;
+  min-height: 72px;
+  width: 72px;
+  justify-content: flex-start;
+  align-items: center;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.skill-item--icon-only:hover:not(.locked) {
+  transform: scale(1.04);
+  box-shadow: none;
+  border: none;
+  background: transparent;
+}
+
+.skill-item--icon-only.locked {
+  background: transparent;
+  border: none;
+  cursor: help;
+}
+
+.skill-item--icon-only.locked:hover {
+  transform: scale(1.04);
+  box-shadow: none;
+  border: none;
+}
+
+/* 未解锁：当前修为 < unlockLevel，图标全灰（如六重时七重招式） */
+.skill-item--icon-only.locked .skill-icon--locked,
+.skill-item--icon-only.locked .skill-icon--locked .skill-icon-img {
+  filter: grayscale(1) brightness(0.62);
+  opacity: 0.88;
+}
+
+.skill-item--icon-only .skill-icon-wrap {
+  margin-bottom: 0;
+}
+
+.skill-item--icon-only .skill-icon {
+  min-width: 0;
+  min-height: 0;
+  margin-bottom: 0;
+}
+
+.skill-item--icon-only .skill-icon-img {
+  width: 72px;
+  height: 72px;
+}
+
+.skill-item--icon-only .skill-lock-visual,
+.skill-item--icon-only .skill-icon-backing {
+  display: none;
+}
+
+.skill-item--icon-only .skill-unlock-caption {
+  display: none;
 }
 
 .skill-name {
@@ -852,6 +941,14 @@ body {
   color: #4caf50;
   font-size: 12px;
   margin-bottom: 10px;
+}
+
+.skill-tooltip-lock {
+  color: #e0b060;
+  font-size: 12px;
+  font-weight: bold;
+  margin: -4px 0 10px;
+  letter-spacing: 0.04em;
 }
 
 .skill-tooltip-desc {

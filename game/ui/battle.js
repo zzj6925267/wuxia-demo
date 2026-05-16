@@ -76,13 +76,8 @@ function getMartialBonusForChar(char, attr) {
     if (saved) {
       arts = JSON.parse(saved);
       console.log(`角色${char.id}从localStorage加载武学数据，已装备数量:`, arts.filter(m => m.equipped).length);
-    } else if (typeof LOCAL_MARTIAL_ARTS !== 'undefined') {
-      arts = LOCAL_MARTIAL_ARTS;
-      console.log(`角色${char.id}使用默认武学数据`);
-    } else if (typeof MARTIAL_ARTS_LIBRARY !== 'undefined') {
-      // 如果 LOCAL_MARTIAL_ARTS 未定义，尝试使用 MARTIAL_ARTS_LIBRARY
-      arts = MARTIAL_ARTS_LIBRARY;
-      console.log(`角色${char.id}使用 MARTIAL_ARTS_LIBRARY`);
+    } else {
+      arts = [];
     }
     
     arts.forEach(martial => {
@@ -175,11 +170,14 @@ function getAvailableSkills(actor) {
     const activeSkill = equippedMartial.skills.find(function (s) {
       return s && s.type === '主动' && martialLevel >= (s.unlockLevel || 1);
     });
-    if (!activeSkill || !activeSkill.effect || activeSkill.effect.type !== 'damage') {
+    const eff =
+      typeof resolveActiveDamageEffect === 'function'
+        ? resolveActiveDamageEffect(activeSkill, equippedMartial.id)
+        : activeSkill && activeSkill.effect;
+    if (!activeSkill || !eff || eff.type !== 'damage') {
       return skills;
     }
 
-    const eff = activeSkill.effect;
     const skillData = {
       name: activeSkill.name,
       mpCost: Math.max(1, Math.floor(Number(activeSkill.mpCost)) || 10),
@@ -309,6 +307,13 @@ function mergeFollowSkillFromMartialSkills(martial, martialLevel) {
 
 function computeSkillAttackPower(actor, multiplier) {
   return Math.max(0, Math.floor((Number(actor.attack) || 0) * multiplier));
+}
+
+/** 武学主动（非命中卷分支）与追击：扣目标防御，与 BattleHitRoll 物伤公式一致 */
+function resolveFlatSkillDamage(power, defender) {
+  const p = Math.floor(Number(power) || 0);
+  const def = Math.floor(Number(defender && defender.defense) || 0);
+  return Math.max(1, p - def);
 }
 
 function rollAttackerForHitRoll(actor, effectiveAttack) {
@@ -481,8 +486,11 @@ function applyEnemyMartialPassives(enemy) {
 }
 
 function buildSkillDataFromMartialActive(activeSkill, martial, martialLevel) {
-  if (!activeSkill || !activeSkill.effect || activeSkill.effect.type !== 'damage') return null;
-  const eff = activeSkill.effect;
+  const eff =
+    typeof resolveActiveDamageEffect === 'function'
+      ? resolveActiveDamageEffect(activeSkill, martial && martial.id)
+      : activeSkill && activeSkill.effect;
+  if (!activeSkill || !eff || eff.type !== 'damage') return null;
   const skillData = {
     name: activeSkill.name,
     mpCost: Math.max(1, Math.floor(Number(activeSkill.mpCost)) || 10),
@@ -763,6 +771,42 @@ function getYangGangBonusForChar(charId) {
   return bonus;
 }
 
+function resolveBattleMaxHp(char) {
+  const inner = getInnerSkillPassiveBonuses(char);
+  const martialHp = getMartialBonusForChar(char, 'hp');
+  const equipHp = getEquipBonusForChar(char, 'hp');
+  const innerHp = inner.maxHpBonus || 0;
+  if (typeof window.computeCombatMaxHp === 'function') {
+    return window.computeCombatMaxHp(char, {
+      martialHp: martialHp,
+      equipHp: equipHp,
+      innerHpBonus: innerHp
+    });
+  }
+  const bone = (char.stats && (char.stats.bone || char.stats.vitality)) || 5;
+  const lv = char.level || 1;
+  const base =
+    typeof deriveBaseStatFromFourDim === 'function'
+      ? deriveBaseStatFromFourDim('hp', bone, lv)
+      : 100 + (bone - 5) * 5 + (lv - 1) * 10;
+  return base + martialHp + equipHp + innerHp;
+}
+
+function resolveBattleMaxMp(char) {
+  const martialMp = getMartialBonusForChar(char, 'mp');
+  const equipMp = getEquipBonusForChar(char, 'mp');
+  if (typeof window.computeCombatMaxMp === 'function') {
+    return window.computeCombatMaxMp(char, { martialMp: martialMp, equipMp: equipMp });
+  }
+  const qi = (char.stats && (char.stats.qi || char.stats.spirit)) || 5;
+  const lv = char.level || 1;
+  const base =
+    typeof deriveBaseStatFromFourDim === 'function'
+      ? deriveBaseStatFromFourDim('mp', qi, lv)
+      : 50 + (qi - 5) * 2 + (lv - 1) * 5;
+  return base + martialMp + equipMp;
+}
+
 function getPlayerCharactersFromSave() {
   if (typeof window.applyPlayerCharactersFromStorage === 'function') {
     window.applyPlayerCharactersFromStorage();
@@ -792,48 +836,19 @@ function getPlayerCharactersFromSave() {
     console.log('characters[1].stats.hp:', window.characters[1].stats.hp);
     console.log('characters[1].stats.mp:', window.characters[1].stats.mp);
     
-    // 使用与角色面板一致的计算逻辑
-    // 气血 = 基础值(100+等级×10) + 四维加成(根骨×5) + 武学加成 + 装备加成
-    // 内力 = 基础值(50+等级×5) + 四维加成(内息×2) + 武学加成 + 装备加成
-    
-    // 角色1：少侠
+    // 气血/内力与角色面板同源：deriveBaseStatFromFourDim + 武学/装备/被动（见 config.computeCombatMaxHp）
     const char1Level = window.characters[0].level;
-    const char1Bone = window.characters[0].stats.bone || 10;
-    const char1Qi = window.characters[0].stats.qi || window.characters[0].stats.spirit || 10;
-    const char1HpBase = 100 + char1Level * 10;
-    const char1HpFourDim = char1Bone * 5;
-    const char1HpMartial = getMartialBonusForChar(window.characters[0], 'hp');
-    const char1HpEquip = getEquipBonusForChar(window.characters[0], 'hp');
     const char1InnerBonuses = getInnerSkillPassiveBonuses(window.characters[0]);
-    const char1FinalMaxHp = char1HpBase + char1HpFourDim + char1HpMartial + char1HpEquip + char1InnerBonuses.maxHpBonus;
+    const char1FinalMaxHp = resolveBattleMaxHp(window.characters[0]);
+    const char1FinalMaxMp = resolveBattleMaxMp(window.characters[0]);
     
-    const char1MpBase = 50 + char1Level * 5;
-    const char1MpFourDim = char1Qi * 2;
-    const char1MpMartial = getMartialBonusForChar(window.characters[0], 'mp');
-    const char1MpEquip = getEquipBonusForChar(window.characters[0], 'mp');
-    const char1FinalMaxMp = char1MpBase + char1MpFourDim + char1MpMartial + char1MpEquip;
-    
-    // 角色2：苏瑶
     const char2Level = window.characters[1].level;
-    const char2Bone = window.characters[1].stats.bone || 10;
-    const char2Qi = window.characters[1].stats.qi || window.characters[1].stats.spirit || 10;
-    const char2HpBase = 100 + char2Level * 10;
-    const char2HpFourDim = char2Bone * 5;
-    const char2HpMartial = getMartialBonusForChar(window.characters[1], 'hp');
-    const char2HpEquip = getEquipBonusForChar(window.characters[1], 'hp');
     const char2InnerBonuses = getInnerSkillPassiveBonuses(window.characters[1]);
-    const char2FinalMaxHp = char2HpBase + char2HpFourDim + char2HpMartial + char2HpEquip + char2InnerBonuses.maxHpBonus;
+    const char2FinalMaxHp = resolveBattleMaxHp(window.characters[1]);
+    const char2FinalMaxMp = resolveBattleMaxMp(window.characters[1]);
     
-    const char2MpBase = 50 + char2Level * 5;
-    const char2MpFourDim = char2Qi * 2;
-    const char2MpMartial = getMartialBonusForChar(window.characters[1], 'mp');
-    const char2MpEquip = getEquipBonusForChar(window.characters[1], 'mp');
-    const char2FinalMaxMp = char2MpBase + char2MpFourDim + char2MpMartial + char2MpEquip;
-    
-    console.log('少侠血量 - 基础:', char1HpBase, '四维:', char1HpFourDim, '武学:', char1HpMartial, '装备:', char1HpEquip, '内功:', char1InnerBonuses.maxHpBonus, '最终:', char1FinalMaxHp);
-    console.log('苏瑶血量 - 基础:', char2HpBase, '四维:', char2HpFourDim, '武学:', char2HpMartial, '装备:', char2HpEquip, '内功:', char2InnerBonuses.maxHpBonus, '最终:', char2FinalMaxHp);
-    console.log('少侠内力 - 基础:', char1MpBase, '四维:', char1MpFourDim, '武学:', char1MpMartial, '装备:', char1MpEquip, '最终:', char1FinalMaxMp);
-    console.log('苏瑶内力 - 基础:', char2MpBase, '四维:', char2MpFourDim, '武学:', char2MpMartial, '装备:', char2MpEquip, '最终:', char2FinalMaxMp);
+    console.log('少侠血量 - 最终:', char1FinalMaxHp, '内力:', char1FinalMaxMp);
+    console.log('苏瑶血量 - 最终:', char2FinalMaxHp, '内力:', char2FinalMaxMp);
     
     // 获取武学基础加成
     const char1MartialAttack = getMartialBonusForChar(window.characters[0], 'attack');
@@ -891,43 +906,19 @@ function getPlayerCharactersFromSave() {
           if (c && (c.id == null || c.id === '')) c.id = i + 1;
         });
         if (chars.length >= 2) {
-        // 角色1：少侠
         const char1Level = chars[0].level;
-        const char1Bone = chars[0].stats.bone || 10;
-        const char1Qi = chars[0].stats.qi || chars[0].stats.spirit || 10;
         const char1Str = chars[0].stats.strength || 10;
         const char1Agi = chars[0].stats.agility || 10;
-        const char1HpBase = 100 + char1Level * 10;
-        const char1HpFourDim = char1Bone * 5;
-        const char1HpMartial = getMartialBonusForChar(chars[0], 'hp');
-        const char1HpEquip = getEquipBonusForChar(chars[0], 'hp');
         const char1InnerBonuses = getInnerSkillPassiveBonuses(chars[0]);
-        const char1FinalMaxHp = char1HpBase + char1HpFourDim + char1HpMartial + char1HpEquip + char1InnerBonuses.maxHpBonus;
+        const char1FinalMaxHp = resolveBattleMaxHp(chars[0]);
+        const char1FinalMaxMp = resolveBattleMaxMp(chars[0]);
         
-        const char1MpBase = 50 + char1Level * 5;
-        const char1MpFourDim = char1Qi * 2;
-        const char1MpMartial = getMartialBonusForChar(chars[0], 'mp');
-        const char1MpEquip = getEquipBonusForChar(chars[0], 'mp');
-        const char1FinalMaxMp = char1MpBase + char1MpFourDim + char1MpMartial + char1MpEquip;
-        
-        // 角色2：苏瑶
         const char2Level = chars[1].level;
-        const char2Bone = chars[1].stats.bone || 10;
-        const char2Qi = chars[1].stats.qi || chars[1].stats.spirit || 10;
         const char2Str = chars[1].stats.strength || 10;
         const char2Agi = chars[1].stats.agility || 10;
-        const char2HpBase = 100 + char2Level * 10;
-        const char2HpFourDim = char2Bone * 5;
-        const char2HpMartial = getMartialBonusForChar(chars[1], 'hp');
-        const char2HpEquip = getEquipBonusForChar(chars[1], 'hp');
         const char2InnerBonuses = getInnerSkillPassiveBonuses(chars[1]);
-        const char2FinalMaxHp = char2HpBase + char2HpFourDim + char2HpMartial + char2HpEquip + char2InnerBonuses.maxHpBonus;
-        
-        const char2MpBase = 50 + char2Level * 5;
-        const char2MpFourDim = char2Qi * 2;
-        const char2MpMartial = getMartialBonusForChar(chars[1], 'mp');
-        const char2MpEquip = getEquipBonusForChar(chars[1], 'mp');
-        const char2FinalMaxMp = char2MpBase + char2MpFourDim + char2MpMartial + char2MpEquip;
+        const char2FinalMaxHp = resolveBattleMaxHp(chars[1]);
+        const char2FinalMaxMp = resolveBattleMaxMp(chars[1]);
 
         const b1Atk = getMartialBonusForChar(chars[0], 'attack');
         const b1Spd = getMartialBonusForChar(chars[0], 'speed');
@@ -995,7 +986,7 @@ function getPlayerCharactersFromSave() {
     
     return [
       { id: 1, name: '少侠', avatar: maleAvatar, level: 10, hp: 250, maxHp: 250, mp: 120, maxMp: 120, attack: Math.floor(80 * yangGangBonus1), defense: 52, speed: 72, hit: 80, dodge: 45, parry: 38, stats: { strength: 10, agility: 10, bone: 10, qi: 10, mp: 120, maxMp: 120 }, equipped: {} },
-      { id: 2, name: char2Data?.name || '苏瑶', avatar: femaleAvatar, level: char2Data?.level || 12, hp: char2Hp, maxHp: char2Hp, mp: char2Mp, maxMp: char2Mp, attack: Math.floor(80 * yangGangBonus2), defense: 45, speed: 72, hit: 80, dodge: 45, parry: 28, stats: char2Data?.stats || { strength: 10, agility: 10, bone: 10, qi: 10, mp: char2Mp, maxMp: char2Mp }, equipped: char2Data?.equipped || {} }
+      { id: 2, name: char2Data?.name || '苏瑶', avatar: femaleAvatar, level: char2Data?.level || 1, hp: char2Hp, maxHp: char2Hp, mp: char2Mp, maxMp: char2Mp, attack: Math.floor(80 * yangGangBonus2), defense: 45, speed: 72, hit: 80, dodge: 45, parry: 28, stats: char2Data?.stats || { strength: 10, agility: 10, bone: 10, qi: 10, mp: char2Mp, maxMp: char2Mp }, equipped: char2Data?.equipped || {} }
     ];
   }
   
@@ -1011,8 +1002,9 @@ function getPlayerCharactersFromSave() {
     const level = player.level || 1;
     
     // 使用正确的属性名：bone(根骨) 和 qi(内息)，而不是 vitality 和 spirit
-    const maxHp = Math.floor(100 + (stats.bone || stats.vitality || 10) * 5 + level * 10);
-    const maxMp = Math.floor(50 + (stats.qi || stats.spirit || 10) * 2 + level * 5);
+    const fallbackChar = { level: level, stats: stats };
+    const maxHp = resolveBattleMaxHp(fallbackChar);
+    const maxMp = resolveBattleMaxMp(fallbackChar);
     const attack = Math.floor((50 + stats.strength * 3) * yangGangBonus1);
     const defense = stats.defense || 50;
     const speed = 50 + stats.agility * 2;
@@ -1173,6 +1165,14 @@ async function initBattle() {
   }
 
   let alliesForBattle = currentPlayerCharacters;
+  if (enemy && enemy.sparProtagonistOnly) {
+    alliesForBattle = alliesForBattle.filter(function (c) {
+      return Number(c.id) === 1;
+    });
+    if (!alliesForBattle.length && currentPlayerCharacters.length) {
+      alliesForBattle = [currentPlayerCharacters[0]];
+    }
+  }
   if (alliesForBattle.length > BATTLE_PARTY_CAP_PER_SIDE) {
     console.warn(
       `initBattle: 我方 ${alliesForBattle.length} 人超过设计上限 ${BATTLE_PARTY_CAP_PER_SIDE}，已取前 ${BATTLE_PARTY_CAP_PER_SIDE} 人参战。`
@@ -2226,7 +2226,8 @@ async function checkFollowAttack(actor, target, followSkill, fxOpts) {
 
     showSwordEffect(actor, target, 'shadow');
 
-    const damage = Math.floor(actor.attack * followSkill.damage);
+    const power = Math.floor((Number(actor.attack) || 0) * followSkill.damage);
+    const damage = resolveFlatSkillDamage(power, target);
     showDamageNumber(target.id, -damage, false);
     target.hp = Math.max(0, target.hp - damage);
     showMeleeHitFeedback(target);
@@ -2315,7 +2316,8 @@ async function useSkill(actor, skill, target, fxOpts) {
         await checkFollowAttackOnMiss(actor, target, skill.onMissFollow, fxOpts);
       }
     } else {
-      const damage = computeSkillAttackPower(actor, multiplier);
+      const power = computeSkillAttackPower(actor, multiplier);
+      const damage = resolveFlatSkillDamage(power, target);
       showDamageNumber(target.id, -damage);
       target.hp = Math.max(0, target.hp - damage);
       if (skill.axeFx) showScreenJolt('axe');
@@ -2681,6 +2683,18 @@ async function showSettlement() {
   const rewards = isVictory ? battleState.rewards : { exp: 0, gold: 0, expReward: 0 };
 
   if (isVictory) {
+    if (battleState.battleEntrySource === 'qingstone_map') {
+      const hadJiaotouSpar = (battleState.enemyTeam || []).some(function (e) {
+        return e && e.id === 'qingstone_jiaotou_spar';
+      });
+      if (hadJiaotouSpar) {
+        try {
+          localStorage.setItem('qingstone_dojo_spar_victory', '1');
+        } catch (err) {
+          console.warn('qingstone_dojo_spar_victory', err);
+        }
+      }
+    }
     let sumExp = 0;
     let sumGold = 0;
     let sumExpReward = 0;
@@ -2694,13 +2708,22 @@ async function showSettlement() {
     rewards.exp = sumExp;
     rewards.gold = sumGold;
     rewards.expReward = sumExpReward;
+    const partyCharIds = (battleState.allyTeam || [])
+      .map(function (c) {
+        return parseInt(c.id, 10);
+      })
+      .filter(function (id) {
+        return Number.isFinite(id) && id > 1;
+      });
+    rewards.partyCharIds = partyCharIds;
 
     if (window.BattleSettlement) {
       window.BattleSettlement.setPendingRewards({
         exp: rewards.exp,
         gold: rewards.gold,
         expReward: rewards.expReward,
-        goldReward: rewards.gold
+        goldReward: rewards.gold,
+        partyCharIds: partyCharIds
       });
       window.BattleSettlement.setPostBattleMapRewardFloats({
         exp: rewards.exp,
@@ -2712,7 +2735,8 @@ async function showSettlement() {
         exp: rewards.exp,
         gold: rewards.gold,
         expReward: rewards.expReward,
-        goldReward: rewards.gold
+        goldReward: rewards.gold,
+        partyCharIds: partyCharIds
       }));
       localStorage.setItem('battle_map_reward_floats', JSON.stringify({
         exp: rewards.exp,

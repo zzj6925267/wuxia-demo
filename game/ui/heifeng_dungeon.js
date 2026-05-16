@@ -9,11 +9,24 @@
   const UNIQUE_IDS = ['luocao_jianjing', 'jingang_sword', 'pojiu_yeyi'];
   const RETURN_ROOM_KEY = 'heifeng_post_battle_room';
   const FOREST_EXIT_LOC_KEY = 'forest_after_heifeng_exit';
+  const HEIFENG_LOC_KEY = 'heifeng_dungeon_location';
 
   const LOCATIONS = window.HEIFENG_LOCATIONS;
   const CONNECTIONS = window.HEIFENG_CONNECTIONS;
 
   let currentRoom = 'hf_camp';
+
+  function persistHeifengRoom(roomId) {
+    const id = roomId != null ? roomId : currentRoom;
+    if (!id || !LOCATIONS[id]) return;
+    try {
+      localStorage.setItem(HEIFENG_LOC_KEY, id);
+    } catch (e) {}
+  }
+
+  window.getSubmapLocationForPersist = function () {
+    return currentRoom;
+  };
 
   function partyOnceKey(itemId) {
     return PARTY_ONCE_PREFIX + itemId;
@@ -58,6 +71,41 @@
   }
 
   const ORDER = ['hf_camp', 'hf_outer', 'hf_yard', 'hf_hall', 'hf_exit'];
+  const FRESH_ENTER_KEY = 'heifeng_fresh_enter';
+
+  /** 副本 Boss 顺序：王二柱 → 刁老炮 → 茅老獾（与房间 hf_outer / hf_yard / hf_hall 对应） */
+  function bossPrerequisiteMet(enemyId) {
+    if (enemyId === 'wang_erzhu') return true;
+    if (enemyId === 'diao_laopao') return isKilled('wang_erzhu');
+    if (enemyId === 'mao_laohuan') return isKilled('wang_erzhu') && isKilled('diao_laopao');
+    return true;
+  }
+
+  function bossGateHint(enemyId) {
+    if (enemyId === 'diao_laopao' && !isKilled('wang_erzhu')) {
+      return '须先在外寨偏房击退王二柱。';
+    }
+    if (enemyId === 'mao_laohuan') {
+      if (!isKilled('wang_erzhu')) return '须先击退王二柱。';
+      if (!isKilled('diao_laopao')) return '须先在中庭旗侧击退刁老炮。';
+    }
+    return '前路未清，尚有强敌挡道。';
+  }
+
+  /** 存档站位若越级（如曾停在聚义厅但未击败前置 Boss），回落到合法房间 */
+  function clampRoomToProgress(roomId) {
+    if (!roomId || !LOCATIONS[roomId]) return 'hf_camp';
+    if (roomId === 'hf_hall' && !isKilled('diao_laopao')) {
+      return clampRoomToProgress('hf_yard');
+    }
+    if (roomId === 'hf_yard' && !isKilled('wang_erzhu')) {
+      return clampRoomToProgress('hf_outer');
+    }
+    if (roomId === 'hf_exit' && !isKilled('mao_laohuan')) {
+      return clampRoomToProgress('hf_hall');
+    }
+    return roomId;
+  }
 
   function edgeAllowed(fromId, toId) {
     const from = LOCATIONS[fromId];
@@ -66,11 +114,12 @@
     const ti = ORDER.indexOf(toId);
     if (fi < 0 || ti < 0) return false;
     if (ti < fi) return true;
+    if (ti !== fi + 1) return false;
     if (toId === 'hf_outer') return true;
     if (toId === 'hf_yard') return isKilled('wang_erzhu');
     if (toId === 'hf_hall') return isKilled('diao_laopao');
     if (toId === 'hf_exit') return isKilled('mao_laohuan');
-    return true;
+    return false;
   }
 
   function sleepMs(ms) {
@@ -110,12 +159,93 @@
     }
   }
 
+  function applyMainQuestRewardsMainB09(save, task) {
+    if (!save.player) return;
+    if (!save.player.level) save.player.level = 1;
+    task.rewards.forEach(function (r) {
+      const v = parseInt(r.value, 10) || 0;
+      if (!v) return;
+      if (r.type === 'gold') save.player.gold = (save.player.gold || 0) + v;
+      else if (r.type === 'yueli' || r.type === 'exp') save.player.exp = (save.player.exp || 0) + v;
+    });
+    if (typeof processYueliLevelUpsForSave === 'function') {
+      processYueliLevelUpsForSave(save, { silent: true });
+    } else if (typeof applyPlayerYueliLevelUps === 'function') {
+      applyPlayerYueliLevelUps(save.player);
+    }
+    try {
+      localStorage.setItem('game_save_0', JSON.stringify(save));
+    } catch (e) {}
+    if (typeof syncProtagonistLevelExpFromPlayer === 'function') {
+      syncProtagonistLevelExpFromPlayer(save.player);
+    }
+  }
+
+  /** 击败茅老獾 → 结 main_b_10（任务奖励与副本内战斗掉落无关） */
+  function tryCompleteMainB10OnDungeonCleared() {
+    if (typeof ALL_TASKS === 'undefined' || !ALL_TASKS.main) return;
+    let ps;
+    try {
+      ps = JSON.parse(localStorage.getItem('playerState') || '{}');
+    } catch (e) {
+      ps = {};
+    }
+    const at = ps.activeTasks || {};
+    const b09 = at.main_b_09;
+    const b10 = at.main_b_10;
+    const b09ok = !!(b09 && (b09.completed || b09.isCompleted));
+    const b10ok = !!(b10 && (b10.completed || b10.isCompleted));
+    if (!b09ok || b10ok) return;
+    if (!isKilled('mao_laohuan')) return;
+    if (!ps.activeTasks) ps.activeTasks = {};
+    const cur = ps.activeTasks.main_b_10;
+    if (cur && (cur.completed || cur.isCompleted)) return;
+    ps.activeTasks.main_b_10 = Object.assign({}, cur, { completed: true, isCompleted: true });
+    localStorage.setItem('playerState', JSON.stringify(ps));
+    const task = ALL_TASKS.main.find((t) => t.id === 'main_b_10');
+    if (!task || !task.rewards) {
+      showFloat('主线 · 「清剿黑风寨」达成', '#FFD700');
+      return;
+    }
+    const saveRaw = localStorage.getItem('game_save_0');
+    if (saveRaw) {
+      try {
+        const save = JSON.parse(saveRaw);
+        if (save.player) {
+          applyMainQuestRewardsMainB09(save, task);
+          localStorage.setItem('game_save_0', JSON.stringify(save));
+        }
+      } catch (e2) {}
+    }
+    updateGoldHud();
+    showFloat('主线 · 「清剿黑风寨」达成', '#FFD700');
+    let delayMs = 0;
+    task.rewards.forEach((r) => {
+      const v = parseInt(r.value, 10) || 0;
+      if (!v) return;
+      let c = '#f4d03f';
+      if (r.type === 'gold') c = '#ff9800';
+      else if (r.type === 'yueli') c = '#9c27b0';
+      else if (r.type === 'exp') c = '#ffeb3b';
+      delayMs += 450;
+      setTimeout(() => {
+        showFloat((r.name || '奖励') + ' +' + v, c);
+      }, delayMs);
+    });
+  }
+
   function addToPlayerInventory(itemId, qty) {
     const q = Math.max(1, qty | 0);
     if (!window.playerData) {
       window.playerData = { inventory: [], equipment: {} };
     }
     const inv = window.playerData.inventory || (window.playerData.inventory = []);
+    const def = window.ITEMS && window.ITEMS[itemId];
+    if (def && def.category === 'equipment') {
+      for (let j = 0; j < q; j++) inv.push({ id: itemId, quantity: 1 });
+      localStorage.setItem('playerData', JSON.stringify(window.playerData));
+      return;
+    }
     let left = q;
     for (let i = 0; i < inv.length && left > 0; i++) {
       if (inv[i].id === itemId && inv[i].quantity < 99) {
@@ -338,6 +468,7 @@
         showFloat('获得：粗布劲装（' + ql + '）', '#a5d6a7');
       }
       rollMaoUniques();
+      tryCompleteMainB10OnDungeonCleared();
     }
   }
 
@@ -359,9 +490,31 @@
       if (goldReward > 0) {
         save.player.gold = (save.player.gold || 0) + goldReward;
       }
-      const expReward = parseInt(rewards.exp, 10) || 0;
-      if (expReward > 0) {
-        save.player.exp = (save.player.exp || 0) + expReward;
+      const levelYueli = parseInt(rewards.exp, 10) || 0;
+      if (levelYueli > 0) {
+        if (
+          window.BattleSettlement &&
+          typeof BattleSettlement.applyLevelYueliFromBattleRewards === 'function'
+        ) {
+          BattleSettlement.applyLevelYueliFromBattleRewards(save, rewards, { silent: true });
+        } else {
+          save.player.exp = (save.player.exp || 0) + levelYueli;
+          if (typeof processYueliLevelUpsForSave === 'function') {
+            processYueliLevelUpsForSave(save, { silent: true });
+          }
+          if (typeof processPartyBattleYueli === 'function') {
+            processPartyBattleYueli(save, rewards.partyCharIds, levelYueli, { silent: true });
+          }
+        }
+      }
+      if (window.BattleSettlement && BattleSettlement.applyMartialYueliFromBattleRewards) {
+        BattleSettlement.applyMartialYueliFromBattleRewards(rewards);
+      } else {
+        const martialYueli = parseInt(rewards.expReward, 10) || 0;
+        if (martialYueli > 0) {
+          const cur = parseInt(localStorage.getItem('playerExperience') || '0', 10) || 0;
+          localStorage.setItem('playerExperience', String(cur + martialYueli));
+        }
       }
       localStorage.setItem('game_save_0', JSON.stringify(save));
       if (window.BattleSettlement) window.BattleSettlement.clearPendingRewards();
@@ -439,6 +592,7 @@
       return;
     }
     currentRoom = roomId;
+    persistHeifengRoom(roomId);
     renderMap();
     updatePanel();
   }
@@ -494,9 +648,19 @@
       sec.innerHTML = '<div class="action-title">' + loc.bossLine + '</div>';
       const btn = document.createElement('button');
       btn.className = 'btn-dungeon primary';
-      btn.textContent = dead ? '已击退' : '进入战斗';
-      btn.disabled = !!dead;
-      if (!dead) {
+      if (dead) {
+        btn.textContent = '已击退';
+        btn.disabled = true;
+      } else if (!bossPrerequisiteMet(loc.enemyId)) {
+        btn.textContent = '寨路未通';
+        btn.disabled = true;
+        const hint = document.createElement('p');
+        hint.className = 'dungeon-gate-hint';
+        hint.style.cssText = 'margin:8px 0 0;font-size:13px;color:#ffab91;';
+        hint.textContent = bossGateHint(loc.enemyId);
+        sec.appendChild(hint);
+      } else {
+        btn.textContent = '进入战斗';
         btn.onclick = () => startDungeonBattle(loc.enemyId);
       }
       sec.appendChild(btn);
@@ -544,6 +708,11 @@
     if (battleEnterLock) return;
     if (isKilled(enemyId)) {
       showFloat('此敌已被击退。', '#bcaaa4');
+      updatePanel();
+      return;
+    }
+    if (!bossPrerequisiteMet(enemyId)) {
+      showFloat(bossGateHint(enemyId), '#ffab91');
       updatePanel();
       return;
     }
@@ -627,9 +796,31 @@
 
     const rr = localStorage.getItem(RETURN_ROOM_KEY);
     if (rr && LOCATIONS[rr]) {
-      currentRoom = rr;
+      currentRoom = clampRoomToProgress(rr);
+      persistHeifengRoom(currentRoom);
       localStorage.removeItem(RETURN_ROOM_KEY);
+    } else {
+      let freshEnter = false;
+      try {
+        freshEnter = localStorage.getItem(FRESH_ENTER_KEY) === '1';
+        if (freshEnter) localStorage.removeItem(FRESH_ENTER_KEY);
+      } catch (e) {}
+      if (freshEnter) {
+        currentRoom = 'hf_camp';
+        persistHeifengRoom('hf_camp');
+      } else {
+        const savedRoom = localStorage.getItem(HEIFENG_LOC_KEY);
+        if (savedRoom && LOCATIONS[savedRoom]) {
+          currentRoom = clampRoomToProgress(savedRoom);
+          persistHeifengRoom(currentRoom);
+        } else {
+          currentRoom = 'hf_camp';
+          persistHeifengRoom('hf_camp');
+        }
+      }
     }
+
+    tryCompleteMainB10OnDungeonCleared();
 
     updateGoldHud();
     renderMap();

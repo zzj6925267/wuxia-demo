@@ -13,6 +13,12 @@ function rememberReturnContextIfZhengyangOrSubmapPage() {
       if (disp !== 'none') {
         sessionStorage.setItem('game_ui_return_href', 'map.html');
         sessionStorage.setItem('game_map_restore_view', 'zhengyang');
+        if (window.gamePlayer && window.gamePlayer.currentLocation) {
+          try {
+            localStorage.setItem('currentLocation', window.gamePlayer.currentLocation);
+            sessionStorage.setItem(WORLD_MAP_RETURN_LOC_KEY, window.gamePlayer.currentLocation);
+          } catch (e) {}
+        }
       }
     }
   } catch (e) {}
@@ -26,6 +32,19 @@ function tryRestoreMapViewAfterReturn() {
     var v = sessionStorage.getItem('game_map_restore_view');
     if (v === 'zhengyang' && UI.zhengyangMap && UI.worldMap) {
       sessionStorage.removeItem('game_map_restore_view');
+      var returnLoc = 'zhengyang_clan';
+      try {
+        var saved = sessionStorage.getItem(WORLD_MAP_RETURN_LOC_KEY);
+        if (saved && window.gameMapData && window.gameMapData.locations[saved]) {
+          returnLoc = saved;
+        }
+      } catch (e) {}
+      if (window.gamePlayer) {
+        window.gamePlayer.currentLocation = returnLoc;
+      }
+      try {
+        localStorage.setItem('currentLocation', returnLoc);
+      } catch (e2) {}
       enterZhengyangMap();
     }
   } catch (e) {}
@@ -53,6 +72,8 @@ function openInventory() {
 
 /** 正阳派内上次所在建筑（sessionStorage），避免每次进山都回到山门又见不到 NPC */
 const ZHENGYANG_LAST_BUILDING_KEY = 'zhengyang_last_building_id';
+/** 进入嵌套正阳前的大地图节点，离开门派时回到该点（从哪进从哪出） */
+const WORLD_MAP_RETURN_LOC_KEY = 'world_map_return_location';
 
 // 当前正阳派位置（默认在门派入口；进入时会尝试恢复上次位置）
 let currentZhengyangBuilding = 'menkou';
@@ -272,6 +293,13 @@ function handleExplore() {
  * 进入正阳派地图
  */
 function enterZhengyangMap() {
+  const entryLoc =
+    window.gamePlayer && window.gamePlayer.currentLocation
+      ? window.gamePlayer.currentLocation
+      : 'zhengyang_clan';
+  try {
+    sessionStorage.setItem(WORLD_MAP_RETURN_LOC_KEY, entryLoc);
+  } catch (e) {}
   let saved = '';
   try {
     saved = sessionStorage.getItem(ZHENGYANG_LAST_BUILDING_KEY) || '';
@@ -288,11 +316,28 @@ function enterZhengyangMap() {
  * 返回大地图
  */
 function goBackToWorldMap() {
-  // 离开门派前先关闭对话面板
   closeDialogue();
-  
+
+  let returnLoc = 'zhengyang_clan';
+  try {
+    const saved = sessionStorage.getItem(WORLD_MAP_RETURN_LOC_KEY);
+    if (saved && window.gameMapData && window.gameMapData.locations[saved]) {
+      returnLoc = saved;
+    }
+    sessionStorage.removeItem(WORLD_MAP_RETURN_LOC_KEY);
+  } catch (e) {}
+
+  if (window.gamePlayer) {
+    window.gamePlayer.currentLocation = returnLoc;
+  }
+  try {
+    localStorage.setItem('currentLocation', returnLoc);
+  } catch (e2) {}
+
   UI.zhengyangMap.style.display = 'none';
   UI.worldMap.style.display = 'flex';
+  renderMap();
+  updateLocationPanel();
 }
 
 /**
@@ -678,29 +723,45 @@ function handleDialogueAction(dialogue, callback) {
     if (!playerStateFromStorage.learnedSkills) playerStateFromStorage.learnedSkills = [];
     if (playerStateFromStorage.factionContribution === undefined) playerStateFromStorage.factionContribution = 0;
     
-    // 检查是否已经学会
+    // 检查是否已经学会（对话记录）；若仅缺武学列表则免费补写
     if (playerStateFromStorage.learnedSkills.includes(dialogue.skill)) {
-      showFloatText('你已经学会这个技能了', '#ff9800');
-      // 不继续跳转，让用户留在当前对话
+      if (typeof repairZhengyangIntroMartialsFromLearnedSkills === 'function') {
+        const fixed = repairZhengyangIntroMartialsFromLearnedSkills(1);
+        if (fixed > 0) {
+          showFloatText(`已补录入武学：${dialogue.skill}`, '#4caf50');
+        } else {
+          showFloatText('你已经学会这个技能了', '#ff9800');
+        }
+      } else {
+        showFloatText('你已经学会这个技能了', '#ff9800');
+      }
       return;
     }
-    
-    // 检查贡献是否足够
-    // 与 taskData 门派三条差事对齐：采药28+剿匪58+理书38=124/轮；连做三轮（各任务接交共9次）≈372，换一门入门武
-    const skillCost = 372; // 3×(28+58+38)
+
+    const skillCost =
+      typeof getZhengyangIntroSkillContributionCost === 'function'
+        ? getZhengyangIntroSkillContributionCost()
+        : 100;
     if (playerStateFromStorage.factionContribution < skillCost) {
       showFloatText(`贡献不足！需要${skillCost}贡献`, '#f44336');
-      // 不继续跳转，让用户留在当前对话
       return;
     }
-    
-    // 扣除贡献
+
+    const grantResult =
+      typeof grantZhengyangIntroMartialArt === 'function'
+        ? grantZhengyangIntroMartialArt(1, dialogue.skill)
+        : { ok: false, reason: 'no_grant_fn' };
+    if (!grantResult.ok) {
+      showFloatText('武学传授失败，请刷新页面后重试', '#f44336');
+      return;
+    }
+    if (grantResult.already) {
+      showFloatText('你已经学会这个技能了', '#ff9800');
+      return;
+    }
+
     playerStateFromStorage.factionContribution -= skillCost;
-    
-    // 学习技能
     playerStateFromStorage.learnedSkills.push(dialogue.skill);
-    
-    // 保存到localStorage
     localStorage.setItem('playerState', JSON.stringify(playerStateFromStorage));
     
     // 更新当前playerState
@@ -751,6 +812,18 @@ function acceptTask(taskId, reward) {
   // 从localStorage获取玩家状态
   const savedState = localStorage.getItem('playerState');
   let playerState = savedState ? JSON.parse(savedState) : {};
+
+  let finalReward =
+    reward && typeof reward === 'object' && !Array.isArray(reward)
+      ? Object.assign({}, reward)
+      : { contribution: 0 };
+  if (
+    (taskId === 'collect_herbs' || taskId === 'bandit_clear' || taskId === 'organize_books') &&
+    typeof getFactionQuestContributionAmount === 'function'
+  ) {
+    const v = getFactionQuestContributionAmount(taskId);
+    if (v > 0) finalReward = { contribution: v };
+  }
   
   // 确保activeTasks存在
   if (!playerState.activeTasks) {
@@ -773,9 +846,9 @@ function acceptTask(taskId, reward) {
   const taskData = {
     collected: 0,
     completed: false,
-    reward: reward
+    reward: finalReward
   };
-  
+
   // 根据任务类型设置目标
   if (taskId === 'bandit_clear') {
     // 山贼任务需要特殊处理
@@ -783,7 +856,7 @@ function acceptTask(taskId, reward) {
       killCount: 0,
       targetKill: 3,
       isCompleted: false,
-      reward: reward
+      reward: finalReward
     };
   } else if (taskId === 'collect_herbs') {
     // 采集任务
@@ -792,7 +865,7 @@ function acceptTask(taskId, reward) {
     // 其他任务
     playerState.activeTasks[taskId] = {
       completed: false,
-      reward: reward
+      reward: finalReward
     };
   }
   
@@ -846,7 +919,15 @@ function applyMainQuestRewardsMq(questId) {
       if (r.type === 'gold') save.player.gold = (save.player.gold || 0) + v;
       else if (r.type === 'yueli' || r.type === 'exp') save.player.exp = (save.player.exp || 0) + v;
     });
+    if (typeof processYueliLevelUpsForSave === 'function') {
+      processYueliLevelUpsForSave(save, { silent: true });
+    } else if (typeof applyPlayerYueliLevelUps === 'function') {
+      applyPlayerYueliLevelUps(save.player);
+    }
     localStorage.setItem('game_save_0', JSON.stringify(save));
+    if (typeof syncProtagonistLevelExpFromPlayer === 'function') {
+      syncProtagonistLevelExpFromPlayer(save.player);
+    }
     const goldEl = document.getElementById('goldValue');
     if (goldEl) goldEl.textContent = save.player.gold;
   } catch (e) {
@@ -907,6 +988,15 @@ function tryAdvanceMainQuestOnFactionTurnIn(taskId) {
   }
 }
 
+function notifyMainB08ForestDispatchMq() {
+  setTimeout(function () {
+    showFloatText(
+      '苏瑶嘱你：从江湖舆图入「探索山林」，到山贼窝棚寻猎户孟青松问明黑风寨之事。',
+      '#FFD700'
+    );
+  }, 700);
+}
+
 /** 苏瑶处成功学会任一门入门武式后，推进主线「授式入门」(main_b_07) */
 function tryCompleteMainB07AfterLearnSkill() {
   if (typeof ALL_TASKS === 'undefined' || !ALL_TASKS.main) return;
@@ -916,6 +1006,7 @@ function tryCompleteMainB07AfterLearnSkill() {
   if (markMainQuestStepMq('main_b_07')) {
     applyMainQuestRewardsMq('main_b_07');
     floatMainQuestRewardsMq('main_b_07');
+    notifyMainB08ForestDispatchMq();
   }
 }
 
@@ -942,6 +1033,7 @@ function tryCompleteMainB07IfAllEntrySkillsKnown() {
   if (markMainQuestStepMq('main_b_07')) {
     applyMainQuestRewardsMq('main_b_07');
     floatMainQuestRewardsMq('main_b_07');
+    notifyMainB08ForestDispatchMq();
     return true;
   }
   return false;
@@ -1214,3 +1306,7 @@ window.initMapUI = initMapUI;
 window.goBackToWorldMap = goBackToWorldMap;
 window.openTask = openTask;
 window.tryRestoreMapViewAfterReturn = tryRestoreMapViewAfterReturn;
+
+if (typeof repairZhengyangIntroMartialsFromLearnedSkills === 'function') {
+  repairZhengyangIntroMartialsFromLearnedSkills(1);
+}

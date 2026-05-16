@@ -184,6 +184,53 @@ const ITEMS = {
     },
     price: 30
   },
+
+  /** 青石武馆教头线：一级木械三件套（与三本入门秘籍发放一一对应） */
+  mu_jian: {
+    id: 'mu_jian',
+    name: '木剑',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'weapon',
+    quality: 'common',
+    requiredLevel: 1,
+    description: '武馆桩上削的木头剑，刃不开锋，只练架势与落点。',
+    icon: '🪵',
+    bonus: {
+      attack: 6
+    },
+    price: 5
+  },
+  mu_dao: {
+    id: 'mu_dao',
+    name: '木刀',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'weapon',
+    quality: 'common',
+    requiredLevel: 1,
+    description: '厚木片嵌柄，分量近似单刀，劈砍不伤刃，专练开合力道。',
+    icon: '🪵',
+    bonus: {
+      attack: 6
+    },
+    price: 5
+  },
+  mu_quan: {
+    id: 'mu_quan',
+    name: '木拳',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'weapon',
+    quality: 'common',
+    requiredLevel: 1,
+    description: '藤条与软木扎成的手靶，套在手上练钉劲与沉肩，不打伤人。',
+    icon: '🪵',
+    bonus: {
+      attack: 6
+    },
+    price: 5
+  },
   
   shijian_sword: {
     id: 'shijian_sword',

@@ -24,6 +24,16 @@ function loadPlayerState() {
   }
 }
 
+function npcMainQuestStepDone(questId) {
+  try {
+    const st = JSON.parse(localStorage.getItem('playerState') || '{}');
+    const t = st.activeTasks && st.activeTasks[questId];
+    return !!(t && (t.completed || t.isCompleted));
+  } catch (e) {
+    return false;
+  }
+}
+
 /**
  * 测试用：退出门派，便于重走「加入正阳」以验证主线第四节。
  * 控制台：leaveFactionForRetest()
@@ -145,9 +155,30 @@ const ZHENGYANG_NPCS = {
           if (!state.activeTasks) state.activeTasks = {};
           
           const tasks = [
-            { id: 'collect_herbs', name: '采集灵芝草', reward: '28门派贡献' },
-            { id: 'bandit_clear', name: '清理山门前山贼', reward: '58门派贡献' },
-            { id: 'organize_books', name: '整理藏经楼书籍', reward: '38门派贡献' }
+            {
+              id: 'collect_herbs',
+              name: '采集灵芝草',
+              reward:
+                (typeof getFactionQuestContributionAmount === 'function'
+                  ? getFactionQuestContributionAmount('collect_herbs')
+                  : 11) + '门派贡献'
+            },
+            {
+              id: 'bandit_clear',
+              name: '清理山门前山贼',
+              reward:
+                (typeof getFactionQuestContributionAmount === 'function'
+                  ? getFactionQuestContributionAmount('bandit_clear')
+                  : 11) + '门派贡献'
+            },
+            {
+              id: 'organize_books',
+              name: '整理藏经楼书籍',
+              reward:
+                (typeof getFactionQuestContributionAmount === 'function'
+                  ? getFactionQuestContributionAmount('organize_books')
+                  : 12) + '门派贡献'
+            }
           ];
           
           const options = [];
@@ -210,35 +241,57 @@ const ZHENGYANG_NPCS = {
         options: [{ text: '弟子这就去藏经楼', next: 'default' }]
       },
       task_collect_herbs: {
-        text: '好，灵芝草只长在山林里的「山涧溪旁」。你从江湖舆图点「探索山林」进那方小地图，走到山涧溪旁，在林草处采够5朵回来。完成后记你28点门派贡献。',
+        getText: () => {
+          const n =
+            typeof getFactionQuestContributionAmount === 'function'
+              ? getFactionQuestContributionAmount('collect_herbs')
+              : 11;
+          return `好，灵芝草只长在山林里的「山涧溪旁」。你从江湖舆图点「探索山林」进那方小地图，走到山涧溪旁，在林草处采够5朵回来。完成后记你${n}点门派贡献。`;
+        },
         options: [
           { text: '弟子这就去办！', next: 'default' }
         ],
         action: 'accept_task',
         task: 'collect_herbs',
-        reward: { contribution: 28 }
+        reward: { contribution: 11 }
       },
       task_bandit_clear: {
-        text: '山门前黑风岭有伙山贼作乱，伤了几个路过的百姓。你去清理一下。完成后记你58点门派贡献。',
+        getText: () => {
+          const n =
+            typeof getFactionQuestContributionAmount === 'function'
+              ? getFactionQuestContributionAmount('bandit_clear')
+              : 11;
+          return `山门前黑风岭有伙山贼作乱，伤了几个路过的百姓。你去清理一下。完成后记你${n}点门派贡献。`;
+        },
         options: [
           { text: '弟子领命！', next: 'default' }
         ],
         action: 'accept_task',
         task: 'bandit_clear',
-        reward: { contribution: 58 }
+        reward: { contribution: 11 }
       },
       task_organize_books: {
-        text: '藏经楼的书有些乱了，涂长老一个人忙不过来。你去藏经楼找涂长老，帮他整理一下书籍吧。完成后记你38点门派贡献。',
+        getText: () => {
+          const n =
+            typeof getFactionQuestContributionAmount === 'function'
+              ? getFactionQuestContributionAmount('organize_books')
+              : 12;
+          return `藏经楼的书有些乱了，秦松长老一个人忙不过来。你去藏经楼找秦松长老，帮他整理一下书籍吧。完成后记你${n}点门派贡献。`;
+        },
         options: [
           { text: '弟子这就去帮忙！', next: 'default' }
         ],
         action: 'accept_task',
         task: 'organize_books',
-        reward: { contribution: 38 }
+        reward: { contribution: 12 }
       },
       task_complete_collect_herbs: {
         getText: () => {
-          return '很好！你完成了采集灵芝草的任务，这是你的奖励。28点门派贡献已计入你的账下。';
+          const n =
+            typeof getFactionQuestContributionAmount === 'function'
+              ? getFactionQuestContributionAmount('collect_herbs')
+              : 11;
+          return `很好！你完成了采集灵芝草的任务，这是你的奖励。${n}点门派贡献已计入你的账下。`;
         },
         options: [
           { text: '多谢长老！', next: 'faction_task' }
@@ -248,7 +301,11 @@ const ZHENGYANG_NPCS = {
       },
       task_complete_bandit_clear: {
         getText: () => {
-          return '很好！你完成了清理山门前山贼的任务，这是你的奖励。58点门派贡献已计入你的账下。';
+          const n =
+            typeof getFactionQuestContributionAmount === 'function'
+              ? getFactionQuestContributionAmount('bandit_clear')
+              : 11;
+          return `很好！你完成了清理山门前山贼的任务，这是你的奖励。${n}点门派贡献已计入你的账下。`;
         },
         options: [
           { text: '多谢长老！', next: 'faction_task' }
@@ -258,7 +315,11 @@ const ZHENGYANG_NPCS = {
       },
       task_complete_organize_books: {
         getText: () => {
-          return '很好！藏经楼的书籍已经整整齐齐了！这是你的奖励，38点门派贡献已计入你的账下。';
+          const n =
+            typeof getFactionQuestContributionAmount === 'function'
+              ? getFactionQuestContributionAmount('organize_books')
+              : 12;
+          return `很好！藏经楼的书籍已经整整齐齐了！这是你的奖励，${n}点门派贡献已计入你的账下。`;
         },
         options: [
           { text: '多谢长老！', next: 'faction_task' }
@@ -420,10 +481,14 @@ const ZHENGYANG_NPCS = {
         getOptions: () => {
           loadPlayerState(); // 每次都重新加载最新状态
           if (playerState.joinedFaction) {
-            return [
+            const options = [
               { text: '请教武功', next: 'learn' },
               { text: '闲聊几句', next: 'chat' }
             ];
+            if (npcMainQuestStepDone('main_b_07') && !npcMainQuestStepDone('main_b_08')) {
+              options.unshift({ text: '（主线）北峰猎户与黑风寨', next: 'remind_b08_dispatch' });
+            }
+            return options;
           }
           return [
             { text: '加入门派', next: 'join' },
@@ -465,14 +530,18 @@ const ZHENGYANG_NPCS = {
         getOptions: () => {
           loadPlayerState(); // 每次都重新加载最新状态
           const options = [];
+          const cost =
+            typeof getZhengyangIntroSkillContributionCost === 'function'
+              ? getZhengyangIntroSkillContributionCost()
+              : 100;
           if (!playerState.learnedSkills.includes('正阳基础剑式')) {
-            options.push({ text: '正阳基础剑式（372贡献）', next: 'confirm_sword' });
+            options.push({ text: `正阳基础剑式（${cost}贡献）`, next: 'confirm_sword' });
           }
           if (!playerState.learnedSkills.includes('正阳吐纳诀')) {
-            options.push({ text: '正阳吐纳诀（372贡献）', next: 'confirm_breath' });
+            options.push({ text: `正阳吐纳诀（${cost}贡献）`, next: 'confirm_breath' });
           }
           if (!playerState.learnedSkills.includes('踏云步')) {
-            options.push({ text: '踏云步（372贡献）', next: 'confirm_step' });
+            options.push({ text: `踏云步（${cost}贡献）`, next: 'confirm_step' });
           }
           if (options.length === 0) {
             return [{ text: '弟子三门入门皆已谙熟，特来向师姐复命', next: 'report_main_b_07' }];
@@ -481,9 +550,15 @@ const ZHENGYANG_NPCS = {
         }
       },
       report_main_b_07: {
-        text: '好，你既已把三门入门都过了一遍，我便替你记上功过簿这一笔。',
-        options: [{ text: '多谢师姐', next: 'default' }],
+        text:
+          '好，你既已把三门入门都过了一遍，我便替你记上功过簿这一笔。北峰黑风寨近来绑票勒赎，有猎户孟青松自寨中逃出，说是门里也有弟子被囚。你武学初成，正该下山历练——从江湖舆图进「青苍山麓」，到山贼窝棚寻他搭话问明，再视情形办差。',
+        options: [{ text: '弟子这就去', next: 'default' }],
         action: 'complete_main_b_07_report'
+      },
+      remind_b08_dispatch: {
+        text:
+          '北峰的事你别耽搁：猎户孟青松蜷在山贼窝棚旁，衣上带血，口口声声说黑风寨扣了人。你从江湖舆图点「探索山林」进青苍山麓，沿山贼巡路往南便是窝棚。',
+        options: [{ text: '弟子这就去', next: 'default' }]
       },
       confirm_sword: {
         text: '确定是正阳基础剑式吗？',
@@ -534,23 +609,23 @@ const FACTION_TASKS = [
   {
     id: 'herb_collection',
     name: '下山采购药材',
-    text: '嗯，眼下有个任务：下山采购药材。山下回春堂需要一些药材，你去采十株千年灵芝和五株天山雪莲回来。完成后记你28点门派贡献。',
+    text: '嗯，眼下有个任务：下山采购药材。山下回春堂需要一些药材，你去采十株千年灵芝和五株天山雪莲回来。完成后记你11点门派贡献。',
     difficulty: '简单',
-    reward: { contribution: 28 }
+    reward: { contribution: 11 }
   },
   {
     id: 'bandit_clear',
     name: '清理山门前山贼',
-    text: '嗯，眼下有个任务：清理山门前的山贼。黑风岭有伙山贼作乱，伤了几个路过的百姓，你去清理一下。完成后记你58点门派贡献。',
+    text: '嗯，眼下有个任务：清理山门前的山贼。黑风岭有伙山贼作乱，伤了几个路过的百姓，你去清理一下。完成后记你11点门派贡献。',
     difficulty: '普通',
-    reward: { contribution: 58 }
+    reward: { contribution: 11 }
   },
   {
     id: 'bloodknife_investigate',
     name: '追查血刀门踪迹',
-    text: '嗯，眼下有个任务：追查血刀门踪迹。血刀门最近在附近活动频繁，你去打探一下他们的动向。完成后记你160点门派贡献。',
+    text: '嗯，眼下有个任务：追查血刀门踪迹。血刀门最近在附近活动频繁，你去打探一下他们的动向。完成后记你43点门派贡献。',
     difficulty: '困难',
-    reward: { contribution: 160 }
+    reward: { contribution: 43 }
   }
 ];
 

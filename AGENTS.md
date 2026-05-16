@@ -11,7 +11,9 @@
 ## 战斗相关（务必遵守）
 
 1. **进入队伍战**（`battle.html`）：请走 **`game/js/utils/battleEntry.js`** 的 `BattleEntry.startPartyBattle(...)`，不要在新地图里手写 `localStorage` + `location` 进战斗。
-2. **战后待发放奖励**（`pending_battle_rewards`）：读写请走 **`game/js/utils/battleSettlement.js`** 的 `BattleSettlement`，不要硬编码键名字符串。
+2. **战后待发放奖励**（`pending_battle_rewards`）：读写请走 **`game/js/utils/battleSettlement.js`** 的 `BattleSettlement`，不要硬编码键名字符串。  
+   - **掉落/奖励何时拆独立表**：见 **`MEMORY.md`** 小节「**Agent 约定：掉落 / 奖励何时抽成独立表**」——满足所列条件时 **Agent 应主动抽表接线**，不必等产品再提。
+   - **任务配置何时拆文件**：见 **`MEMORY.md`**「**Agent 约定：任务表（taskData.js）何时拆文件**」——**首次**出现所列信号即拆，越早迁移成本越低。
 3. **队伍战物理命中/闪避/招架**：逻辑在 **`BattleHitRoll.js`**；`battle.js` 主要负责 UI 与流程。
 4. **主菜单 `Game` 挂载的 `BattleSystem.js`** 为「单敌」回合制；与队伍战 **仍是两条形态**（阶段四「单形态」未做），勿把两套规则混成一套公式而不经评审。
 
@@ -103,5 +105,16 @@ node scripts/wanx_reference_image.mjs --ref "https://.../ref.png" --prompt "..."
 - **`--strength`**：数字越大越贴参考图，一般先试 **0.5～0.65**，不满意再改。
 
 **忘了怎么写参数时**：在同一目录执行 `node scripts/wanx_reference_image.mjs --help`。
+
+### 右下角「AI生成」水印
+
+1. **API 出图（推荐）**：`wanx_reference_image.mjs` 已默认 **`watermark: false`**（百炼文档：不加右下角「AI生成」）。若仍带水印，检查是否走了网页控制台（网页通道有时会强制水印，与 VIP 策略以控制台为准）。
+2. **已有 PNG 批量裁切**：在 `tools/portrait-crop` 执行过 `npm install` 后：
+   ```powershell
+   cd wuxia-demo
+   node scripts/trim_ai_watermark.mjs --dir game/assets/images/UI/skills --size 128 --inplace
+   ```
+   默认裁掉右下约 **14% 宽 × 10% 高**；可用 `--right` / `--bottom` 微调。`--inplace` 会覆盖原图并留 `.bak` 备份。
+3. **官方去水印 API**：万相图像编辑 `wanx2.1-imageedit` + `function: remove_watermark`（需图片 **HTTPS 公网 URL**），见阿里云「万相通用图像编辑」文档；适合大图，小图标用裁切即可。
 
 若报错里提到 `model` / `size` 不合法，把控制台里当前支持的尺寸抄进 `--size`，或加 `--model wanx-v1`（与官方参考图示例一致）再试。

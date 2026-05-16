@@ -341,6 +341,7 @@
     }
   </style>
   <link rel="stylesheet" href="submap_quick_nav.css" />
+  <link rel="stylesheet" href="battle-enter-cinematic.css" />
 </head>
 <body>
   <script>
@@ -438,16 +439,41 @@
   </div>
 
   <script src="submap_quick_nav.js"></script>
+  <script src="../js/config.js"></script>
   <script src="../js/utils/battleSettlement.js"></script>
+  <script src="battleEnterCinematic.js"></script>
+  <script src="../js/utils/battleEntry.js"></script>
   <script src="../js/data/items.js"></script>
   <script src="qingstoneMapData.js"></script>
   <script src="taskData.js"></script>
+  <script src="../js/data/martialSkillDamage.js"></script>
   <script src="martialArtsData.js"></script>
   <script>
         const LOCATIONS = window.QINGSTONE_LOCATIONS;
         const CONNECTIONS = window.QINGSTONE_CONNECTIONS;
+        const QINGSTONE_MAP_LOC_KEY = 'qingstone_map_location';
 
         let currentLocation = 'qingstone_gate';
+
+        function persistQingstoneMapLocation(locId) {
+          const id = locId != null ? locId : currentLocation;
+          if (!id || !LOCATIONS[id]) return;
+          try {
+            localStorage.setItem(QINGSTONE_MAP_LOC_KEY, id);
+          } catch (e) {}
+        }
+
+        function loadQingstoneMapLocation() {
+          try {
+            const saved = localStorage.getItem(QINGSTONE_MAP_LOC_KEY);
+            if (saved && LOCATIONS[saved]) return saved;
+          } catch (e) {}
+          return null;
+        }
+
+        window.getSubmapLocationForPersist = function () {
+          return currentLocation;
+        };
 
         const QINGSTONE_GATE_GUIDE_STEPS = [
           { icon: '📜', name: '旁白', title: '', body: '你刚进镇，牌坊下人来人往，鞋底还沾着城外的尘土。' },
@@ -562,10 +588,41 @@
           return n;
         }
 
+        /** 装备类不可叠放：旧档若 quantity>1 拆成多格（与 inventory.js 一致） */
+        function qingstoneSplitStackedEquipment(inv) {
+          if (!Array.isArray(inv) || !window.ITEMS) return false;
+          var changed = false;
+          var i = 0;
+          while (i < inv.length) {
+            var slot = inv[i];
+            if (!slot || !slot.id) {
+              i++;
+              continue;
+            }
+            var def = window.ITEMS[slot.id];
+            var n = Math.max(1, Math.min(99, parseInt(slot.quantity, 10) || 1));
+            if (def && def.category === 'equipment' && n > 1) {
+              slot.quantity = 1;
+              for (var k = 1; k < n; k++) inv.splice(i + k, 0, { id: slot.id, quantity: 1 });
+              changed = true;
+              i += n;
+            } else {
+              i++;
+            }
+          }
+          return changed;
+        }
+
         function qingstoneAddInventoryItem(itemId, qty) {
           qingstoneEnsurePlayerData();
-          var q = qty || 1;
+          var q = Math.max(1, parseInt(qty, 10) || 1);
+          var def = typeof window !== 'undefined' && window.ITEMS && window.ITEMS[itemId];
           var inv = window.playerData.inventory;
+          if (def && def.category === 'equipment') {
+            for (var j = 0; j < q; j++) inv.push({ id: itemId, quantity: 1 });
+            qingstonePersistPlayerData();
+            return;
+          }
           for (var i = 0; i < inv.length; i++) {
             if (inv[i].id === itemId && inv[i].quantity < 99) {
               var can = 99 - inv[i].quantity;
@@ -592,6 +649,220 @@
           { martialId: 12, itemId: 'skillbook_nuobu_jue', label: '《挪步诀》', price: 90 }
         ];
 
+        /** 武馆主线「问径」：选抄本 → 同发木械 → 研读练至三重 → 教头喂招；状态存 playerState.qingstoneDojoTutorial */
+        const QINGSTONE_DOJO_TUTORIAL_PATHS = [
+          {
+            skillbookId: 'skillbook_liuyun',
+            weaponId: 'mu_jian',
+            martialArtId: 10,
+            pickLabel: '选《阵形剑诀》抄本（剑术入门）'
+          },
+          {
+            skillbookId: 'skillbook_polang_dao',
+            weaponId: 'mu_dao',
+            martialArtId: 14,
+            pickLabel: '选《开合刀法》抄本（刀术入门）'
+          },
+          {
+            skillbookId: 'skillbook_chenqiao_quan',
+            weaponId: 'mu_quan',
+            martialArtId: 13,
+            pickLabel: '选《沉桥拳诀》抄本（拳脚入门）'
+          }
+        ];
+
+        /** 教头线：武学如何用（写在对话括号里，不单用飘字教这一步） */
+        const QINGSTONE_JIAOTOU_MARTIAL_PRACTICE_HINT =
+          '（界面提示：先点底栏「武学」进入武学页；在左侧列表里点选刚悟得的那一路武学——要点中这一行，右侧才会出现可点的「修炼」；默认未点选时不会消耗阅历升重。用阅历把这一路练到第三重，再回来寻我喂招。）';
+
+        function qingstoneGetMartialStorageCharId() {
+          try {
+            const raw = localStorage.getItem('game_save_0');
+            if (raw) {
+              const o = JSON.parse(raw);
+              const pid = o && o.player && o.player.id;
+              if (pid != null && pid !== '') {
+                const n = parseInt(String(pid), 10);
+                if (!isNaN(n) && n >= 1) return String(n);
+              }
+            }
+          } catch (e) {}
+          return '1';
+        }
+
+        function qingstoneGetMartialLevelByArtId(martialArtId) {
+          const key = 'playerMartialArts_' + qingstoneGetMartialStorageCharId();
+          const raw = localStorage.getItem(key);
+          if (!raw) return 0;
+          try {
+            const list = JSON.parse(raw);
+            if (!Array.isArray(list)) return 0;
+            const m = list.find(function (x) {
+              return x && Number(x.id) === Number(martialArtId);
+            });
+            return m && m.currentLevel != null ? Math.max(0, Number(m.currentLevel)) : 0;
+          } catch (e) {
+            return 0;
+          }
+        }
+
+        function readQingstoneDojoTutorial() {
+          const st = readPlayerStateRaw();
+          return (st && st.qingstoneDojoTutorial) || {};
+        }
+
+        function writeQingstoneDojoTutorial(patch) {
+          const st = readPlayerStateRaw();
+          st.qingstoneDojoTutorial = Object.assign({}, st.qingstoneDojoTutorial || {}, patch);
+          writePlayerStateRaw(st);
+        }
+
+        function bindJiaotouTutorialPickOptions() {
+          const rows = QINGSTONE_DOJO_TUTORIAL_PATHS.map(function (row, idx) {
+            return (
+              '<button type="button" class="dialogue-option" data-jiaotou-act="tut-pick" data-tut-idx="' +
+              idx +
+              '">' +
+              row.pickLabel +
+              '</button>'
+            );
+          }).join('');
+          document.getElementById('qingstoneDialogueOptions').innerHTML =
+            rows + '<button type="button" class="dialogue-option return" data-jiaotou-act="tut-close">← 稍后再说</button>';
+        }
+
+        function bindJiaotouTutorialAfterPickOptions() {
+          document.getElementById('qingstoneDialogueOptions').innerHTML =
+            '<button type="button" class="dialogue-option return" data-jiaotou-act="tut-after-close">弟子记下了</button>';
+        }
+
+        function openJiaotouTutorialPickPanel() {
+          clearQsTypeTimer();
+          qsDialoguePayload = null;
+          const panel = document.getElementById('qingstoneDialoguePanel');
+          if (!panel) return;
+          if (readQingstoneDojoTutorial().phase === 'picked') {
+            openJiaotouTutorialAfterPickPanel();
+            return;
+          }
+          hideQingstoneNpcRowsBehindDialogue();
+          panel.style.display = 'block';
+          document.getElementById('qingstoneDialogueNpcIcon').textContent = '🥋';
+          document.getElementById('qingstoneDialogueNpcName').textContent = '教头（青石武馆）';
+          runQsTypewriter(
+            '教头把木人桩拍得闷响一声：「镇上花哨内功外功多的是，你先拣一路最浅的入门抄本，把架子与脚步落在实处。看清了再伸手。」',
+            bindJiaotouTutorialPickOptions
+          );
+        }
+
+        function openJiaotouTutorialAfterPickPanel() {
+          clearQsTypeTimer();
+          qsDialoguePayload = null;
+          const panel = document.getElementById('qingstoneDialoguePanel');
+          if (!panel) return;
+          hideQingstoneNpcRowsBehindDialogue();
+          panel.style.display = 'block';
+          document.getElementById('qingstoneDialogueNpcIcon').textContent = '🥋';
+          document.getElementById('qingstoneDialogueNpcName').textContent = '教头（青石武馆）';
+          runQsTypewriter(
+            '教头从兵器架上摸过一柄木打的器械，随手抛来：「路与架要配。抄本与木械都在你行囊里——研读悟通后，到角色面板自行装备，练到第三重再来寻我过招。」' +
+              QINGSTONE_JIAOTOU_MARTIAL_PRACTICE_HINT,
+            bindJiaotouTutorialAfterPickOptions
+          );
+        }
+
+        function qingstoneClearProtagonistEquippedSlots() {
+          try {
+            var raw = localStorage.getItem('playerCharacters');
+            var list = raw ? JSON.parse(raw) : null;
+            if (!Array.isArray(list) || !list[0]) return;
+            if (!list[0].equipped) list[0].equipped = {};
+            list[0].equipped.weapon = null;
+            list[0].equipped.armor = null;
+            list[0].equipped.accessory = null;
+            list[0].equipped.shoes = null;
+            localStorage.setItem('playerCharacters', JSON.stringify(list));
+            var sraw = localStorage.getItem('game_save_0');
+            if (sraw) {
+              var save = JSON.parse(sraw);
+              if (save.player) {
+                save.player.characters = list;
+                try {
+                  delete save.player.equipped;
+                } catch (e2) {}
+                localStorage.setItem('game_save_0', JSON.stringify(save));
+              }
+            }
+          } catch (e) {}
+        }
+
+        /** 武馆问径：行囊里只保留非装备（丹药、秘籍、材料等），清空全部装备格，再发本路抄本+一木械，避免与黑风寨等旧掉落混成一团 */
+        function qingstoneStripAllEquipmentFromBag() {
+          qingstoneEnsurePlayerData();
+          var inv = window.playerData.inventory;
+          if (!Array.isArray(inv) || !window.ITEMS) return;
+          for (var i = inv.length - 1; i >= 0; i--) {
+            var slot = inv[i];
+            if (!slot || !slot.id) continue;
+            var def = window.ITEMS[slot.id];
+            if (def && def.category === 'equipment') inv.splice(i, 1);
+          }
+        }
+
+        function grantQingstoneTutorialPath(idx) {
+          if (readQingstoneDojoTutorial().phase === 'picked') {
+            showFloatText('教头：「抄本已领过。先把这一路练扎实，别三心二意。」', '#ff9800');
+            openJiaotouTutorialAfterPickPanel();
+            return;
+          }
+          const row = QINGSTONE_DOJO_TUTORIAL_PATHS[idx];
+          if (!row) return;
+          qingstoneStripAllEquipmentFromBag();
+          qingstoneClearProtagonistEquippedSlots();
+          qingstoneAddInventoryItem(row.skillbookId, 1);
+          qingstoneAddInventoryItem(row.weaponId, 1);
+          writeQingstoneDojoTutorial({
+            phase: 'picked',
+            skillbookId: row.skillbookId,
+            weaponId: row.weaponId,
+            martialArtId: row.martialArtId
+          });
+          openJiaotouTutorialAfterPickPanel();
+        }
+
+        function tryFinishMainB02AfterJiaotouSpar() {
+          if (localStorage.getItem('qingstone_dojo_spar_victory') !== '1') return;
+          const tut = readQingstoneDojoTutorial();
+          if (tut.phase !== 'picked') {
+            try {
+              localStorage.removeItem('qingstone_dojo_spar_victory');
+            } catch (e) {}
+            return;
+          }
+          if (isQingstoneMainDone('main_b_02')) {
+            try {
+              localStorage.removeItem('qingstone_dojo_spar_victory');
+            } catch (e) {}
+            return;
+          }
+          if (qingstoneGetMartialLevelByArtId(tut.martialArtId) < 3) {
+            try {
+              localStorage.removeItem('qingstone_dojo_spar_victory');
+            } catch (e) {}
+            return;
+          }
+          try {
+            localStorage.removeItem('qingstone_dojo_spar_victory');
+          } catch (e) {}
+          if (!markMainQuestStepComplete('main_b_02')) return;
+          const st2 = readPlayerStateRaw();
+          st2.qingstoneDojoTutorial = Object.assign({}, st2.qingstoneDojoTutorial || {}, { phase: 'spar_done' });
+          writePlayerStateRaw(st2);
+          applyMainQuestRewardsToSave('main_b_02');
+          floatMainQuestRewardChain('main_b_02');
+          showFloatText('教头收势而立：「脚下有了三分根，才算在镇上站稳。往后走，别丢了今日的眼。」', '#d4af37');
+        }
+
         let qsDialoguePayload = null;
         let qsTypeTimer = null;
 
@@ -617,6 +888,7 @@
           qsDialoguePayload = null;
           const panel = document.getElementById('qingstoneDialoguePanel');
           if (panel) panel.style.display = 'none';
+          persistQingstoneMapLocation();
           updatePanel();
         }
 
@@ -627,6 +899,7 @@
           const panel = document.getElementById('qingstoneDialoguePanel');
           if (panel) panel.style.display = 'none';
           if (typeof fn === 'function') fn();
+          persistQingstoneMapLocation();
           updatePanel();
         }
 
@@ -739,25 +1012,38 @@
           qsDialoguePayload = null;
           const panel = document.getElementById('qingstoneDialoguePanel');
           if (panel) panel.style.display = 'none';
+          persistQingstoneMapLocation();
           updatePanel();
         }
 
-        function openJiaotouBranchMenu() {
-          clearQsTypeTimer();
-          qsDialoguePayload = null;
-          const panel = document.getElementById('qingstoneDialoguePanel');
-          if (!panel) return;
-          hideQingstoneNpcRowsBehindDialogue();
-          panel.style.display = 'block';
-          document.getElementById('qingstoneDialogueNpcIcon').textContent = '🥋';
-          document.getElementById('qingstoneDialogueNpcName').textContent = '教头（青石武馆）';
-          document.getElementById('qingstoneDialogueText').textContent =
-            '教头抬眼扫你一眼：「杵在这儿作甚？有话直说。」';
+        function buildJiaotouBranchMenuOptionsHtml() {
           const parts = [];
+          const tut = readQingstoneDojoTutorial();
           if (isQingstoneMainDone('main_b_01') && !isQingstoneMainDone('main_b_02')) {
-            parts.push(
-              '<button type="button" class="dialogue-option" data-jiaotou-act="main">弟子初来乍到，想请前辈指点镇上安身、外出行走的门道（主线）</button>'
-            );
+            if (!tut.phase) {
+              parts.push(
+                '<button type="button" class="dialogue-option" data-jiaotou-act="main">' +
+                  '弟子初来乍到，想请前辈指点镇上安身、外出行走的门道（主线）' +
+                  '</button>'
+              );
+            } else if (tut.phase === 'picked') {
+              const lv = qingstoneGetMartialLevelByArtId(tut.martialArtId);
+              if (lv >= 3) {
+                parts.push(
+                  '<button type="button" class="dialogue-option" data-jiaotou-act="main-spar">' +
+                    '弟子已练到第三重，请前辈喂招考校' +
+                    '</button>'
+                );
+              } else {
+                parts.push(
+                  '<button type="button" class="dialogue-option" disabled title="按对话括号内步骤，在武学页练至第三重">' +
+                    '请先研读抄本并将所选武学练至第三重（当前第 ' +
+                    lv +
+                    ' 重）' +
+                    '</button>'
+                );
+              }
+            }
           }
           parts.push(
             '<button type="button" class="dialogue-option" data-jiaotou-act="shop">想向您淘换两本粗浅图谱，价钱好商量（购武）</button>'
@@ -770,10 +1056,25 @@
           parts.push(
             '<button type="button" class="dialogue-option return" data-jiaotou-act="close">← 告辞</button>'
           );
-          document.getElementById('qingstoneDialogueOptions').innerHTML = parts.join('');
+          return parts.join('');
         }
 
-        function openJiaotouShopPanel() {
+        function getJiaotouBranchOpeningText() {
+          const tutOpen = readQingstoneDojoTutorial();
+          let jiaotouOpening = '教头抬眼扫你一眼：「杵在这儿作甚？有话直说。」';
+          if (tutOpen.phase === 'picked') {
+            const lvOpen = qingstoneGetMartialLevelByArtId(tutOpen.martialArtId);
+            if (lvOpen < 3) {
+              jiaotouOpening =
+                '教头捋了捋袖口：「第三重还没到？底栏进「武学」，左侧点中那一路，右侧再点「修炼」用阅历升重——上回跟你说过括号里那套，照做便是。」';
+            } else {
+              jiaotouOpening = '教头微微颔首：「嗯，架势里有点意思了。火候若真到了第三重，过过手也无妨。」';
+            }
+          }
+          return jiaotouOpening;
+        }
+
+        function openJiaotouBranchMenu() {
           clearQsTypeTimer();
           qsDialoguePayload = null;
           const panel = document.getElementById('qingstoneDialoguePanel');
@@ -782,8 +1083,12 @@
           panel.style.display = 'block';
           document.getElementById('qingstoneDialogueNpcIcon').textContent = '🥋';
           document.getElementById('qingstoneDialogueNpcName').textContent = '教头（青石武馆）';
-          document.getElementById('qingstoneDialogueText').textContent =
-            '「外头野路子杂书多，我这儿压五本：剑、拳、刀的粗谱各一，再加养气与步法。都是江湖上最浅的初阶货。钱货两清，看不懂别回来哭。」';
+          runQsTypewriter(getJiaotouBranchOpeningText(), function () {
+            document.getElementById('qingstoneDialogueOptions').innerHTML = buildJiaotouBranchMenuOptionsHtml();
+          });
+        }
+
+        function bindJiaotouShopPanelOptions() {
           const lib = typeof MARTIAL_ARTS_LIBRARY !== 'undefined' ? MARTIAL_ARTS_LIBRARY : window.MARTIAL_ARTS_LIBRARY;
           const rows = QINGSTONE_DOJO_SHOP.map(function (item, idx) {
             const inBag = item.itemId && qingstoneCountItem(item.itemId) > 0;
@@ -813,6 +1118,21 @@
           document.getElementById('qingstoneDialogueOptions').innerHTML =
             rows +
             '<button type="button" class="dialogue-option return" data-jiaotou-act="shop-back">← 回上一问</button>';
+        }
+
+        function openJiaotouShopPanel() {
+          clearQsTypeTimer();
+          qsDialoguePayload = null;
+          const panel = document.getElementById('qingstoneDialoguePanel');
+          if (!panel) return;
+          hideQingstoneNpcRowsBehindDialogue();
+          panel.style.display = 'block';
+          document.getElementById('qingstoneDialogueNpcIcon').textContent = '🥋';
+          document.getElementById('qingstoneDialogueNpcName').textContent = '教头（青石武馆）';
+          runQsTypewriter(
+            '「外头野路子杂书多，我这儿压五本：剑、拳、刀的粗谱各一，再加养气与步法。都是江湖上最浅的初阶货。钱货两清，看不懂别回来哭。」',
+            bindJiaotouShopPanelOptions
+          );
         }
 
         function tryPurchaseJiaotouShop(idx) {
@@ -846,9 +1166,43 @@
             const act = b.getAttribute('data-jiaotou-act');
             if (act === 'main') {
               document.getElementById('qingstoneDialoguePanel').style.display = 'none';
-              startQingstoneEmbeddedDialogue(QINGSTONE_MAIN_B02_STEPS, function () {
-                tryCompleteMainB02AfterJiaotouTalk();
-              });
+              openJiaotouTutorialPickPanel();
+              return;
+            }
+            if (act === 'main-spar') {
+              if (typeof BattleEntry === 'undefined' || typeof BattleEntry.setPartyBattleContext !== 'function') {
+                showFloatText('战斗入口未加载，请刷新页面重试。', '#f44336');
+                return;
+              }
+              const tutSp = readQingstoneDojoTutorial();
+              if (qingstoneGetMartialLevelByArtId(tutSp.martialArtId) < 3) {
+                return;
+              }
+              document.getElementById('qingstoneDialoguePanel').style.display = 'none';
+              void (async function () {
+                const sparOpts = {
+                  source: 'qingstone_map',
+                  preBattleLocation: 'qingstone_dojo'
+                };
+                const goBattle = function () {
+                  BattleEntry.setPartyBattleContext('qingstone_jiaotou_spar', sparOpts);
+                  window.location.href = 'battle.html';
+                };
+                if (window.BattleEnterCinematic && BattleEnterCinematic.runBeforeBattleNavigate) {
+                  await BattleEnterCinematic.runBeforeBattleNavigate(goBattle);
+                } else {
+                  BattleEntry.startPartyBattle('qingstone_jiaotou_spar', sparOpts);
+                }
+              })();
+              return;
+            }
+            if (act === 'tut-pick') {
+              const tidx = parseInt(b.getAttribute('data-tut-idx'), 10);
+              if (!isNaN(tidx)) grantQingstoneTutorialPath(tidx);
+              return;
+            }
+            if (act === 'tut-close' || act === 'tut-after-close') {
+              closeJiaotouBranchMenu();
               return;
             }
             if (act === 'shop') {
@@ -937,33 +1291,23 @@
 
         // 检查升级
         function checkLevelUp(save) {
-          console.log('=== checkLevelUp 开始 ===');
-          let levelUpCount = 0;
-          let finalLevel = save.player.level;
-          
-          while (true) {
-            // 计算当前等级所需的经验（每升一级所需经验增加50%）
-            const expNeeded = Math.floor(100 * Math.pow(1.5, save.player.level - 1));
-            console.log(`当前等级: ${save.player.level}, 当前阅历: ${save.player.exp}, 升级所需: ${expNeeded}`);
-            
-            if (save.player.exp >= expNeeded) {
-              // 升级
-              save.player.exp -= expNeeded;
-              save.player.level += 1;
-              levelUpCount++;
-              console.log(`升级！当前等级: ${save.player.level}, 剩余阅历: ${save.player.exp}`);
+          if (!save || !save.player) return;
+          const result =
+            typeof processYueliLevelUpsForSave === 'function'
+              ? processYueliLevelUpsForSave(save, { silent: true })
+              : { levelsGained: 0 };
+          if (result.levelsGained > 0) {
+            let msg = '恭喜！';
+            if (result.levelsGained > 1) {
+              msg += '连升 ' + result.levelsGained + ' 级，现为 ' + result.newLevel + ' 级！';
             } else {
-              break;
+              msg += '升至 ' + result.newLevel + ' 级！';
             }
+            if (result.pointsGained > 0) {
+              msg += ' 属性点 +' + result.pointsGained;
+            }
+            showFloatText(msg, '#4caf50');
           }
-          
-          // 如果有升级，立即显示飘字提示
-          if (levelUpCount > 0) {
-            console.log(`恭喜！升级 ${levelUpCount} 级，当前等级: ${save.player.level}`);
-            showFloatText(`恭喜！升至 ${save.player.level} 级！`, '#4caf50');
-          }
-          
-          console.log('=== checkLevelUp 结束 ===');
         }
 
         // 从存档读取银两并更新显示
@@ -1062,17 +1406,54 @@
               console.log('没有银两奖励或奖励为0');
             }
 
-            // 应用阅历奖励（转换为数字）
-            const expReward = parseInt(rewards.exp) || 0;
-            if (expReward > 0) {
-              if (!save.player.exp) save.player.exp = 0;
-              save.player.exp += expReward;
-              console.log(`阅历 +${expReward}, 当前: ${save.player.exp}`);
-              
-              // 检查是否需要升级
-              checkLevelUp(save);
+            const levelYueli = parseInt(rewards.exp, 10) || 0;
+            if (levelYueli > 0) {
+              let upResult = { levelsGained: 0 };
+              if (
+                window.BattleSettlement &&
+                typeof BattleSettlement.applyLevelYueliFromBattleRewards === 'function'
+              ) {
+                upResult = BattleSettlement.applyLevelYueliFromBattleRewards(save, rewards, {
+                  silent: true
+                });
+              } else {
+                if (!save.player.exp) save.player.exp = 0;
+                save.player.exp += levelYueli;
+                if (typeof processYueliLevelUpsForSave === 'function') {
+                  upResult = processYueliLevelUpsForSave(save, { silent: true });
+                }
+                if (typeof processPartyBattleYueli === 'function') {
+                  processPartyBattleYueli(save, rewards.partyCharIds, levelYueli, { silent: true });
+                }
+              }
+              console.log(`角色阅历 +${levelYueli}, 少侠当前: ${save.player.exp}`);
+              if (upResult && upResult.levelsGained > 0) {
+                let msg = '恭喜！';
+                if (upResult.levelsGained > 1) {
+                  msg += '连升 ' + upResult.levelsGained + ' 级，现为 ' + upResult.newLevel + ' 级！';
+                } else {
+                  msg += '升至 ' + upResult.newLevel + ' 级！';
+                }
+                if (upResult.pointsGained > 0) {
+                  msg += ' 属性点 +' + upResult.pointsGained;
+                }
+                showFloatText(msg, '#4caf50');
+              }
+            }
+
+            if (window.BattleSettlement && BattleSettlement.applyMartialYueliFromBattleRewards) {
+              const martialAdded = BattleSettlement.applyMartialYueliFromBattleRewards(rewards);
+              if (martialAdded > 0) {
+                console.log(
+                  `武学修炼阅历 +${martialAdded}, 当前: ${BattleSettlement.getPlayerMartialExperience()}`
+                );
+              }
             } else {
-              console.log('没有阅历奖励或奖励为0');
+              const martialYueli = parseInt(rewards.expReward, 10) || 0;
+              if (martialYueli > 0) {
+                const cur = parseInt(localStorage.getItem('playerExperience') || '0', 10) || 0;
+                localStorage.setItem('playerExperience', String(cur + martialYueli));
+              }
             }
 
             // 保存存档
@@ -1132,6 +1513,19 @@
           }, 1000);
         }
 
+        /** 主线「青石初履」完成后一次性注入武学页「修炼」用阅历（localStorage.playerExperience）。与 martialArts.js 初阶 1重→3重 消耗约 270（3×40+3×50）对齐，略多作余量。 */
+        const MAIN_B01_CHUJIE_MARTIAL_PRACTICE_YUELI = 300;
+
+        function grantMartialPracticeYueliForMainB01() {
+          const add = MAIN_B01_CHUJIE_MARTIAL_PRACTICE_YUELI;
+          if (add <= 0) return;
+          const key = 'playerExperience';
+          const cur = parseInt(localStorage.getItem(key) || '0', 10) || 0;
+          const next = cur + add;
+          localStorage.setItem(key, String(next));
+          if (typeof window !== 'undefined') window.playerExperience = next;
+        }
+
         function applyMainQuestRewardsToSave(questId) {
           if (typeof ALL_TASKS === 'undefined' || !ALL_TASKS.main) return;
           const task = ALL_TASKS.main.find((t) => t.id === questId);
@@ -1150,6 +1544,9 @@
                 save.player.exp = (save.player.exp || 0) + v;
               }
             });
+            if (questId === 'main_b_01') {
+              grantMartialPracticeYueliForMainB01();
+            }
             if (typeof checkLevelUp === 'function') checkLevelUp(save);
             localStorage.setItem('game_save_0', JSON.stringify(save));
             loadGoldFromSave();
@@ -1174,6 +1571,12 @@
             else if (r.type === 'yueli') color = '#9c27b0';
             lines.push([label, color]);
           });
+          if (questId === 'main_b_01') {
+            lines.push([
+              '武学阅历 +' + MAIN_B01_CHUJIE_MARTIAL_PRACTICE_YUELI + '（初阶约可练至三重）',
+              '#ce93d8'
+            ]);
+          }
           let idx = 0;
           function next() {
             if (idx >= lines.length) return;
@@ -1223,6 +1626,7 @@
               ? BattleSettlement.attachPostBattleMapBlackout()
               : null;
 
+          tryFinishMainB02AfterJiaotouSpar();
           applyPendingBattleRewards();
           
           // 加载playerData
@@ -1235,7 +1639,10 @@
             }
           }
           qingstoneEnsurePlayerData();
-          
+          if (window.playerData.inventory && qingstoneSplitStackedEquipment(window.playerData.inventory)) {
+            qingstonePersistPlayerData();
+          }
+
           // 加载银两显示
           loadGoldFromSave();
           
@@ -1243,17 +1650,33 @@
           const preBattleLoc = localStorage.getItem('preBattleLocation');
           if (preBattleLoc && LOCATIONS[preBattleLoc]) {
             currentLocation = preBattleLoc;
+            persistQingstoneMapLocation(preBattleLoc);
             localStorage.removeItem('preBattleLocation');
+          } else {
+            const devQsNode = localStorage.getItem('dev_qingstone_node');
+            if (devQsNode && LOCATIONS[devQsNode]) {
+              currentLocation = devQsNode;
+              persistQingstoneMapLocation(devQsNode);
+              localStorage.removeItem('dev_qingstone_node');
+            } else {
+              const savedQs = loadQingstoneMapLocation();
+              if (savedQs) currentLocation = savedQs;
+            }
           }
           
           renderMap();
           updatePanel();
 
-          if (exitBlack && window.BattleSettlement) {
-            BattleSettlement.dismissPostBattleMapBlackout(exitBlack, playPostBattleMapRewardFloats);
-          } else {
-            playPostBattleMapRewardFloats();
-          }
+          const runExitFade = function () {
+            if (exitBlack && window.BattleSettlement) {
+              BattleSettlement.dismissPostBattleMapBlackout(exitBlack, playPostBattleMapRewardFloats);
+            } else {
+              playPostBattleMapRewardFloats();
+            }
+          };
+          requestAnimationFrame(function () {
+            requestAnimationFrame(runExitFade);
+          });
 
           const chatBtn = document.getElementById('townChatBtn');
           if (chatBtn && !chatBtn.dataset.bound) {
@@ -1359,6 +1782,7 @@
 
     function travelTo(locationId) {
       currentLocation = locationId;
+      persistQingstoneMapLocation(locationId);
       renderMap();
       updatePanel();
     }
@@ -1400,16 +1824,9 @@
       }
     }
 
-    function tryCompleteMainB02AfterJiaotouTalk() {
-      if (!isQingstoneMainDone('main_b_01')) {
-        showFloatText('教头一摆手：「连街面都没踩熟，来武馆作甚？先去主街问问人。」', '#d4af37');
-        return;
-      }
-      if (markMainQuestStepComplete('main_b_02')) {
-        applyMainQuestRewardsToSave('main_b_02');
-        floatMainQuestRewardChain('main_b_02');
-      }
-    }
+        function tryCompleteMainB02AfterJiaotouTalk() {
+          /* 旧版：长对话后直接交「武馆问径」。已由选抄本→练三重→喂招战替代；保留空壳防外部引用。 */
+        }
 
     function refreshGateGuideNpcSection() {
       const sec = document.getElementById('gateGuideNpcSection');
@@ -1529,7 +1946,11 @@
       window.location.href = 'map.html';
     }
 
-    init();
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
   </script>
 </body>
 </html>

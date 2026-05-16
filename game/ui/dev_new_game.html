@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>新局重置（全量归零）</title>
+  <style>
+    body {
+      font-family: "Microsoft YaHei", sans-serif;
+      max-width: 580px;
+      margin: 32px auto;
+      padding: 0 16px 48px;
+      line-height: 1.55;
+      color: #e8e8e8;
+      background: #14181c;
+    }
+    h1 { font-size: 1.3rem; color: #81c784; }
+    .sub { color: #9e9e9e; font-size: 14px; }
+    .box {
+      margin: 16px 0;
+      padding: 12px 14px;
+      background: #1e242a;
+      border-radius: 8px;
+      border: 1px solid #333;
+      font-size: 14px;
+    }
+    .box strong { color: #ce93d8; }
+    button {
+      padding: 12px 22px;
+      font-size: 16px;
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(145deg, #2e7d32, #1b5e20);
+      color: #fff;
+      margin-top: 8px;
+    }
+    button:hover { filter: brightness(1.08); }
+    .warn { color: #ffab91; font-size: 13px; margin-top: 12px; }
+    a { color: #90caf9; }
+    code { background: #2a2f36; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+    #msg { color: #81c784; margin-top: 16px; white-space: pre-line; font-size: 14px; }
+    ul { margin: 8px 0 0; padding-left: 1.2em; }
+  </style>
+</head>
+<body>
+  <h1>新局重置（全量归零）</h1>
+  <p class="sub">清空本站点 localStorage 中的任务、武学、装备、阅历与养成进度，并写入下列<strong>开局默认值</strong>后进入青石镇。</p>
+
+  <div class="box">
+    <strong>开局角色（少侠）</strong>
+    <ul>
+      <li>等级 1，阅历 0，银两 0</li>
+      <li>四维：力量 / 敏捷 / 根骨 / 内息 各 <strong>5</strong></li>
+      <li>气血 <strong>100</strong>，内力 <strong>50</strong>（满血满内）</li>
+      <li>拳脚·剑术·刀术·轻功·内功 <strong>修为 0</strong></li>
+      <li>行囊与装备栏清空；无已学门派武式、无武学 localStorage</li>
+    </ul>
+  </div>
+
+  <div class="box">
+    <strong>一并清除</strong>
+    <ul>
+      <li>主线 <code>main_b_01</code>～<code>main_b_10</code>、门派差事、黑风寨进度</li>
+      <li><code>playerMartialArts_*</code>、<code>playerExperience*</code>、战后/跳过器残留键</li>
+    </ul>
+  </div>
+
+  <p class="warn">不可恢复。若只清任务/武学而保留等级，请用
+    <a href="dev_reset_martial_yueli.html">武学+任务重置</a>。
+  </p>
+
+  <button type="button" id="btnNewGame">确认：开新局（全归零）</button>
+  <p id="msg" hidden></p>
+  <p style="margin-top: 24px; font-size: 14px;">
+    <a href="qingstone_map.html">青石镇</a> ·
+    <a href="task.html">任务</a> ·
+    <a href="dev_chapter_skip.html">章节跳过器</a>
+  </p>
+
+  <script src="../js/config.js"></script>
+  <script>
+    var INIT =
+      typeof GAME_CONFIG !== 'undefined' && GAME_CONFIG.INITIAL_STATS
+        ? GAME_CONFIG.INITIAL_STATS
+        : {};
+    var FOUR_DIM_DEFAULT = INIT.strength != null ? INIT.strength : 5;
+    var BASE_HP = INIT.maxHp != null ? INIT.maxHp : 100;
+    var BASE_MP = INIT.maxMp != null ? INIT.maxMp : 50;
+    var BASE_LEVEL = INIT.level != null ? INIT.level : 1;
+    var BASE_ATTACK = INIT.attack != null ? INIT.attack : 50;
+    var BASE_DEFENSE = INIT.defense != null ? INIT.defense : 5;
+
+    function buildFreshCombatStats(str, agi, bone, qi) {
+      var lv = BASE_LEVEL;
+      var atk = BASE_ATTACK;
+      var hp = BASE_HP;
+      var mp = BASE_MP;
+      var hit = 75;
+      var dodge = 22;
+      var spd = 60;
+      if (typeof deriveBaseStatFromFourDim === 'function') {
+        atk = deriveBaseStatFromFourDim('attack', str, lv);
+        hp = deriveBaseStatFromFourDim('hp', bone, lv);
+        mp = deriveBaseStatFromFourDim('mp', qi, lv);
+        hit = deriveBaseStatFromFourDim('hit', agi, lv);
+        dodge = deriveBaseStatFromFourDim('dodge', agi, lv);
+        spd = deriveBaseStatFromFourDim('speed', agi, lv);
+      }
+      return {
+        strength: str,
+        agility: agi,
+        bone: bone,
+        qi: qi,
+        vitality: bone,
+        spirit: qi,
+        attack: atk,
+        hp: hp,
+        hit: hit,
+        dodge: dodge,
+        defense: BASE_DEFENSE,
+        parry: Math.floor(str / 5),
+        speed: spd,
+        fist: 0,
+        sword: 0,
+        blade: 0,
+        lightSkill: 0,
+        innerSkill: 0,
+        mp: mp,
+        maxMp: mp
+      };
+    }
+
+    function buildFreshProtagonist() {
+      var st = buildFreshCombatStats(
+        FOUR_DIM_DEFAULT,
+        FOUR_DIM_DEFAULT,
+        FOUR_DIM_DEFAULT,
+        FOUR_DIM_DEFAULT
+      );
+      return {
+        id: 1,
+        name: '少侠',
+        icon: '👨‍🦰',
+        level: BASE_LEVEL,
+        gender: '男',
+        faction: '',
+        power: 0,
+        health: { current: BASE_HP, max: BASE_HP },
+        exp: { current: 0, max: 100 },
+        description: '初入江湖的少年侠客，心怀侠义，立志成为一代大侠。',
+        equipped: {
+          weapon: null,
+          armor: null,
+          helmet: null,
+          shoes: null,
+          accessory: null
+        },
+        skills: {},
+        stats: st,
+        remainingPoints: 0,
+        gold: 0
+      };
+    }
+
+    function buildFreshCompanion() {
+      var st = buildFreshCombatStats(
+        FOUR_DIM_DEFAULT,
+        FOUR_DIM_DEFAULT,
+        FOUR_DIM_DEFAULT,
+        FOUR_DIM_DEFAULT
+      );
+      return {
+        id: 2,
+        name: '苏瑶',
+        icon: '👧',
+        level: BASE_LEVEL,
+        gender: '女',
+        faction: '',
+        power: 0,
+        health: { current: BASE_HP, max: BASE_HP },
+        exp: { current: 0, max: 100 },
+        description: '正阳派内门弟子。',
+        equipped: {
+          weapon: null,
+          armor: null,
+          helmet: null,
+          shoes: null,
+          accessory: null
+        },
+        skills: {},
+        stats: st,
+        remainingPoints: 0,
+        gold: 0
+      };
+    }
+
+    function buildGameSavePlayer(chars) {
+      var hero = chars[0];
+      var st = hero.stats;
+      return {
+        id: 'player',
+        name: hero.name,
+        level: BASE_LEVEL,
+        exp: 0,
+        expToNextLevel: 100,
+        maxHp: BASE_HP,
+        hp: BASE_HP,
+        maxMp: BASE_MP,
+        mp: BASE_MP,
+        attack: st.attack,
+        defense: st.defense,
+        skills: [],
+        inventory: [],
+        stats: {
+          strength: FOUR_DIM_DEFAULT,
+          agility: FOUR_DIM_DEFAULT,
+          vitality: FOUR_DIM_DEFAULT,
+          spirit: FOUR_DIM_DEFAULT,
+          bone: FOUR_DIM_DEFAULT,
+          qi: FOUR_DIM_DEFAULT
+        },
+        gold: 0,
+        remainingPoints: 0,
+        flags: {},
+        characters: chars
+      };
+    }
+
+    var PRESERVE_KEYS = ['ai_config'];
+
+    function clearSessionStorage() {
+      try {
+        sessionStorage.removeItem('game_ui_return_href');
+        sessionStorage.removeItem('game_map_restore_view');
+      } catch (e) {}
+    }
+
+    function wipeLocalStorageExceptPreserve() {
+      var kept = {};
+      PRESERVE_KEYS.forEach(function (k) {
+        var v = localStorage.getItem(k);
+        if (v !== null) kept[k] = v;
+      });
+      var before = localStorage.length;
+      localStorage.clear();
+      Object.keys(kept).forEach(function (k) {
+        localStorage.setItem(k, kept[k]);
+      });
+      return before;
+    }
+
+    function resetNewGame() {
+      var removed = wipeLocalStorageExceptPreserve();
+
+      var chars = [buildFreshProtagonist(), buildFreshCompanion()];
+
+      localStorage.setItem(
+        'playerState',
+        JSON.stringify({
+          activeTasks: {},
+          completedFactionQuests: {},
+          joinedFaction: false,
+          learnedSkills: [],
+          factionContribution: 0
+        })
+      );
+
+      localStorage.setItem(
+        'game_save_0',
+        JSON.stringify({
+          player: buildGameSavePlayer(chars),
+          timestamp: Date.now(),
+          version: 'demo'
+        })
+      );
+
+      localStorage.setItem('playerCharacters', JSON.stringify(chars));
+
+      localStorage.setItem(
+        'playerData',
+        JSON.stringify({
+          inventory: [],
+          equipment: {
+            weapon: null,
+            armor: null,
+            helmet: null,
+            shoes: null,
+            accessory: null
+          },
+          level: BASE_LEVEL
+        })
+      );
+
+      localStorage.setItem('playerExperience', '0');
+      localStorage.setItem('playerMartialArts_1', '[]');
+      localStorage.setItem('playerMartialArts_2', '[]');
+      localStorage.setItem('martialDataVersion', '5');
+      localStorage.setItem('currentLocation', 'qingstone_town');
+      clearSessionStorage();
+
+      return { removed: removed, chars: chars };
+    }
+
+    document.getElementById('btnNewGame').addEventListener('click', function () {
+      if (
+        !window.confirm(
+          '确定开新局？\n将清空任务、武学、装备、养成与阅历，并按默认四维5、气血100、内力50写入。'
+        )
+      ) {
+        return;
+      }
+      var result = resetNewGame();
+      var el = document.getElementById('msg');
+      el.hidden = false;
+      el.textContent =
+        '已全量归零（清除 ' +
+        result.removed +
+        ' 个旧键）。\n' +
+        '少侠：1级 · 四维各5 · 气血100 · 内力50 · 修为0 · 银两0\n' +
+        '1 秒后进入青石镇……';
+      setTimeout(function () {
+        window.location.replace('qingstone_map.html');
+      }, 1000);
+    });
+  </script>
+</body>
+</html>

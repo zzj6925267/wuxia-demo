@@ -21,6 +21,40 @@ function formatNumber(num) {
 }
 
 /**
+ * UI 展示用整数（内部计算可仍用浮点；文案禁止出现小数尾巴）
+ * @param {number} value
+ * @param {'round'|'ceil'|'floor'} [mode='round']
+ * @returns {number}
+ */
+function formatDisplayInt(value, mode) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  if (mode === 'ceil') return Math.ceil(n);
+  if (mode === 'floor') return Math.floor(n);
+  return Math.round(n);
+}
+
+/** 伤害倍率 1.14 → 114（%） */
+function formatMultiplierAsPercent(multiplier) {
+  return formatDisplayInt(Number(multiplier) * 100, 'round');
+}
+
+/** 概率/比例 0.2 → 20（%） */
+function formatFractionAsPercent(fraction) {
+  return formatMultiplierAsPercent(fraction);
+}
+
+/** 属性×每点系数 → 整数（加成展示偏保守用 ceil） */
+function formatAttrBonusInt(attrValue, perPoint) {
+  return formatDisplayInt(Number(attrValue) * Number(perPoint), 'ceil');
+}
+
+/** 属性×每点系数 → 整数百分比 */
+function formatAttrBonusPercentInt(attrValue, perPoint) {
+  return formatDisplayInt(Number(attrValue) * Number(perPoint) * 100, 'ceil');
+}
+
+/**
  * 随机数生成
  * @param {number} min - 最小值
  * @param {number} max - 最大值
@@ -113,6 +147,11 @@ function throttle(fn, delay) {
 // 暴露到全局
 window.generateId = generateId;
 window.formatNumber = formatNumber;
+window.formatDisplayInt = formatDisplayInt;
+window.formatMultiplierAsPercent = formatMultiplierAsPercent;
+window.formatFractionAsPercent = formatFractionAsPercent;
+window.formatAttrBonusInt = formatAttrBonusInt;
+window.formatAttrBonusPercentInt = formatAttrBonusPercentInt;
 window.randomRange = randomRange;
 window.calculateDamage = calculateDamage;
 window.calculateHeal = calculateHeal;

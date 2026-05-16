@@ -38,7 +38,7 @@ const FOREST_LOCATIONS = {
     x: 680, 
     y: 300, 
     connections: ['shanze_patrol', 'heifeng_entrance'], 
-    desc: '林间搭着三个破旧的茅草棚，堆着柴火与抢来的杂物，地上还有未干的血迹，是山贼临时歇脚的地方。'
+    desc: '林间搭着三个破旧的茅草棚，堆着柴火与抢来的杂物，地上还有未干的血迹，是山贼临时歇脚的地方。窝棚旁常蜷着逃出来的猎户孟青松——可先与他搭话问明黑风寨之事。'
   },
   heifeng_entrance: { 
     id: 'heifeng_entrance', 

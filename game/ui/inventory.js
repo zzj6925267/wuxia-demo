@@ -77,6 +77,32 @@ const characters = [
   }
 ];
 
+const TUTORIAL_WOOD_IDS = ['mu_jian', 'mu_dao', 'mu_quan'];
+
+function invHasDojoWoodWeaponGranted() {
+  try {
+    const raw = localStorage.getItem('playerState');
+    if (!raw) return false;
+    const st = JSON.parse(raw);
+    const t = st && st.qingstoneDojoTutorial;
+    return !!(t && t.phase === 'picked' && t.weaponId);
+  } catch (e) {
+    return false;
+  }
+}
+
+function invStripTutorialWoodFromBag(inventory) {
+  if (!Array.isArray(inventory) || invHasDojoWoodWeaponGranted()) return false;
+  let changed = false;
+  for (let i = inventory.length - 1; i >= 0; i--) {
+    if (inventory[i] && TUTORIAL_WOOD_IDS.indexOf(String(inventory[i].id)) >= 0) {
+      inventory.splice(i, 1);
+      changed = true;
+    }
+  }
+  return changed;
+}
+
 const TAB_CONFIG = {
   misc: { name: '杂项', filter: item => (item.id === 'lingzhi_cao') || !['equipment', 'potion', 'skillbook', 'material', 'quest'].includes(item.category) },
   equipment: { name: '装备', filter: item => item.category === 'equipment' },
@@ -150,15 +176,9 @@ function init() {
   }
   
   if (!window.playerData) {
-    console.log('window.playerData 不存在，初始化默认值...');
+    console.log('window.playerData 不存在，初始化空背包占位（勿内置演示装备）...');
     window.playerData = {
-      inventory: [
-        { id: 'potion_small', quantity: 5 },
-        { id: 'potion_medium', quantity: 3 },
-        { id: 'iron_sword', quantity: 1 },
-        { id: 'leather_armor', quantity: 1 },
-        { id: 'skillbook_liuyun', quantity: 1 }
-      ],
+      inventory: [],
       equipment: {
         weapon: null,
         armor: null,
@@ -166,8 +186,16 @@ function init() {
         shoes: null,
         accessory: null
       },
-      level: 10
+      level: 1
     };
+  }
+
+  if (window.playerData.inventory && invStripTutorialWoodFromBag(window.playerData.inventory)) {
+    persistPlayerData();
+  }
+
+  if (window.playerData.inventory && normalizeInventoryEquipmentNoStack(window.playerData.inventory)) {
+    persistPlayerData();
   }
 
   // 初始化临时背包
@@ -529,6 +557,42 @@ function bumpMartialCultivation(charId, skillType, delta) {
   }
 }
 
+/** 装备类（items.js category === 'equipment'）不占同一格叠加，每件一格 quantity 恒为 1 */
+function isInventoryEquipmentNoStack(itemId) {
+  const def = window.ITEMS && window.ITEMS[itemId];
+  return !!(def && def.category === 'equipment');
+}
+
+/**
+ * 将旧档中 quantity>1 的装备拆成多格；打开背包时调用一次即可落盘。
+ * @returns {boolean} 是否改动了数组
+ */
+function normalizeInventoryEquipmentNoStack(inventory) {
+  if (!Array.isArray(inventory) || !window.ITEMS) return false;
+  let changed = false;
+  let i = 0;
+  while (i < inventory.length) {
+    const slot = inventory[i];
+    if (!slot || !slot.id) {
+      i++;
+      continue;
+    }
+    const def = window.ITEMS[slot.id];
+    const n = Math.max(1, Math.min(99, Math.floor(Number(slot.quantity)) || 1));
+    if (def && def.category === 'equipment' && n > 1) {
+      slot.quantity = 1;
+      for (let k = 1; k < n; k++) {
+        inventory.splice(i + k, 0, { id: slot.id, quantity: 1 });
+      }
+      changed = true;
+      i += n;
+    } else {
+      i++;
+    }
+  }
+  return changed;
+}
+
 // 从背包移除
 function removeFromInventory(itemId, quantity) {
   const player = window.playerData;
@@ -548,22 +612,31 @@ function removeFromInventory(itemId, quantity) {
 function addToInventory(itemId, quantity) {
   const player = window.playerData;
   if (!player) return;
-  
-  let remaining = quantity;
-  
-  // 先尝试填满已有的同类型格子（不超过99）
+  if (!player.inventory) player.inventory = [];
+
+  let remaining = Math.max(0, Math.floor(Number(quantity)) || 0);
+  if (remaining <= 0) return;
+
+  if (isInventoryEquipmentNoStack(itemId)) {
+    for (let q = 0; q < remaining; q++) {
+      player.inventory.push({ id: itemId, quantity: 1 });
+    }
+    persistPlayerData();
+    return;
+  }
+
+  // 先尝试填满已有的同 id 格子（不超过99）；装备类不走此分支
   for (let item of player.inventory) {
     if (item.id === itemId && item.quantity < 99) {
       const canAdd = 99 - item.quantity;
       const toAdd = Math.min(canAdd, remaining);
       item.quantity += toAdd;
       remaining -= toAdd;
-      
+
       if (remaining <= 0) break;
     }
   }
-  
-  // 如果还有剩余，创建新格子
+
   while (remaining > 0) {
     const toAdd = Math.min(remaining, 99);
     player.inventory.push({ id: itemId, quantity: toAdd });
@@ -918,6 +991,8 @@ window.useItem = useItem;
 window.dropItem = dropItem;
 window.addToInventory = addToInventory;
 window.removeFromInventory = removeFromInventory;
+window.isInventoryEquipmentNoStack = isInventoryEquipmentNoStack;
+window.normalizeInventoryEquipmentNoStack = normalizeInventoryEquipmentNoStack;
 window.openCharacterSelect = openCharacterSelect;
 window.closeCharacterSelect = closeCharacterSelect;
 window.selectCharacterToLearn = selectCharacterToLearn;

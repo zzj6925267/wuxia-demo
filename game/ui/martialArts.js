@@ -33,6 +33,34 @@ function getLoadoutPassiveStatEffectForTooltip(skill) {
   return arr && arr.length ? arr[0] : null;
 }
 
+/** 招式 PNG 路径约定：game/assets/images/UI/skills/ma_skill_{武学id}_{招式id}.png */
+function getMartialSkillIconUrl(martialId, skill) {
+  if (!skill) return '';
+  if (skill.iconUrl) return String(skill.iconUrl);
+  const mid = parseInt(martialId, 10);
+  const sid = parseInt(skill.id, 10);
+  if (!Number.isFinite(mid) || !Number.isFinite(sid)) return '';
+  return '../assets/images/UI/skills/ma_skill_' + mid + '_' + sid + '.png';
+}
+
+/** 招式格内图标：有 PNG 用图，失败回退 emoji（见 martialArts.css） */
+function renderMartialSkillIconInner(skill, martialId) {
+  const emoji = skill.icon || '❓';
+  const url = getMartialSkillIconUrl(martialId, skill);
+  if (!url) {
+    return '<span class="skill-icon-emoji" aria-hidden="true">' + emoji + '</span>';
+  }
+  return (
+    '<img class="skill-icon-img" src="' +
+    url +
+    '" alt="" loading="lazy" decoding="async" ' +
+    'onerror="this.style.display=\'none\';var s=this.nextElementSibling;if(s)s.style.display=\'\'" />' +
+    '<span class="skill-icon-emoji skill-icon-emoji--fallback" aria-hidden="true" style="display:none">' +
+    emoji +
+    '</span>'
+  );
+}
+
 /**
  * 武学招式浮窗用：每次读取最新四维（勿把 stats 塞进 HTML 字符串，否则会停在旧值）。
  * 优先当前武学页选中的 `window.characters` 条目；否则用 `game_save_0.player`，扁平字段覆盖 `player.stats`。
@@ -73,6 +101,38 @@ function getPlayerStatsForMartialTooltip() {
     console.warn('getPlayerStatsForMartialTooltip', e);
     return defaults;
   }
+}
+
+/** 招式浮窗数值 → 整数字符串（依赖 helpers.js） */
+function fmtInt(value, mode) {
+  if (typeof formatDisplayInt === 'function') return String(formatDisplayInt(value, mode));
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '0';
+  if (mode === 'ceil') return String(Math.ceil(n));
+  if (mode === 'floor') return String(Math.floor(n));
+  return String(Math.round(n));
+}
+
+function fmtPctFromMultiplier(multiplier) {
+  if (typeof formatMultiplierAsPercent === 'function') return String(formatMultiplierAsPercent(multiplier));
+  return fmtInt(Number(multiplier) * 100, 'round');
+}
+
+function fmtPctFromFraction(fraction) {
+  if (typeof formatFractionAsPercent === 'function') return String(formatFractionAsPercent(fraction));
+  return fmtPctFromMultiplier(fraction);
+}
+
+function fmtAttrBonus(attrValue, perPoint) {
+  if (typeof formatAttrBonusInt === 'function') return String(formatAttrBonusInt(attrValue, perPoint));
+  return fmtInt(Number(attrValue) * Number(perPoint), 'ceil');
+}
+
+function fmtAttrBonusPct(attrValue, perPoint) {
+  if (typeof formatAttrBonusPercentInt === 'function') {
+    return String(formatAttrBonusPercentInt(attrValue, perPoint));
+  }
+  return fmtInt(Number(attrValue) * Number(perPoint) * 100, 'ceil');
 }
 
 let currentType = '武功';
@@ -131,6 +191,11 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initPage() {
+  if (typeof repairZhengyangIntroMartialsFromLearnedSkills === 'function') {
+    repairZhengyangIntroMartialsFromLearnedSkills(
+      typeof currentMartialCharacterId !== 'undefined' ? currentMartialCharacterId : 1
+    );
+  }
   // 渲染角色选择器
   renderCharacterList();
 
@@ -366,33 +431,26 @@ function renderDetail() {
   }).join('');
   document.getElementById('detailStats').innerHTML = statsHtml;
 
-  // 招式
+  // 招式（格内仅图标；名称/类型/说明在悬停 tooltip）
   const skillsHtml = (m.skills || []).map(skill => {
     if (!skill) return '';
     const isUnlocked = m.currentLevel >= (skill.unlockLevel || 1);
-    const skillIcon = skill.icon || '❓';
+    const iconInner = renderMartialSkillIconInner(skill, m.id);
+    const ariaLabel = (skill.name || '未知招式') + '（' + (skill.type || '被动') + '）';
     const skillName = skill.name || '未知招式';
     const skillType = skill.type || '被动';
     
-    const iconBlock = !isUnlocked
-      ? `<div class="skill-icon-wrap">
-           <div class="skill-icon-backing" aria-hidden="true"></div>
-           <div class="skill-icon">${skillIcon}</div>
-           <div class="skill-lock-visual" aria-hidden="true"></div>
-         </div>`
-      : `<div class="skill-icon">${skillIcon}</div>`;
-    const unlockCaption = !isUnlocked && skill.unlockLevel
-      ? `<div class="skill-unlock-caption"><span class="skill-unlock-text">${skill.unlockLevel}重解锁</span></div>`
-      : '';
-
+    const iconBlock = `<div class="skill-icon-wrap${!isUnlocked ? ' skill-icon-wrap--locked' : ''}">
+           <div class="skill-icon${!isUnlocked ? ' skill-icon--locked' : ''}">${iconInner}</div>
+         </div>`;
     return `
-      <div class="skill-item ${!isUnlocked ? 'locked' : ''}" 
-           onmouseenter="showSkillTooltip(event, ${JSON.stringify(skill).replace(/"/g, '&quot;')})"
+      <div class="skill-item skill-item--icon-only ${!isUnlocked ? 'locked' : ''}"
+           aria-label="${ariaLabel.replace(/"/g, '&quot;')}"
+           onmouseenter="showSkillTooltip(event, ${JSON.stringify(skill).replace(/"/g, '&quot;')}, ${isUnlocked})"
            onmouseleave="hideSkillTooltip()">
         ${iconBlock}
-        <div class="skill-name">${skillName}</div>
-        <div class="skill-type ${skillType === '主动' ? 'active' : 'passive'}">${skillType}</div>
-        ${unlockCaption}
+        <div class="skill-name" aria-hidden="true">${skillName}</div>
+        <div class="skill-type ${skillType === '主动' ? 'active' : 'passive'}" aria-hidden="true">${skillType}</div>
       </div>
     `;
   }).join('');
@@ -515,9 +573,15 @@ function createSkillTooltip() {
 }
 
 // 显示技能tooltip
-function showSkillTooltip(event, skill) {
+function showSkillTooltip(event, skill, isUnlocked) {
   const tooltip = document.getElementById('skillTooltip');
   const playerStats = getPlayerStatsForMartialTooltip();
+  const unlocked = isUnlocked !== false && isUnlocked !== 'false';
+  const unlockLevel = skill && skill.unlockLevel != null ? skill.unlockLevel : 1;
+  const lockHint =
+    !unlocked && unlockLevel > 1
+      ? `<div class="skill-tooltip-lock">第 ${unlockLevel} 重解锁</div>`
+      : '';
 
   let effectDesc = '';
   
@@ -525,15 +589,24 @@ function showSkillTooltip(event, skill) {
   const followFx = getFollowAttackEffectForTooltip(skill);
   if (skill.name === '剑影' && followFx) {
     const agilityBonus = playerStats
-      ? Math.ceil((followFx.chancePerPoint || 0.01) * playerStats.agility * 100)
-      : 0;
-    effectDesc = `<div class="skill-tooltip-effect">基础${(followFx.baseChance || 0) * 100}%概率，身法越高触发概率越高（当前额外+${agilityBonus}%）</div>`;
+      ? fmtAttrBonusPct(playerStats.agility, followFx.chancePerPoint || 0.01)
+      : '0';
+    effectDesc = `<div class="skill-tooltip-effect">基础${fmtPctFromFraction(followFx.baseChance || 0)}%概率，身法越高触发概率越高（当前额外+${agilityBonus}%）</div>`;
   }
   
   const healPass = getInnerAutoHealEffectForTooltip(skill);
   const loadoutStatFx = getLoadoutPassiveStatEffectForTooltip(skill);
+  const resolvedDamage =
+    skill &&
+    skill.type === '主动' &&
+    typeof resolveActiveDamageEffect === 'function' &&
+    selectedMartialArt &&
+    selectedMartialArt.id != null
+      ? resolveActiveDamageEffect(skill, selectedMartialArt.id)
+      : null;
   const fx =
     skill.effect ||
+    resolvedDamage ||
     loadoutStatFx ||
     (healPass ? Object.assign({ type: 'autoHeal' }, healPass) : null);
 
@@ -555,16 +628,22 @@ function showSkillTooltip(event, skill) {
         maxMp: '内力上限'
       };
       if (fx.type === 'defenseBuff') {
-        baseText = `基础防御+${fx.baseValue}`;
+        baseText = `基础防御+${fmtInt(fx.baseValue, 'round')}`;
       } else if (fx.type === 'maxHpBuff') {
-        baseText = `基础气血上限+${fx.baseValue}`;
+        baseText = `基础气血上限+${fmtInt(fx.baseValue, 'round')}`;
       } else if (fx.type === 'autoHeal') {
-        baseText = `每回合恢复${fx.baseValue}`;
+        baseText = `每回合恢复${fmtInt(fx.baseValue, 'round')}`;
       } else if (fx.type === 'damage') {
-        baseText = `基础伤害${fx.value * 100}%`;
+        baseText = `基础伤害${fmtPctFromMultiplier(fx.value)}%`;
       } else if (fx.type === 'buff') {
         const statName = statNames[fx.stat] || fx.stat;
-        baseText = `基础${statName}+${fx.baseValue || Math.ceil(fx.value * 100)}`;
+        const buffBase =
+          fx.baseValue != null
+            ? fmtInt(fx.baseValue, 'round')
+            : fx.value != null
+              ? fmtPctFromFraction(fx.value)
+              : '0';
+        baseText = `基础${statName}+${buffBase}`;
       }
 
       // 如果有bonusAttr和bonusPerPoint，添加玩家当前属性加成
@@ -581,13 +660,11 @@ function showSkillTooltip(event, skill) {
 
         // 根据配置类型决定显示格式
         if (fx.baseValue !== undefined) {
-          // 数值加成类型：显示具体数值
-          const bonusValue = Math.ceil(attrValue * fx.bonusPerPoint);
-          calculatedDetail = baseText + `（${attrName}${attrValue}点，额外+${bonusValue}）`;
+          const bonusValue = fmtAttrBonus(attrValue, fx.bonusPerPoint);
+          calculatedDetail = baseText + `（${attrName}${fmtInt(attrValue, 'round')}点，额外+${bonusValue}）`;
         } else {
-          // 百分比加成类型：显示百分比
-          const bonusPercent = Math.ceil(attrValue * fx.bonusPerPoint * 100);
-          calculatedDetail = baseText + `（当前${attrName}${attrValue}点，额外+${bonusPercent}%）`;
+          const bonusPercent = fmtAttrBonusPct(attrValue, fx.bonusPerPoint);
+          calculatedDetail = baseText + `（当前${attrName}${fmtInt(attrValue, 'round')}点，额外+${bonusPercent}%）`;
         }
       } else {
         calculatedDetail = baseText;
@@ -605,12 +682,16 @@ function showSkillTooltip(event, skill) {
   tooltip.innerHTML = `
     <div class="skill-tooltip-name">${skill.name}</div>
     <div class="skill-tooltip-type">${skill.type}</div>
+    ${lockHint}
     <div class="skill-tooltip-desc">${skill.description}</div>
     ${effectDesc}
   `;
   tooltip.style.display = 'block';
-  
-  const rect = event.target.getBoundingClientRect();
+
+  const anchor = event.currentTarget || (event.target && event.target.closest
+    ? event.target.closest('.skill-item')
+    : null) || event.target;
+  const rect = anchor.getBoundingClientRect();
   tooltip.style.left = rect.right + 15 + 'px';
   tooltip.style.top = rect.top + 'px';
 }

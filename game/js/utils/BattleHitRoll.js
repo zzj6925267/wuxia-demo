@@ -14,8 +14,13 @@ const BattleHitRoll = {
     const hitRoll = Math.random() * 100;
     const dodgeRoll = Math.random() * 100;
     const parryRoll = Math.random() * 100;
+    /** 敌人数据可选 accuracy：结算闪避档前从 defender.dodge 扣除（副本 Boss 对高闪避少侠） */
+    const effDodge = Math.max(
+      0,
+      (defender.dodge || 0) - (attacker.accuracy || 0)
+    );
 
-    if (dodgeRoll < defender.dodge) {
+    if (dodgeRoll < effDodge) {
       return { damage: 0, isDodge: true, isParry: false, isCritical: false };
     }
 

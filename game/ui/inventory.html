@@ -80,20 +80,13 @@
 
   <script src="../js/config.js"></script>
   <script src="../js/data/items.js"></script>
+  <script src="../js/data/martialSkillDamage.js"></script>
   <script src="martialArtsData.js"></script>
   <script>
-    // 背包系统独立初始化 playerData
+    // 无内存态时仅占位；真实数据以 localStorage.playerData 为准，勿在此塞演示装备（易与青石/副本进度混淆）
     if (!window.playerData) {
       window.playerData = {
-        inventory: [
-          { id: 'potion_small', quantity: 5 },
-          { id: 'potion_medium', quantity: 3 },
-          { id: 'iron_sword', quantity: 1 },
-          { id: 'leather_armor', quantity: 1 },
-          { id: 'skillbook_liuyun', quantity: 1 },
-          { id: 'skillbook_zixia', quantity: 1 },
-          { id: 'skillbook_tayun', quantity: 1 }
-        ],
+        inventory: [],
         equipment: {
           weapon: null,
           armor: null,
@@ -101,7 +94,7 @@
           shoes: null,
           accessory: null
         },
-        level: 10
+        level: 1
       };
     }
   </script>

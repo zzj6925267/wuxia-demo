@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>重置：任务 + 武学 + 阅历（自测）</title>
+</head>
+<body style="font-family: 'Microsoft YaHei', sans-serif; padding: 24px; background: #1a1a1a; color: #e0e0e0;">
+  <p>已执行：</p>
+  <ol>
+    <li><strong>武学阅历</strong>：<code>localStorage.playerExperience</code> → <strong>0</strong>；并删除所有 <code>playerExperience_*</code>（分角色测试键）</li>
+    <li><strong>武学进度</strong>：删除所有 <code>playerMartialArts_*</code> 及旧键 <code>playerMartialArts</code>（无键时武学页/战斗会按库内初始状态加载）</li>
+    <li><strong>任务进度</strong>：<code>playerState.activeTasks</code> 内删除主线 <code>main_b_01</code>～<code>main_b_10</code> 与三条门派差事键；删除 <code>qingstoneDojoTutorial</code></li>
+    <li><strong>武馆考校标记</strong>：<code>qingstone_dojo_spar_victory</code>（若存在）</li>
+    <li><strong>战后残留</strong>：<code>pending_battle_rewards</code>、<code>battle_map_reward_floats</code>、<code>battle_exit_cinematic</code>、<code>battleEnemyId</code>、<code>battle_entry_source</code>（若存在）</li>
+  </ol>
+  <p style="color:#aaa;font-size:14px">不修改 <code>game_save_0</code>、不清门派贡献/已交会差记录等其它 <code>playerState</code> 字段。</p>
+  <p>1 秒后进入青石镇……</p>
+  <p><a href="qingstone_map.html" style="color:#ce93d8">若未跳转请点此</a> · <a href="task.html" style="color:#ce93d8">任务</a> · <a href="martialArts.html" style="color:#ce93d8">武学</a></p>
+  <script>
+    (function () {
+      var MAIN_IDS = [
+        'main_b_01', 'main_b_02', 'main_b_03', 'main_b_04', 'main_b_05',
+        'main_b_06', 'main_b_07', 'main_b_08', 'main_b_09', 'main_b_10'
+      ];
+      var FACTION_ACTIVE = ['collect_herbs', 'bandit_clear', 'organize_books'];
+      try {
+        var allKeys = [];
+        for (var i = 0; i < localStorage.length; i++) {
+          allKeys.push(localStorage.key(i));
+        }
+        allKeys.forEach(function (k) {
+          if (!k) return;
+          if (k.indexOf('playerMartialArts_') === 0) {
+            try { localStorage.removeItem(k); } catch (e) {}
+          }
+          if (k.indexOf('playerExperience_') === 0) {
+            try { localStorage.removeItem(k); } catch (e) {}
+          }
+        });
+        try { localStorage.removeItem('playerMartialArts'); } catch (e) {}
+      } catch (e) {}
+      try {
+        localStorage.setItem('playerExperience', '0');
+      } catch (e) {}
+      try {
+        localStorage.removeItem('qingstone_dojo_spar_victory');
+      } catch (e) {}
+      try {
+        localStorage.removeItem('pending_battle_rewards');
+      } catch (e) {}
+      try {
+        localStorage.removeItem('battle_map_reward_floats');
+      } catch (e) {}
+      try {
+        localStorage.removeItem('battle_exit_cinematic');
+      } catch (e) {}
+      try {
+        localStorage.removeItem('battleEnemyId');
+      } catch (e) {}
+      try {
+        localStorage.removeItem('battle_entry_source');
+      } catch (e) {}
+      var raw = localStorage.getItem('playerState');
+      var state = {};
+      try {
+        state = raw ? JSON.parse(raw) : {};
+      } catch (e) {
+        state = {};
+      }
+      if (!state.activeTasks || typeof state.activeTasks !== 'object') {
+        state.activeTasks = {};
+      }
+      MAIN_IDS.forEach(function (id) {
+        delete state.activeTasks[id];
+      });
+      FACTION_ACTIVE.forEach(function (id) {
+        delete state.activeTasks[id];
+      });
+      delete state.qingstoneDojoTutorial;
+      delete state.heifu_gate_story_ack;
+      delete state.forest_b07_dispatch_intro_ack;
+      try {
+        localStorage.setItem('playerState', JSON.stringify(state));
+      } catch (e) {}
+    })();
+    setTimeout(function () {
+      window.location.replace('qingstone_map.html');
+    }, 1000);
+  </script>
+</body>
+</html>

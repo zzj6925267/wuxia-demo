@@ -243,6 +243,11 @@
     let currentBuilding = 'zhengyang_hall';
 
     function init() {
+      const devZy = localStorage.getItem('dev_zhengyang_building');
+      if (devZy && BUILDINGS[devZy]) {
+        currentBuilding = devZy;
+        localStorage.removeItem('dev_zhengyang_building');
+      }
       renderMap();
       updatePanel();
       updateContribution();
@@ -324,6 +329,9 @@
     }
 
     function goBack() {
+      try {
+        localStorage.setItem('currentLocation', 'zhengyang_clan');
+      } catch (e) {}
       window.location.href = 'map.html';
     }
 

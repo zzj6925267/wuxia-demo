@@ -17,17 +17,28 @@ const mimeTypes = {
   '.ico': 'image/x-icon'
 };
 
+/** 静态根目录 = 本文件所在目录（game/），与从哪条命令启动 node 无关 */
+const STATIC_ROOT = __dirname;
+
 const server = http.createServer((req, res) => {
   console.log(`Request for ${req.url}`);
-  
-  let filePath = '.' + req.url;
-  if (filePath === './') {
-    filePath = './index.html';
+
+  let urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
+  if (urlPath === '/') {
+    urlPath = '/index.html';
   }
-  
+  const safePath = path.normalize(urlPath).replace(/^(\.\.(\/|\\|$))+/, '');
+  const filePath = path.join(STATIC_ROOT, safePath);
+
+  if (!filePath.startsWith(STATIC_ROOT)) {
+    res.writeHead(403, { 'Content-Type': 'text/html' });
+    res.end('<h1>403 Forbidden</h1>', 'utf-8');
+    return;
+  }
+
   const extname = String(path.extname(filePath)).toLowerCase();
   const contentType = mimeTypes[extname] || 'application/octet-stream';
-  
+
   fs.readFile(filePath, (error, content) => {
     if (error) {
       if (error.code === 'ENOENT') {

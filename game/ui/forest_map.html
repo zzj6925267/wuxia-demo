@@ -259,6 +259,18 @@
       font-size: 16px;
       margin-bottom: 8px;
     }
+    .dungeon-rec-level {
+      display: inline-block;
+      margin-right: 8px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+      color: #ffcc80;
+      background: rgba(255, 152, 0, 0.15);
+      border: 1px solid rgba(255, 152, 0, 0.45);
+      vertical-align: middle;
+    }
     .dungeon-sub {
       font-size: 12px;
       color: #888;
@@ -280,6 +292,105 @@
     .enemy-item.dungeon-stage--locked:hover {
       transform: none;
       background: rgba(40, 40, 40, 0.35);
+    }
+
+    .heifu-gate-npc {
+      margin-bottom: 12px;
+      padding-top: 4px;
+    }
+    .heifu-gate-npc .npc-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .npc-interact-btn {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #4a7c59;
+      border-radius: 8px;
+      background: linear-gradient(145deg, #2e5a38, #1e3d26);
+      color: #e8f5e9;
+      font-size: 14px;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .npc-interact-btn:hover:not(:disabled) {
+      border-color: #81c784;
+      color: #fff;
+      box-shadow: 0 0 8px rgba(129, 199, 132, 0.25);
+    }
+    .npc-interact-btn:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+    /* 与舆图/青石/正阳侧栏同构：对话嵌在 location-panel，非居中弹窗 */
+    .dialogue-section {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #2e7d32;
+    }
+    .dialogue-content {
+      display: flex;
+      flex-direction: column;
+    }
+    .dialogue-speaker {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .dialogue-npc-icon {
+      font-size: 20px;
+      margin-right: 8px;
+    }
+    .dialogue-npc-name {
+      font-size: 15px;
+      font-weight: bold;
+      color: #aed581;
+    }
+    .dialogue-text {
+      font-size: 15px;
+      color: #d8e8d8;
+      line-height: 1.6;
+      margin-bottom: 12px;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.28);
+      border-radius: 6px;
+      border: 1px solid #33691e;
+      min-height: 3.2em;
+    }
+    .dialogue-options {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .dialogue-option {
+      padding: 8px 15px;
+      background: linear-gradient(145deg, #2e5a38, #1e3d26);
+      border: 1px solid #4a7c59;
+      border-radius: 6px;
+      color: #e0f0e0;
+      font-size: 14px;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .dialogue-option:hover:not(:disabled) {
+      border-color: #81c784;
+      color: #fff;
+    }
+    .dialogue-option.return {
+      border-color: #555;
+      color: #9e9e9e;
+    }
+    .dialogue-option.return:hover {
+      border-color: #777;
+      color: #bdbdbd;
+    }
+    .dialogue-option:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
     }
     
     .herb-section {
@@ -481,8 +592,18 @@
         <div class="enemy-list" id="enemyList"></div>
       </div>
 
+      <div class="npc-section meng-qingsong-section" id="mengQingsongNpcSection" style="display: none;">
+        <h3 class="dungeon-title">🧍 窝棚外有人</h3>
+        <div class="heifu-gate-npc" id="heifuGateNpcBlock">
+          <p class="dungeon-sub heifu-gate-hint" id="heifuGateHint">孟青松蜷在窝棚旁，衣上还有血渍——似刚从寨里逃出。</p>
+          <div class="npc-list" id="heifuGateNpcList">
+            <button type="button" class="npc-interact-btn" id="btnHeifuGateNpc">🧍 孟青松 — 可搭话</button>
+          </div>
+        </div>
+      </div>
+
       <div class="dungeon-section" id="heifengDungeonSection" style="display: none;">
-        <h3 class="dungeon-title">🏯 黑风寨副本</h3>
+        <h3 class="dungeon-title"><span class="dungeon-rec-level">Lv.20</span>🏯 黑风寨副本</h3>
         <p class="dungeon-sub">多房间山寨：逐房清剿王二柱、刁老炮、茅老獾后，从北口离开返回山林。</p>
         <div class="dungeon-list">
           <div class="enemy-item" onclick="openHeifengDungeon()" role="button" tabindex="0">
@@ -504,20 +625,47 @@
       </div>
       
       <div id="leaveBtnContainer" style="display: none;"></div>
+
+      <div class="dialogue-section" id="forestDialoguePanel" style="display: none;" aria-live="polite">
+        <div class="dialogue-content">
+          <div class="dialogue-speaker">
+            <span class="dialogue-npc-icon" id="forestDialogueNpcIcon"></span>
+            <span class="dialogue-npc-name" id="forestDialogueNpcName"></span>
+          </div>
+          <div class="dialogue-text" id="forestDialogueText"></div>
+          <div class="dialogue-options" id="forestDialogueOptions"></div>
+        </div>
+      </div>
     </div>
   </div>
 
   <script src="submap_quick_nav.js"></script>
+  <script src="../js/config.js"></script>
   <script src="../js/data/enemies.js"></script>
   <script src="../js/data/items.js"></script>
   <script src="../js/utils/battleEntry.js"></script>
   <script src="../js/utils/battleSettlement.js"></script>
   <script src="forestMapData.js"></script>
+  <script src="taskData.js"></script>
   <script>
         const LOCATIONS = window.FOREST_LOCATIONS;
         const CONNECTIONS = window.FOREST_CONNECTIONS;
 
+        const FOREST_MAP_LOC_KEY = 'forest_map_location';
+
         let currentLocation = 'qingcang_entrance';
+
+        function persistForestMapLocation(locId) {
+          const id = locId != null ? locId : currentLocation;
+          if (!id || !LOCATIONS[id]) return;
+          try {
+            localStorage.setItem(FOREST_MAP_LOC_KEY, id);
+          } catch (e) {}
+        }
+
+        window.getSubmapLocationForPersist = function () {
+          return currentLocation;
+        };
         
         // 药草数量
         let lingzhiCount = 10;
@@ -525,16 +673,6 @@
         // 飘字队列
         let floatTextQueue = [];
         let isShowingFloatText = false;
-
-        function openHeifengDungeon() {
-          window.location.href = 'heifeng_dungeon.html';
-        }
-
-        function updateHeifengDungeonSection() {
-          const sec = document.getElementById('heifengDungeonSection');
-          if (!sec) return;
-          sec.style.display = currentLocation === 'heifeng_entrance' ? 'block' : 'none';
-        }
 
         // 更新银两显示
         function updateGoldDisplay(gold) {
@@ -594,33 +732,450 @@
 
         // 检查升级
         function checkLevelUp(save) {
-          console.log('=== checkLevelUp 开始 ===');
-          let levelUpCount = 0;
-          let finalLevel = save.player.level;
-          
-          while (true) {
-            // 计算当前等级所需的经验（每升一级所需经验增加50%）
-            const expNeeded = Math.floor(100 * Math.pow(1.5, save.player.level - 1));
-            console.log(`当前等级: ${save.player.level}, 当前阅历: ${save.player.exp}, 升级所需: ${expNeeded}`);
-            
-            if (save.player.exp >= expNeeded) {
-              // 升级
-              save.player.exp -= expNeeded;
-              save.player.level += 1;
-              levelUpCount++;
-              console.log(`升级！当前等级: ${save.player.level}, 剩余阅历: ${save.player.exp}`);
+          if (!save || !save.player) return;
+          const result =
+            typeof processYueliLevelUpsForSave === 'function'
+              ? processYueliLevelUpsForSave(save, { silent: true })
+              : { levelsGained: 0 };
+          if (result.levelsGained > 0) {
+            let msg = '恭喜！';
+            if (result.levelsGained > 1) {
+              msg += '连升 ' + result.levelsGained + ' 级，现为 ' + result.newLevel + ' 级！';
             } else {
-              break;
+              msg += '升至 ' + result.newLevel + ' 级！';
             }
+            if (result.pointsGained > 0) {
+              msg += ' 属性点 +' + result.pointsGained;
+            }
+            showFloatText(msg, '#4caf50');
           }
-          
-          // 如果有升级，立即显示飘字提示
-          if (levelUpCount > 0) {
-            console.log(`恭喜！升级 ${levelUpCount} 级，当前等级: ${save.player.level}`);
-            showFloatText(`恭喜！升至 ${save.player.level} 级！`, '#4caf50');
+        }
+
+        function readPlayerStateForest() {
+          try {
+            const raw = localStorage.getItem('playerState');
+            return raw ? JSON.parse(raw) : {};
+          } catch (e) {
+            return {};
           }
-          
-          console.log('=== checkLevelUp 结束 ===');
+        }
+
+        function writePlayerStateForest(st) {
+          localStorage.setItem('playerState', JSON.stringify(st));
+        }
+
+        function isMainStepDoneForest(questId) {
+          const t = (readPlayerStateForest().activeTasks || {})[questId];
+          return !!(t && (t.completed || t.isCompleted));
+        }
+
+        function markMainQuestStepForest(questId) {
+          if (!questId) return false;
+          const state = readPlayerStateForest();
+          if (!state.activeTasks) state.activeTasks = {};
+          const cur = state.activeTasks[questId];
+          if (cur && (cur.completed || cur.isCompleted)) return false;
+          state.activeTasks[questId] = Object.assign({}, cur, { completed: true, isCompleted: true });
+          writePlayerStateForest(state);
+          return true;
+        }
+
+        function applyMainQuestRewardsForest(questId) {
+          if (typeof ALL_TASKS === 'undefined' || !ALL_TASKS.main) return;
+          const task = ALL_TASKS.main.find((t) => t.id === questId);
+          if (!task || !task.rewards) return;
+          const saveData = localStorage.getItem('game_save_0');
+          if (!saveData) return;
+          try {
+            const save = JSON.parse(saveData);
+            if (!save.player) return;
+            task.rewards.forEach((r) => {
+              const v = parseInt(r.value, 10) || 0;
+              if (!v) return;
+              if (r.type === 'gold') save.player.gold = (save.player.gold || 0) + v;
+              else if (r.type === 'yueli' || r.type === 'exp') save.player.exp = (save.player.exp || 0) + v;
+            });
+            checkLevelUp(save);
+            localStorage.setItem('game_save_0', JSON.stringify(save));
+            loadGoldFromSave();
+          } catch (e) {
+            console.warn('applyMainQuestRewardsForest', e);
+          }
+        }
+
+        function floatMainQuestDoneForest(questId) {
+          if (typeof ALL_TASKS === 'undefined' || !ALL_TASKS.main) return;
+          const task = ALL_TASKS.main.find((t) => t.id === questId);
+          if (!task) return;
+          showFloatText('主线 · 「' + task.name + '」达成', '#FFD700');
+          (task.rewards || []).forEach((r) => {
+            const v = parseInt(r.value, 10) || 0;
+            if (!v) return;
+            let color = '#f4d03f';
+            if (r.type === 'gold') color = '#ff9800';
+            else if (r.type === 'yueli') color = '#9c27b0';
+            else if (r.type === 'exp') color = '#ffeb3b';
+            showFloatText((r.name || '奖励') + ' +' + v, color);
+          });
+        }
+
+        const FOREST_B07_DISPATCH_INTRO_STEPS = [
+          {
+            icon: '👧',
+            name: '苏瑶',
+            title: '临行嘱言',
+            body:
+              '你离了凝阳别院，沿江湖舆图折入青苍山麓。师姐临行嘱你：北峰有猎户孟青松自黑风寨逃出，说门中弟子被囚、绑票勒赎——先往山贼窝棚一带寻他搭话问明，再视情形办差。'
+          }
+        ];
+
+        function isForestB07DispatchIntroAcked() {
+          const st = readPlayerStateForest();
+          return st.forest_b07_dispatch_intro_ack === true || st.forest_b07_dispatch_intro_ack === '1';
+        }
+
+        function setForestB07DispatchIntroAcked() {
+          const st = readPlayerStateForest();
+          st.forest_b07_dispatch_intro_ack = true;
+          writePlayerStateForest(st);
+        }
+
+        function shouldShowForestB07DispatchIntro() {
+          return (
+            isMainStepDoneForest('main_b_07') &&
+            !isMainStepDoneForest('main_b_08') &&
+            !isForestB07DispatchIntroAcked()
+          );
+        }
+
+        function tryCompleteForestMainB08() {
+          if (!isMainStepDoneForest('main_b_07') || isMainStepDoneForest('main_b_08')) return;
+          if (!markMainQuestStepForest('main_b_08')) return;
+          applyMainQuestRewardsForest('main_b_08');
+          floatMainQuestDoneForest('main_b_08');
+        }
+
+        function tryShowForestB07DispatchIntro() {
+          if (!shouldShowForestB07DispatchIntro()) {
+            tryCompleteForestMainB08();
+            return;
+          }
+          startForestEmbeddedDialogue(FOREST_B07_DISPATCH_INTRO_STEPS, function () {
+            setForestB07DispatchIntroAcked();
+            tryCompleteForestMainB08();
+            if (typeof updateMengQingsongNpcSection === 'function') updateMengQingsongNpcSection();
+          if (typeof updateHeifengDungeonSection === 'function') updateHeifengDungeonSection();
+          });
+        }
+
+        function isHeifuGateStoryAckedForest() {
+          const st = readPlayerStateForest();
+          return st.heifu_gate_story_ack === true || st.heifu_gate_story_ack === '1';
+        }
+
+        function setHeifuGateStoryAckedForest() {
+          const st = readPlayerStateForest();
+          st.heifu_gate_story_ack = true;
+          writePlayerStateForest(st);
+          tryCompleteForestMainB09();
+        }
+
+        /** 寨口问明缘由 → 结 main_b_09 并发任务奖励（与副本战利品无关） */
+        function tryCompleteForestMainB09() {
+          if (!isMainStepDoneForest('main_b_08') || isMainStepDoneForest('main_b_09')) return;
+          if (!isHeifuGateStoryAckedForest()) return;
+          if (!markMainQuestStepForest('main_b_09')) return;
+          applyMainQuestRewardsForest('main_b_09');
+          floatMainQuestDoneForest('main_b_09');
+          if (typeof updateMengQingsongNpcSection === 'function') updateMengQingsongNpcSection();
+          if (typeof updateHeifengDungeonSection === 'function') updateHeifengDungeonSection();
+        }
+
+        /** 黑风寨口线人：具名角色，后续剧情可复用 id / 名 */
+        const HEIFU_GATE_NPC = {
+          id: 'meng_qingsong',
+          icon: '🧍',
+          name: '孟青松',
+          title: '北峰猎户'
+        };
+
+        const HEIFU_GATE_DIALOGUE_STEPS = [
+          {
+            icon: HEIFU_GATE_NPC.icon,
+            name: HEIFU_GATE_NPC.name,
+            title: HEIFU_GATE_NPC.title,
+            body:
+              '孟青松抬头打量你，嗓音沙哑：「往正阳传讯的师兄……可算有人听我说话了。」他捂紧了臂上渗血的布条。'
+          },
+          {
+            icon: HEIFU_GATE_NPC.icon,
+            name: HEIFU_GATE_NPC.name,
+            title: HEIFU_GATE_NPC.title,
+            body:
+              '「这一带北峰黑风寨绑票勒赎，前几日连上山采药的弟子都给扣下了。寨里三个当家——王二柱、刁老炮、茅老獾——下手最黑。门中说三天内不交赎，里头的人便凶多吉少。」'
+          },
+          {
+            icon: HEIFU_GATE_NPC.icon,
+            name: HEIFU_GATE_NPC.name,
+            title: HEIFU_GATE_NPC.title,
+            body:
+              '林风穿松而过。孟青松咬牙道：「我逃出来时折了几位弟兄，如今只剩一口气。你既会武功，便该进寨逐房清剿，把人带出来——也算替江湖除了这一窟恶狼。寨门里的事……只能各凭本事。」'
+          }
+        ];
+
+        const HEIFU_GATE_INJURY_LINE =
+          '你替他解开布条看了一眼——左臂刀伤甚深，失血不少，膝上还有摔蹭的淤青，怕是连夜从寨后陡坡逃下来的。孟青松摇头：「别看啦……死不了。先把话说完。」';
+
+        let forestDialoguePayload = null;
+        let forestTypeTimer = null;
+
+        function clearForestTypeTimer() {
+          if (forestTypeTimer) {
+            clearInterval(forestTypeTimer);
+            forestTypeTimer = null;
+          }
+        }
+
+        function formatForestSpeakerLine(step) {
+          if (!step.title) return step.name;
+          return step.name + '（' + step.title + '）';
+        }
+
+        function getForestTypeText(step) {
+          return step.name + '：' + step.body;
+        }
+
+        function hideForestBlocksBehindDialogue() {
+          const mengSec = document.getElementById('mengQingsongNpcSection');
+          if (mengSec) mengSec.style.display = 'none';
+          const block = document.getElementById('heifuGateNpcBlock');
+          if (block) block.style.display = 'none';
+          const list = document.querySelector('#heifengDungeonSection .dungeon-list');
+          if (list) list.style.display = 'none';
+        }
+
+        function closeForestDialogueAbandon() {
+          clearForestTypeTimer();
+          forestDialoguePayload = null;
+          const panel = document.getElementById('forestDialoguePanel');
+          if (panel) panel.style.display = 'none';
+          updateMengQingsongNpcSection();
+          updateHeifengDungeonSection();
+        }
+
+        function finishForestDialogueSequence() {
+          const fn = forestDialoguePayload && forestDialoguePayload.onComplete;
+          clearForestTypeTimer();
+          forestDialoguePayload = null;
+          const panel = document.getElementById('forestDialoguePanel');
+          if (panel) panel.style.display = 'none';
+          if (typeof fn === 'function') fn();
+          updateMengQingsongNpcSection();
+          updateHeifengDungeonSection();
+        }
+
+        function runForestTypewriter(fullText, onDone) {
+          clearForestTypeTimer();
+          const textEl = document.getElementById('forestDialogueText');
+          const optsEl = document.getElementById('forestDialogueOptions');
+          if (!textEl || !optsEl) return;
+          textEl.textContent = '';
+          optsEl.innerHTML =
+            '<button type="button" class="dialogue-option" disabled id="forestDialoguePrimaryBtn">请稍候…</button>' +
+            '<button type="button" class="dialogue-option return" id="forestDialogueReturnBtn">← 收起</button>';
+          const ret = document.getElementById('forestDialogueReturnBtn');
+          if (ret) ret.addEventListener('click', closeForestDialogueAbandon);
+          let i = 0;
+          forestTypeTimer = setInterval(function () {
+            if (i < fullText.length) {
+              textEl.textContent += fullText.charAt(i);
+              i++;
+            } else {
+              clearForestTypeTimer();
+              if (onDone) onDone();
+            }
+          }, 42);
+        }
+
+        function bindForestAdvanceButtons(isLast) {
+          const optsEl = document.getElementById('forestDialogueOptions');
+          if (!optsEl) return;
+          optsEl.innerHTML =
+            '<button type="button" class="dialogue-option" id="forestDialoguePrimaryBtn">' +
+            (isLast ? '记住了' : '接下一句') +
+            '</button>' +
+            '<button type="button" class="dialogue-option return" id="forestDialogueReturnBtn">← 收起</button>';
+          document.getElementById('forestDialoguePrimaryBtn').addEventListener('click', advanceForestDialogueStep);
+          document.getElementById('forestDialogueReturnBtn').addEventListener('click', closeForestDialogueAbandon);
+        }
+
+        /** 与苏瑶 default → learn 同构：先出分支选项，再进多段叙事 */
+        function bindForestMenuOptions(options) {
+          const optsEl = document.getElementById('forestDialogueOptions');
+          if (!optsEl) return;
+          let html = '';
+          options.forEach(function (opt, idx) {
+            html +=
+              '<button type="button" class="dialogue-option" data-heifu-opt="' +
+              idx +
+              '">' +
+              opt.text +
+              '</button>';
+          });
+          html +=
+            '<button type="button" class="dialogue-option return" id="forestDialogueReturnBtn">← 收起</button>';
+          optsEl.innerHTML = html;
+          document.getElementById('forestDialogueReturnBtn').addEventListener('click', closeForestDialogueAbandon);
+          optsEl.querySelectorAll('[data-heifu-opt]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              const idx = parseInt(btn.getAttribute('data-heifu-opt'), 10);
+              handleHeifuGateMenuOption(options[idx]);
+            });
+          });
+        }
+
+        function handleHeifuGateMenuOption(opt) {
+          if (!opt) return;
+          if (opt.action === 'story') {
+            startForestEmbeddedDialogue(HEIFU_GATE_DIALOGUE_STEPS, function () {
+              setHeifuGateStoryAckedForest();
+            });
+            return;
+          }
+          if (opt.action === 'injury') {
+            showHeifuGateInjuryScene();
+            return;
+          }
+          if (opt.next === 'close') {
+            closeForestDialogueAbandon();
+          }
+        }
+
+        function heifuGateSpeakerLabel() {
+          return HEIFU_GATE_NPC.name + '（' + HEIFU_GATE_NPC.title + '）';
+        }
+
+        function getHeifuGateMainMenuOptions() {
+          return [
+            { text: '查看伤势', action: 'injury' },
+            { text: '询问事发缘由', action: 'story' },
+            { text: '先不打搅他', next: 'close' }
+          ];
+        }
+
+        function showHeifuGateInjuryScene() {
+          document.getElementById('forestDialogueNpcIcon').textContent = HEIFU_GATE_NPC.icon;
+          document.getElementById('forestDialogueNpcName').textContent = heifuGateSpeakerLabel();
+          runForestTypewriter(HEIFU_GATE_NPC.name + '：' + HEIFU_GATE_INJURY_LINE, function () {
+            bindForestMenuOptions(getHeifuGateMainMenuOptions());
+          });
+        }
+
+        function showHeifuGateGreetingMenu() {
+          document.getElementById('forestDialogueNpcIcon').textContent = HEIFU_GATE_NPC.icon;
+          document.getElementById('forestDialogueNpcName').textContent = heifuGateSpeakerLabel();
+          const greeting =
+            HEIFU_GATE_NPC.name +
+            '：他蜷在路角，衣襟带血，抬眼看你，嗓音沙哑：「……正阳来的？有话便问。」';
+          runForestTypewriter(greeting, function () {
+            bindForestMenuOptions(getHeifuGateMainMenuOptions());
+          });
+        }
+
+        function showForestDialogueStep() {
+          const p = forestDialoguePayload;
+          if (!p || !p.steps || p.stepIndex >= p.steps.length) return;
+          const step = p.steps[p.stepIndex];
+          document.getElementById('forestDialogueNpcIcon').textContent = step.icon || '👤';
+          document.getElementById('forestDialogueNpcName').textContent = formatForestSpeakerLine(step);
+          const full = getForestTypeText(step);
+          const isLast = p.stepIndex >= p.steps.length - 1;
+          runForestTypewriter(full, function () {
+            bindForestAdvanceButtons(isLast);
+          });
+        }
+
+        function advanceForestDialogueStep() {
+          const p = forestDialoguePayload;
+          if (!p) return;
+          p.stepIndex += 1;
+          if (p.stepIndex >= p.steps.length) {
+            finishForestDialogueSequence();
+            return;
+          }
+          showForestDialogueStep();
+        }
+
+        function startForestEmbeddedDialogue(steps, onComplete) {
+          if (!steps || !steps.length) return;
+          forestDialoguePayload = { steps: steps.slice(), stepIndex: 0, onComplete: onComplete || null };
+          const panel = document.getElementById('forestDialoguePanel');
+          if (panel) panel.style.display = 'block';
+          hideForestBlocksBehindDialogue();
+          showForestDialogueStep();
+        }
+
+        function startHeifuGateDialog() {
+          if (isHeifuGateStoryAckedForest()) return;
+          clearForestTypeTimer();
+          forestDialoguePayload = null;
+          const panel = document.getElementById('forestDialoguePanel');
+          if (panel) panel.style.display = 'block';
+          hideForestBlocksBehindDialogue();
+          showHeifuGateGreetingMenu();
+        }
+
+        function openHeifengDungeon() {
+          if (!isMainStepDoneForest('main_b_08')) {
+            showFloatText('先在青苍山麓历练，完成「林樾试锋」后再闯贼寨。', '#ff9800');
+            return;
+          }
+          if (!isMainStepDoneForest('main_b_09')) {
+            showFloatText('先在山贼窝棚与孟青松问明缘由，完成「北峰问讯」后再进山寨。', '#ff9800');
+            return;
+          }
+          try {
+            localStorage.setItem('heifeng_fresh_enter', '1');
+          } catch (e) {}
+          window.location.href = 'heifeng_dungeon.html';
+        }
+
+        function updateMengQingsongNpcSection() {
+          const sec = document.getElementById('mengQingsongNpcSection');
+          if (!sec) return;
+          const atShed = currentLocation === 'shanze_shed';
+          const ack = isHeifuGateStoryAckedForest();
+          const showNpc = atShed && !ack;
+          sec.style.display = showNpc ? 'block' : 'none';
+          const hint = document.getElementById('heifuGateHint');
+          const block = document.getElementById('heifuGateNpcBlock');
+          const list = document.getElementById('heifuGateNpcList');
+          const btn = document.getElementById('btnHeifuGateNpc');
+          if (!showNpc || !hint) return;
+          const panelOpen =
+            document.getElementById('forestDialoguePanel') &&
+            document.getElementById('forestDialoguePanel').style.display === 'block';
+          if (block && !panelOpen) block.style.display = 'block';
+          hint.textContent = '孟青松蜷在窝棚旁，衣上还有血渍——似刚从寨里逃出。';
+          if (list) list.style.display = 'block';
+          if (btn) {
+            btn.textContent = '🧍 孟青松 — 可搭话';
+            btn.disabled = false;
+          }
+        }
+
+        function updateHeifengDungeonSection() {
+          const sec = document.getElementById('heifengDungeonSection');
+          if (!sec) return;
+          const show = currentLocation === 'heifeng_entrance';
+          sec.style.display = show ? 'block' : 'none';
+          const dungeonList = document.querySelector('#heifengDungeonSection .dungeon-list');
+          if (!show) return;
+          const panelOpen =
+            document.getElementById('forestDialoguePanel') &&
+            document.getElementById('forestDialoguePanel').style.display === 'block';
+          if (dungeonList && !panelOpen) dungeonList.style.display = 'block';
+          updateMengQingsongNpcSection();
         }
 
         // 从存档读取银两并更新显示
@@ -719,17 +1274,56 @@
               console.log('没有银两奖励或奖励为0');
             }
 
-            // 应用阅历奖励（转换为数字）
-            const expReward = parseInt(rewards.exp) || 0;
-            if (expReward > 0) {
-              if (!save.player.exp) save.player.exp = 0;
-              save.player.exp += expReward;
-              console.log(`阅历 +${expReward}, 当前: ${save.player.exp}`);
-              
-              // 检查是否需要升级
-              checkLevelUp(save);
+            const levelYueli = parseInt(rewards.exp, 10) || 0;
+            if (levelYueli > 0) {
+              let upResult = { levelsGained: 0 };
+              if (
+                window.BattleSettlement &&
+                typeof BattleSettlement.applyLevelYueliFromBattleRewards === 'function'
+              ) {
+                upResult = BattleSettlement.applyLevelYueliFromBattleRewards(save, rewards, {
+                  silent: true
+                });
+              } else {
+                if (!save.player.exp) save.player.exp = 0;
+                save.player.exp += levelYueli;
+                if (typeof processYueliLevelUpsForSave === 'function') {
+                  upResult = processYueliLevelUpsForSave(save, { silent: true });
+                }
+                if (typeof processPartyBattleYueli === 'function') {
+                  processPartyBattleYueli(save, rewards.partyCharIds, levelYueli, { silent: true });
+                }
+              }
+              console.log(`角色阅历 +${levelYueli}, 少侠当前: ${save.player.exp}`);
+              if (upResult && upResult.levelsGained > 0) {
+                let msg = '恭喜！';
+                if (upResult.levelsGained > 1) {
+                  msg += '连升 ' + upResult.levelsGained + ' 级，现为 ' + upResult.newLevel + ' 级！';
+                } else {
+                  msg += '升至 ' + upResult.newLevel + ' 级！';
+                }
+                if (upResult.pointsGained > 0) {
+                  msg += ' 属性点 +' + upResult.pointsGained;
+                }
+                showFloatText(msg, '#4caf50');
+              }
+            }
+
+            if (window.BattleSettlement && BattleSettlement.applyMartialYueliFromBattleRewards) {
+              const martialAdded = BattleSettlement.applyMartialYueliFromBattleRewards(rewards);
+              if (martialAdded > 0) {
+                console.log(
+                  `武学修炼阅历 +${martialAdded}, 当前: ${BattleSettlement.getPlayerMartialExperience()}`
+                );
+              }
             } else {
-              console.log('没有阅历奖励或奖励为0');
+              const martialYueli = parseInt(rewards.expReward, 10) || 0;
+              if (martialYueli > 0) {
+                const cur = parseInt(localStorage.getItem('playerExperience') || '0', 10) || 0;
+                const next = cur + martialYueli;
+                localStorage.setItem('playerExperience', String(next));
+                if (typeof window !== 'undefined') window.playerExperience = next;
+              }
             }
 
             // 保存存档
@@ -871,6 +1465,17 @@
             localStorage.removeItem('preBattleLocation');
           }
 
+          const devForestSpawn = localStorage.getItem('dev_forest_spawn');
+          if (devForestSpawn && LOCATIONS[devForestSpawn]) {
+            currentLocation = devForestSpawn;
+            localStorage.removeItem('dev_forest_spawn');
+          } else {
+            const savedForestLoc = localStorage.getItem(FOREST_MAP_LOC_KEY);
+            if (savedForestLoc && LOCATIONS[savedForestLoc]) {
+              currentLocation = savedForestLoc;
+            }
+          }
+
           if (localStorage.getItem('heifeng_forest_after_defeat') === '1') {
             localStorage.removeItem('heifeng_forest_after_defeat');
             try {
@@ -890,6 +1495,20 @@
             });
           } else {
             playPostBattleMapRewardFloats(afterRewardFloats);
+          }
+
+          tryShowForestB07DispatchIntro();
+          syncMainB09FromGateAckForest();
+        }
+
+        /** 旧档已有 heifu_gate_story_ack 但未记 b09 时补结 */
+        function syncMainB09FromGateAckForest() {
+          if (
+            isHeifuGateStoryAckedForest() &&
+            isMainStepDoneForest('main_b_08') &&
+            !isMainStepDoneForest('main_b_09')
+          ) {
+            tryCompleteForestMainB09();
           }
         }
 
@@ -948,6 +1567,7 @@
 
     function travelTo(locationId) {
       currentLocation = locationId;
+      persistForestMapLocation(locationId);
       renderMap();
       updatePanel();
     }
@@ -968,6 +1588,7 @@
       }
       
       updateEnemyList();
+      updateMengQingsongNpcSection();
       updateHeifengDungeonSection();
       updateHerbList();
     }
@@ -1086,30 +1707,40 @@ function addToInventory(itemId, quantity) {
       level: 10
     };
   }
-  
+
   const player = window.playerData;
-  let remaining = quantity;
-  
-  // 先尝试填满已有的同类型格子（不超过99）
+  if (!player.inventory) player.inventory = [];
+
+  let remaining = Math.max(0, Math.floor(Number(quantity)) || 0);
+  if (remaining <= 0) return;
+
+  const def = window.ITEMS && window.ITEMS[itemId];
+  if (def && def.category === 'equipment') {
+    for (let q = 0; q < remaining; q++) {
+      player.inventory.push({ id: itemId, quantity: 1 });
+    }
+    localStorage.setItem('playerData', JSON.stringify(player));
+    return;
+  }
+
+  // 先尝试填满已有的同 id 格子（不超过99）
   for (let item of player.inventory) {
     if (item.id === itemId && item.quantity < 99) {
       const canAdd = 99 - item.quantity;
       const toAdd = Math.min(canAdd, remaining);
       item.quantity += toAdd;
       remaining -= toAdd;
-      
+
       if (remaining <= 0) break;
     }
   }
-  
-  // 如果还有剩余，创建新格子
+
   while (remaining > 0) {
     const toAdd = Math.min(remaining, 99);
     player.inventory.push({ id: itemId, quantity: toAdd });
     remaining -= toAdd;
   }
-  
-  // 保存到localStorage
+
   localStorage.setItem('playerData', JSON.stringify(player));
 }
 
@@ -1221,6 +1852,11 @@ function updateCollectTaskProgress() {
       localStorage.setItem('currentLocation', 'forest');
       window.location.href = 'map.html';
     }
+
+    (function bindHeifuGateUi() {
+      const bnpc = document.getElementById('btnHeifuGateNpc');
+      if (bnpc) bnpc.addEventListener('click', startHeifuGateDialog);
+    })();
 
     init();
   </script>

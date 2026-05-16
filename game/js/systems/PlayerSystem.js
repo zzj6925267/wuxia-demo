@@ -205,11 +205,20 @@ class PlayerSystem {
   }
 
   addItem(itemId, quantity = 1) {
+    const def = typeof window !== 'undefined' && window.ITEMS && window.ITEMS[itemId];
+    const noStack = def && def.category === 'equipment';
+    const n = Math.max(1, Math.floor(Number(quantity)) || 1);
+    if (noStack) {
+      for (let q = 0; q < n; q++) {
+        this.player.inventory.push({ id: itemId, quantity: 1 });
+      }
+      return;
+    }
     const existingItem = this.player.inventory.find(item => item.id === itemId);
     if (existingItem) {
-      existingItem.quantity += quantity;
+      existingItem.quantity += n;
     } else {
-      this.player.inventory.push({ id: itemId, quantity });
+      this.player.inventory.push({ id: itemId, quantity: n });
     }
   }
 

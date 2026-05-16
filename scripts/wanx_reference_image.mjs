@@ -36,6 +36,7 @@ function parseArgs(argv) {
     model: "wanx-v1",
     n: 1,
     style: "<auto>",
+    watermark: false,
   };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
@@ -67,6 +68,8 @@ function parseArgs(argv) {
     } else if (a === "--style" && next) {
       out.style = next;
       i++;
+    } else if (a === "--watermark") {
+      out.watermark = true;
     } else if (a === "--help" || a === "-h") {
       out.help = true;
     }
@@ -94,6 +97,7 @@ function printHelp() {
   --strength 0.55     越大越像参考图，约 0.45~0.75 之间试
   --size 1280*720     横图；或 1024*1024 方图
   --model wanx-v1     与官方参考图示例一致
+  --watermark         显式加右下角「AI生成」水印（默认不加）
 
 PowerShell 一行示例：
   $env:DASHSCOPE_API_KEY="sk-xxxx"; node scripts/wanx_reference_image.mjs --ref "https://example.com/ref.png" --prompt "黑底胸像，女侠，红衣" --mode refonly --strength 0.55
@@ -182,6 +186,7 @@ async function main() {
       n: args.n,
       ref_strength: args.strength,
       ref_mode: args.mode,
+      watermark: args.watermark,
     },
   };
 

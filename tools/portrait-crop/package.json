@@ -5,7 +5,8 @@
   "scripts": {
     "install-sharp": "npm install",
     "crop": "node crop_avatars.mjs",
-    "crop:strip": "node crop_avatars.mjs --strip"
+    "crop:strip": "node crop_avatars.mjs --strip",
+    "trim-watermark": "node ../../scripts/trim_ai_watermark.mjs"
   },
   "dependencies": {
     "sharp": "^0.33.5"

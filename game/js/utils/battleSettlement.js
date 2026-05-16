@@ -40,6 +40,77 @@ const BattleSettlement = {
     localStorage.setItem(this.MAP_REWARD_FLOATS_KEY, JSON.stringify(payload));
   },
 
+  /** 武学页修炼阅历（与 game_save_0.player.exp 角色升级阅历分离） */
+  getPlayerMartialExperience() {
+    try {
+      const v = parseInt(localStorage.getItem('playerExperience') || '0', 10);
+      return Number.isFinite(v) ? v : 0;
+    } catch (e) {
+      return 0;
+    }
+  },
+
+  /**
+   * @param {number} delta
+   * @returns {number} 写入后的总值
+   */
+  addPlayerMartialExperience(delta) {
+    const d = parseInt(delta, 10);
+    if (!Number.isFinite(d) || d <= 0) return this.getPlayerMartialExperience();
+    const next = this.getPlayerMartialExperience() + d;
+    try {
+      localStorage.setItem('playerExperience', String(next));
+    } catch (e) {
+      console.warn('addPlayerMartialExperience: 写入失败', e);
+    }
+    if (typeof window !== 'undefined') {
+      window.playerExperience = next;
+    }
+    return next;
+  },
+
+  /**
+   * 战后飘字「阅历」→ 武学修炼阅历（expReward）；角色等级阅历仍写 game_save_0.player.exp（exp）。
+   * @param {{ exp?: number, expReward?: number }} rewards
+   * @returns {number} 本次增加的武学阅历
+   */
+  applyMartialYueliFromBattleRewards(rewards) {
+    if (!rewards) return 0;
+    const martial = parseInt(rewards.expReward, 10);
+    if (!Number.isFinite(martial) || martial <= 0) return 0;
+    this.addPlayerMartialExperience(martial);
+    return martial;
+  },
+
+  /**
+   * 战后「角色阅历」：少侠写 save.player.exp；参战队友（partyCharIds）写 playerCharacters。
+   * @param {object} save
+   * @param {{ exp?: number, partyCharIds?: number[] }} rewards
+   * @param {{ silent?: boolean }} [options]
+   */
+  applyLevelYueliFromBattleRewards(save, rewards, options) {
+    if (!save || !save.player || !rewards) {
+      return { levelsGained: 0, newLevel: save && save.player ? save.player.level : 1, pointsGained: 0 };
+    }
+    const levelYueli = parseInt(rewards.exp, 10) || 0;
+    if (levelYueli <= 0) {
+      return {
+        levelsGained: 0,
+        newLevel: save.player.level || 1,
+        pointsGained: 0
+      };
+    }
+    save.player.exp = (save.player.exp || 0) + levelYueli;
+    let upResult = { levelsGained: 0, newLevel: save.player.level || 1, pointsGained: 0 };
+    if (typeof processYueliLevelUpsForSave === 'function') {
+      upResult = processYueliLevelUpsForSave(save, options);
+    }
+    if (typeof processPartyBattleYueli === 'function') {
+      processPartyBattleYueli(save, rewards.partyCharIds, levelYueli, options);
+    }
+    return upResult;
+  },
+
   /** @returns {object|null} */
   takePostBattleMapRewardFloats() {
     const raw = localStorage.getItem(this.MAP_REWARD_FLOATS_KEY);

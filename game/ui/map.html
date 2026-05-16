@@ -164,7 +164,7 @@
             <!-- 中间头像 -->
             <div class="char-avatar">
               <div class="char-icon" id="charAvatar">👨‍🦰</div>
-              <div class="char-level" id="charLevel">Lv.10</div>
+              <div class="char-level" id="charLevel">Lv.1</div>
             </div>
             
             <!-- 右边装备 -->
@@ -209,20 +209,20 @@
           <div class="char-skills">
             <h3>武学</h3>
             <div class="skills-row">
-              <div class="skill-item" id="skillSlot1" onclick="openMartialArts('martial')">
+              <div class="skill-item skill-item--empty" id="skillSlot1" onclick="openMartialArts('martial')">
                 <span>⚔️</span>
-                <span id="charWeaponSkill">正阳基础剑式</span>
-                <span class="skill-level">3/10重</span>
+                <span id="charWeaponSkill">未修习</span>
+                <span class="skill-level">—</span>
               </div>
-              <div class="skill-item" id="skillSlot2" onclick="openMartialArts('internal')">
+              <div class="skill-item skill-item--empty" id="skillSlot2" onclick="openMartialArts('internal')">
                 <span>💨</span>
-                <span id="charInnerSkill">正阳吐纳诀</span>
-                <span class="skill-level">2/10重</span>
+                <span id="charInnerSkill">未修习</span>
+                <span class="skill-level">—</span>
               </div>
-              <div class="skill-item" id="skillSlot3" onclick="openMartialArts('light')">
+              <div class="skill-item skill-item--empty" id="skillSlot3" onclick="openMartialArts('light')">
                 <span>👟</span>
-                <span id="charLightSkill">踏云步</span>
-                <span class="skill-level">1/10重</span>
+                <span id="charLightSkill">未修习</span>
+                <span class="skill-level">—</span>
               </div>
             </div>
           </div>
@@ -325,7 +325,7 @@
 
           <div class="four-dim-actions">
             <div class="remaining-points">
-              剩余属性点：<span class="highlight" id="remainingPoints">50</span>
+              剩余属性点：<span class="highlight" id="remainingPoints">0</span>
             </div>
             <div class="preview-hint" id="previewHint"></div>
             <button class="confirm-btn" id="confirmPointBtn" onclick="confirmCharPoint()" style="display:none;">确认加点</button>
@@ -413,7 +413,9 @@
   <script src="../js/utils/attributeHelper.js"></script>
   <script src="../js/utils/battleSettlement.js"></script>
   <script src="zhengyangMapData.js"></script>
+  <script src="taskData.js"></script>
   <script src="npcData.js"></script>
+  <script src="../js/data/martialSkillDamage.js"></script>
   <script src="martialArtsData.js"></script>
   <script src="../js/data/battlePassives.js"></script>
   
@@ -426,7 +428,6 @@
   <!-- UI层 -->
   <script src="character.js"></script>
   <script src="map.js"></script>
-  <script src="taskData.js"></script>
   
   <script>
     // 使用 character.js 里已经初始化的 window.playerData
@@ -545,7 +546,15 @@
           if (r.type === 'gold') save.player.gold = (save.player.gold || 0) + v;
           else if (r.type === 'yueli' || r.type === 'exp') save.player.exp = (save.player.exp || 0) + v;
         });
+        if (typeof processYueliLevelUpsForSave === 'function') {
+          processYueliLevelUpsForSave(save, { silent: true });
+        } else if (typeof applyPlayerYueliLevelUps === 'function') {
+          applyPlayerYueliLevelUps(save.player);
+        }
         localStorage.setItem('game_save_0', JSON.stringify(save));
+        if (typeof syncProtagonistLevelExpFromPlayer === 'function') {
+          syncProtagonistLevelExpFromPlayer(save.player);
+        }
         const goldEl = document.getElementById('goldValue');
         if (goldEl) goldEl.textContent = save.player.gold;
       } catch (e) {
@@ -610,6 +619,14 @@
           : null;
 
       applyPendingBattleRewards();
+
+      try {
+        const saveRaw = localStorage.getItem('game_save_0');
+        if (saveRaw && typeof syncProtagonistLevelExpFromPlayer === 'function') {
+          const save = JSON.parse(saveRaw);
+          if (save && save.player) syncProtagonistLevelExpFromPlayer(save.player);
+        }
+      } catch (e) {}
 
       // 检查 localStorage 是否需要自动打开角色面板
       const shouldOpenCharacter = localStorage.getItem('openCharacterOnLoad');
@@ -755,15 +772,55 @@
           console.log(`银两 +${goldAdd}, 当前: ${save.player.gold}`);
         }
 
-        const expAdd = parseInt(rewards.exp, 10) || parseInt(rewards.expReward, 10) || 0;
-        if (expAdd > 0) {
-          if (!save.player.exp) save.player.exp = 0;
-          save.player.exp += expAdd;
-          console.log(`阅历 +${expAdd}, 当前: ${save.player.exp}`);
+        const levelYueli = parseInt(rewards.exp, 10) || 0;
+        let levelUpResult = { levelsGained: 0 };
+        if (levelYueli > 0) {
+          if (
+            window.BattleSettlement &&
+            typeof BattleSettlement.applyLevelYueliFromBattleRewards === 'function'
+          ) {
+            levelUpResult = BattleSettlement.applyLevelYueliFromBattleRewards(save, rewards, {
+              silent: true
+            });
+          } else {
+            if (!save.player.exp) save.player.exp = 0;
+            save.player.exp += levelYueli;
+            if (typeof processYueliLevelUpsForSave === 'function') {
+              levelUpResult = processYueliLevelUpsForSave(save, { silent: true });
+            }
+            if (typeof processPartyBattleYueli === 'function') {
+              processPartyBattleYueli(save, rewards.partyCharIds, levelYueli, { silent: true });
+            }
+          }
+          console.log(`角色阅历 +${levelYueli}, 当前: ${save.player.exp}`);
+        } else if (typeof processYueliLevelUpsForSave === 'function') {
+          levelUpResult = processYueliLevelUpsForSave(save, { silent: true });
+        }
+
+        if (window.BattleSettlement && BattleSettlement.applyMartialYueliFromBattleRewards) {
+          const martialAdded = BattleSettlement.applyMartialYueliFromBattleRewards(rewards);
+          if (martialAdded > 0) {
+            console.log(
+              `武学修炼阅历 +${martialAdded}, 当前: ${BattleSettlement.getPlayerMartialExperience()}`
+            );
+          }
+        } else {
+          const martialYueli = parseInt(rewards.expReward, 10) || 0;
+          if (martialYueli > 0) {
+            const cur = parseInt(localStorage.getItem('playerExperience') || '0', 10) || 0;
+            localStorage.setItem('playerExperience', String(cur + martialYueli));
+          }
+        }
+
+        if (levelUpResult.levelsGained > 0) {
+          console.log('战斗奖励触发升级:', levelUpResult);
         }
 
         // 保存存档
         localStorage.setItem('game_save_0', JSON.stringify(save));
+        if (typeof syncProtagonistLevelExpFromPlayer === 'function') {
+          syncProtagonistLevelExpFromPlayer(save.player);
+        }
         console.log('存档已更新');
 
         // 更新地图上的银两显示

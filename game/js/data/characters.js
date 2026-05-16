@@ -6,6 +6,7 @@
 /**
  * 玩家初始数据
  */
+/** 新局默认：四维各 5，气血/内力基础值，修为与背包由玩法再获得 */
 const PLAYER_INITIAL = {
   id: 'player',
   name: '少侠',
@@ -16,17 +17,19 @@ const PLAYER_INITIAL = {
   hp: 100,
   maxMp: 50,
   mp: 50,
-  attack: 10,
+  attack: 50,
   defense: 5,
-  skills: ['basic_attack', 'healing_palm'],
-  inventory: [{ id: 'potion_small', quantity: 3 }],
+  skills: [],
+  inventory: [],
   stats: {
-    strength: 10,
-    agility: 10,
-    vitality: 10,
-    spirit: 10
+    strength: 5,
+    agility: 5,
+    vitality: 5,
+    spirit: 5,
+    bone: 5,
+    qi: 5
   },
-  gold: 50,
+  gold: 0,
   flags: {}
 };
 

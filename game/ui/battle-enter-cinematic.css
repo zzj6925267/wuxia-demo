@@ -1,0 +1,66 @@
+/* 小地图 → 战斗：中央「战」字闪烁 + 黑屏切入（与 forest_map / heifeng 一致） */
+.battle-enter-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: all;
+}
+.battle-enter-zhan-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  background: rgba(0, 0, 0, 0.25);
+}
+.battle-enter-zhan-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: min(20vw, 86px);
+  height: min(20vw, 86px);
+  background: #e53935;
+  color: #0d0d0d;
+  font-size: clamp(28px, 6vw, 42px);
+  line-height: 1;
+  font-family: 'KaiTi', 'STKaiti', 'SimKai', 'FangSong', 'Microsoft YaHei', serif;
+  font-weight: 900;
+  clip-path: polygon(10% 4%, 90% 6%, 100% 40%, 70% 96%, 30% 96%, 0% 40%);
+  text-shadow:
+    1px 0 0 #000,
+    -1px 0 0 #000,
+    0 1px 0 #000,
+    0 -1px 0 #000;
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.45));
+  animation: battle-enter-zhan-flash 0.95s linear forwards;
+}
+@keyframes battle-enter-zhan-flash {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  5% { opacity: 0.35; transform: scale(1.05); }
+  10% { opacity: 1; transform: scale(1); }
+  15% { opacity: 0.45; transform: scale(1.04); }
+  20% { opacity: 1; transform: scale(1); }
+  25% { opacity: 0.3; transform: scale(1.06); }
+  32% { opacity: 1; transform: scale(1); }
+  40% { opacity: 0.5; transform: scale(1.03); }
+  48% { opacity: 1; transform: scale(1); }
+  55% { opacity: 0.25; transform: scale(1.07); }
+  62% { opacity: 1; transform: scale(1); }
+  70% { opacity: 0.4; transform: scale(1.04); }
+  78% { opacity: 1; transform: scale(1); }
+  86% { opacity: 0.35; transform: scale(1.05); }
+  94% { opacity: 1; transform: scale(1); }
+}
+.battle-enter-black {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: #000;
+  opacity: 0;
+  transition: opacity 0.32s ease-in;
+}
+.battle-enter-black.is-on {
+  opacity: 1;
+}
