@@ -1,12 +1,12 @@
 {
-  "version": "0.0.9",
-  "build": 9,
-  "date": "2026-05-12",
-  "description": "战斗四阶段改造：统一入口、pending 键名、阶段说明（未合并单形态）",
+  "version": "0.1.0",
+  "build": 10,
+  "date": "2026-05-17",
+  "description": "武学图标与黑风寨养成检验、队友阅历与主线黑风寨等重大进度",
   "changes": [
-    "1. 新增 BattleEntry：进入 battle.html 队伍战请走 startPartyBattle（山林已接入）",
-    "2. 新增 BattleSettlement：pending_battle_rewards 读写统一（battle / forest_map / map / index）",
-    "3. battle.html 引入上述模块；battle.js 结算写入与敌 id 读取走统一 API",
-    "4. 阶段 4 未实施：BattleSystem 与队伍战仍双形态，仅文档与入口收敛"
+    "1. 武学页：招式纯图标、未解锁灰态、悬停说明；浮窗数值整数化；正阳/踏云/落草招式 PNG（ma_skill_*）",
+    "2. 队友战后角色阅历、角色页阅历积压结算；装备悬停预览；martialSkillDamage 主动伤害表",
+    "3. 黑风寨副本推进与 Boss 数值（单人满重三件套基准）、主线 b08～b10、正阳贡献与苏瑶传功",
+    "4. 开发自测：新局重置、章节跳过、正阳三件套一重；git 983df6a"
   ]
 }

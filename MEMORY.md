@@ -7,6 +7,10 @@
 
 ---
 
+## 0. 当前版本（发版对照）
+
+- **`version.json` / `GAME_CONFIG.GAME_VERSION`**：**0.1.0**（build **10**，2026-05-17）— 武学图标 UI、黑风寨养成检验、队友阅历、主线 b08～b10 等；代码提交 **983df6a**。
+
 ## 1. 本地怎么跑（以仓库为准）
 
 - 静态站根目录在 **`wuxia-demo/game/`**（`index.html`、子目录 `ui/`、`assets/`、`js/`）。
