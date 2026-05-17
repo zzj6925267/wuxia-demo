@@ -79,16 +79,40 @@ const characters = [
 
 const TUTORIAL_WOOD_IDS = ['mu_jian', 'mu_dao', 'mu_quan'];
 
-function invHasDojoWoodWeaponGranted() {
+function invParseDojoTutorial() {
   try {
-    const raw = localStorage.getItem('playerState');
-    if (!raw) return false;
-    const st = JSON.parse(raw);
-    const t = st && st.qingstoneDojoTutorial;
-    return !!(t && t.phase === 'picked' && t.weaponId);
+    const st = JSON.parse(localStorage.getItem('playerState') || '{}');
+    return st.qingstoneDojoTutorial || null;
   } catch (e) {
-    return false;
+    return null;
   }
+}
+
+/** 已领武馆木械：问径 picked 或考校后 spar_done；勿只认 picked，否则刷新会误删木剑 */
+function invHasDojoWoodWeaponGranted() {
+  const t = invParseDojoTutorial();
+  if (!t || !t.weaponId) return false;
+  return t.phase === 'picked' || t.phase === 'spar_done';
+}
+
+function invGetDojoGrantedWeaponId() {
+  const t = invParseDojoTutorial();
+  if (!invHasDojoWoodWeaponGranted()) return null;
+  const id = String(t.weaponId);
+  return TUTORIAL_WOOD_IDS.indexOf(id) >= 0 ? id : null;
+}
+
+/** 已领但背包缺件时补回一格（修复 spar_done 误删档） */
+function invEnsureGrantedDojoWoodInBag() {
+  const wid = invGetDojoGrantedWeaponId();
+  if (!wid || !window.playerData || !Array.isArray(window.playerData.inventory)) return false;
+  let n = 0;
+  window.playerData.inventory.forEach(function (slot) {
+    if (slot && String(slot.id) === wid) n += parseInt(slot.quantity, 10) || 1;
+  });
+  if (n > 0) return false;
+  window.playerData.inventory.push({ id: wid, quantity: 1 });
+  return true;
 }
 
 function invStripTutorialWoodFromBag(inventory) {
@@ -191,6 +215,10 @@ function init() {
   }
 
   if (window.playerData.inventory && invStripTutorialWoodFromBag(window.playerData.inventory)) {
+    persistPlayerData();
+  }
+
+  if (invEnsureGrantedDojoWoodInBag()) {
     persistPlayerData();
   }
 

@@ -120,10 +120,18 @@ const ZHENGYANG_NPCS = {
     dialogues: {
       default: {
         text: '嗯？你不在剑坪练剑，来这里做什么？',
-        options: [
-          { text: '弟子有门规方面的疑问', next: 'rule' },
-          { text: '门派任务', next: 'faction_task' }
-        ]
+        getOptions: () => {
+          loadPlayerState();
+          const opts = [{ text: '弟子有门规方面的疑问', next: 'rule' }];
+          if (playerState.joinedFaction) {
+            opts.push({ text: '门派任务', next: 'faction_task' });
+          }
+          return opts;
+        }
+      },
+      faction_need_join: {
+        text: '老夫看你尚未在本门登记名册。门派差事只派发给正阳弟子——你可到宁阳别院找苏瑶师妹，先办妥入派事宜再来澄心堂。',
+        options: [{ text: '弟子这就去', next: 'default' }]
       },
       pass: {
         text: '哼，无事便去练剑！正阳派的弟子，当以剑法为重。',
@@ -147,6 +155,11 @@ const ZHENGYANG_NPCS = {
       faction_task: {
         text: '门派任务？很好。办妥差事后，须点下方带「可交差」的一项，再向老夫道谢，贡献才会记入功过簿。',
         getOptions: () => {
+          loadPlayerState();
+          if (!playerState.joinedFaction) {
+            return [{ text: '弟子尚未入派', next: 'faction_need_join' }];
+          }
+
           // 获取任务状态
           const savedState = localStorage.getItem('playerState');
           let state = savedState ? JSON.parse(savedState) : {};

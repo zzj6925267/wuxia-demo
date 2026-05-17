@@ -809,6 +809,16 @@ function handleDialogueAction(dialogue, callback) {
  * 接受任务
  */
 function acceptTask(taskId, reward) {
+  if (
+    typeof isFactionQuestTaskId === 'function' &&
+    isFactionQuestTaskId(taskId) &&
+    typeof isPlayerJoinedZhengyangFaction === 'function' &&
+    !isPlayerJoinedZhengyangFaction()
+  ) {
+    showFloatText('须先加入正阳派，方可领取门派差事', '#f44336');
+    return;
+  }
+
   // 从localStorage获取玩家状态
   const savedState = localStorage.getItem('playerState');
   let playerState = savedState ? JSON.parse(savedState) : {};
@@ -1043,6 +1053,16 @@ function tryCompleteMainB07IfAllEntrySkillsKnown() {
  * 完成单个任务并领取奖励
  */
 function completeSingleTask(taskId) {
+  if (
+    typeof isFactionQuestTaskId === 'function' &&
+    isFactionQuestTaskId(taskId) &&
+    typeof isPlayerJoinedZhengyangFaction === 'function' &&
+    !isPlayerJoinedZhengyangFaction()
+  ) {
+    showFloatText('须为正阳派弟子，方可向赵长老交差', '#f44336');
+    return;
+  }
+
   // 从localStorage获取玩家状态
   const savedState = localStorage.getItem('playerState');
   if (!savedState) return;

@@ -592,7 +592,8 @@ function hasQingstoneDojoTutorialWeaponGranted() {
     if (!raw) return false;
     const st = JSON.parse(raw);
     const t = st && st.qingstoneDojoTutorial;
-    return !!(t && t.phase === 'picked' && t.weaponId);
+    if (!t || !t.weaponId) return false;
+    return t.phase === 'picked' || t.phase === 'spar_done';
   } catch (e) {
     return false;
   }
@@ -633,11 +634,33 @@ function getQingstoneDojoTutorialWeaponIdForCharPanel() {
     if (!raw) return null;
     const st = JSON.parse(raw);
     const t = st && st.qingstoneDojoTutorial;
-    if (!t || t.phase !== 'picked' || !t.weaponId) return null;
+    if (!t || !t.weaponId) return null;
+    if (t.phase !== 'picked' && t.phase !== 'spar_done') return null;
     const id = String(t.weaponId);
     if (id === 'mu_jian' || id === 'mu_dao' || id === 'mu_quan') return id;
   } catch (e) {}
   return null;
+}
+
+function ensureGrantedDojoWoodInPlayerDataBag() {
+  const wid = getQingstoneDojoTutorialWeaponIdForCharPanel();
+  if (!wid) return false;
+  try {
+    const raw = localStorage.getItem('playerData');
+    const pd = raw ? JSON.parse(raw) : { inventory: [] };
+    if (!pd.inventory) pd.inventory = [];
+    let n = 0;
+    pd.inventory.forEach(function (s) {
+      if (s && String(s.id) === wid) n += parseInt(s.quantity, 10) || 1;
+    });
+    if (n > 0) return false;
+    pd.inventory.push({ id: wid, quantity: 1 });
+    window.playerData = pd;
+    localStorage.setItem('playerData', JSON.stringify(pd));
+    return true;
+  } catch (e) {
+    return false;
+  }
 }
 
 function buildWeaponPickerRowFromItemsJs(weaponId) {
@@ -1065,6 +1088,7 @@ window.updateEquippedMartialArtsDisplay = updateEquippedMartialArtsDisplay;
 function loadCharacterData() {
   // 先从存档加载最新数据
   loadFromSave();
+  ensureGrantedDojoWoodInPlayerDataBag();
   syncCompanionPartyListUI();
 
   let panelLevelUp = null;

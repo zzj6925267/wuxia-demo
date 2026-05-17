@@ -1,12 +1,12 @@
 {
-  "version": "0.1.1",
-  "build": 11,
-  "date": "2026-05-16",
-  "description": "开局角色创建、陌路相逢队友线、青石镇 NPC 与战斗头像等整合",
+  "version": "0.1.2",
+  "build": 12,
+  "date": "2026-05-17",
+  "description": "教头木械、门派差事、采集与背包小修；资源进包约定",
   "changes": [
-    "1. 新局：首页「新的江湖」→ 开局问答（黑屏打字机、五题四维预览+确定）→ 青石镇；newGameBootstrap + characterCreation 数据",
-    "2. 奇遇《陌路相逢》：taskData / qingstoneCompanionQuest、队友入队与战后阅历；三敌战斗头像 adv_companion_*.png",
-    "3. 青石镇：此地 NPC 枢纽、李师傅铁匠铺、贺行舟常驻；背包 parry 中文与 AttributeHelper",
-    "4. 角色/武学立绘放大；inventory 编码与装备掉落整理；开发页 dev_companion_reset"
+    "1. 教头木械：考校后 phase spar_done 不再误删 mu_jian/dao/quan；缺件开背包/角色页自动补回",
+    "2. 背包 inventory.js 恢复中文 UI；修复编码损坏导致的 ?? 按钮",
+    "3. 门派差事须入派；未入派隐藏赵恪「门派任务」选项；山林灵芝采集防连点",
+    "4. MEMORY §5.1 资源体积与进包约定（assets / assets_dev、mock 不进发布包）"
   ]
 }

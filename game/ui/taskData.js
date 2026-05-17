@@ -317,6 +317,25 @@ function getZhengyangAllIntroSkillsContributionTotal() {
   return ZHENGYANG_ALL_INTRO_SKILLS_CONTRIBUTION_TOTAL;
 }
 
+/** 正阳派澄心堂三条门派差事 id（须 joinedFaction 方可接取/交差） */
+const FACTION_QUEST_IDS = ['collect_herbs', 'bandit_clear', 'organize_books'];
+
+function isFactionQuestTaskId(taskId) {
+  return FACTION_QUEST_IDS.indexOf(taskId) >= 0;
+}
+
+function isPlayerJoinedZhengyangFaction() {
+  try {
+    const st = JSON.parse(localStorage.getItem('playerState') || '{}');
+    return !!st.joinedFaction;
+  } catch (e) {
+    return false;
+  }
+}
+
 if (typeof window !== 'undefined') {
   window.getZhengyangIntroMartialIdBySkillName = getZhengyangIntroMartialIdBySkillName;
+  window.FACTION_QUEST_IDS = FACTION_QUEST_IDS;
+  window.isFactionQuestTaskId = isFactionQuestTaskId;
+  window.isPlayerJoinedZhengyangFaction = isPlayerJoinedZhengyangFaction;
 }

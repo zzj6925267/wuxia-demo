@@ -432,6 +432,7 @@
     .herb-item.collecting {
       opacity: 0.7;
       cursor: not-allowed;
+      pointer-events: none;
     }
     
     .herb-icon {
@@ -669,6 +670,8 @@
         
         // 药草数量
         let lingzhiCount = 10;
+        let isCollectingHerb = false;
+        let herbCollectInterval = null;
         
         // 飘字队列
         let floatTextQueue = [];
@@ -1653,6 +1656,8 @@ function updateHerbList() {
 }
 
 function collectHerb() {
+  if (isCollectingHerb) return;
+
   // 检查数量
   if (lingzhiCount <= 0) {
     lingzhiCount = 10;
@@ -1660,38 +1665,37 @@ function collectHerb() {
     showFloatText('灵芝草已刷新！', '#4caf50');
     return;
   }
-  
+
   const herbItem = document.getElementById('lingzhiItem');
   const progress = document.getElementById('collectProgress');
-  
-  // 标记正在采集
+  if (!herbItem || !progress) return;
+
+  isCollectingHerb = true;
   herbItem.classList.add('collecting');
+  progress.style.width = '0%';
   let progressValue = 0;
-  
-  // 2秒采集进度
-  const interval = setInterval(() => {
+
+  if (herbCollectInterval) {
+    clearInterval(herbCollectInterval);
+    herbCollectInterval = null;
+  }
+
+  // 约 2 秒采集进度（100ms × 20 步）
+  herbCollectInterval = setInterval(() => {
     progressValue += 5;
     progress.style.width = progressValue + '%';
-    
+
     if (progressValue >= 100) {
-      clearInterval(interval);
-      
-      // 采集成功
+      clearInterval(herbCollectInterval);
+      herbCollectInterval = null;
+      isCollectingHerb = false;
+
       lingzhiCount--;
-      
-      // 添加灵芝草到背包
       addToInventory('lingzhi_cao', 1);
-      
-      // 更新任务进度
       updateCollectTaskProgress();
-      
-      // 显示飘字
       showFloatText('采集到 1 朵灵芝草！', '#4caf50');
-      
-      // 更新显示
       updateHerbList();
-      
-      // 如果采完了，自动刷新
+
       if (lingzhiCount <= 0) {
         lingzhiCount = 10;
         setTimeout(() => {

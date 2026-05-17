@@ -9,7 +9,7 @@
 
 ## 0. 当前版本（发版对照）
 
-- **`version.json` / `GAME_CONFIG.GAME_VERSION`**：**0.1.1**（build **11**，2026-05-16）— 开局角色创建、陌路相逢队友线、青石镇 NPC/铁匠、三敌战斗头像等。
+- **`version.json` / `GAME_CONFIG.GAME_VERSION`**：**0.1.2**（build **12**，2026-05-17）— 教头木械 spar_done、门派差事入派、背包/采集小修、MEMORY §5.1 资源进包约定。
 
 ## 1. 本地怎么跑（以仓库为准）
 
@@ -65,7 +65,7 @@
 - **队友角色阅历（2026-05）**：战后 `exp`（角色等级阅历）除少侠外，**本场参战队友**（`pending_battle_rewards.partyCharIds`，由 `battle.js` 从 `allyTeam` 写入，**不含 id=1**）同额写入 **`playerCharacters` 对应条目的 `exp.current`** 并走与少侠相同的升级公式（`config.js` → `processPartyBattleYueli` / `BattleSettlement.applyLevelYueliFromBattleRewards`）。**仅单人出战**时不发队友阅历。队友**武学修炼阅历**（`expReward`）仍只加少侠侧 `playerExperience`（待奇遇队友养成定案后再拆）。
 - **角色等级阅历池（勿与武学阅历混）**：`game_save_0.player.exp` / `playerCharacters[].exp.current` 表示**当前等级距下一级**的累计值，升级时按 `getExpRequiredForLevel` **逐级扣除**（见 `applyPlayerYueliLevelUps`）。若只加不减会堆到数千，角色页显示「还需负数升级」。**打开角色页**会调 `reconcileYueliOnCharacterPanel` 自动结算积压升级；战后须走 `processYueliLevelUpsForSave` / `applyLevelYueliFromBattleRewards`。
 - **正阳派 NPC「苏瑶」传授入门武**（与可出战队友**不是同一人**，见下节）：对话 `learn_skill` 须同时写 **`playerState.learnedSkills`** 与 **`playerMartialArts_{charId}`**（少侠 charId **1**；`grantZhengyangIntroMartialArt`，名→id 见 `taskData.js` 的 `ZHENGYANG_INTRO_SKILL_MARTIAL_ID`）；仅写 learnedSkills 会导致武学页空、贡献已扣。`repairZhengyangIntroMartialsFromLearnedSkills` 可补旧档。
-- **门派贡献经济（2026-05）**：澄心堂三条差事交差贡献在 **`taskData.js`**（默认 **11 / 11 / 12**，一轮 **34**，九次约 **102**）；**正阳 NPC 苏瑶**处换一门入门武 = **`getZhengyangIntroSkillContributionCost()`** = **100**（三门合计 **300**）；仍须约 **九次**接交换一本。对话与 `acceptTask` / `completeSingleTask` 读 **`getFactionQuestContributionAmount`**，勿在 `npcData` 再写死贡献数。`map.html` 须在 **`npcData.js` 前**加载 `taskData.js`。
+- **门派贡献经济（2026-05）**：澄心堂三条差事交差贡献在 **`taskData.js`**（默认 **11 / 11 / 12**，一轮 **34**，九次约 **102**）；**正阳 NPC 苏瑶**处换一门入门武 = **`getZhengyangIntroSkillContributionCost()`** = **100**（三门合计 **300**）；仍须约 **九次**接交换一本。对话与 `acceptTask` / `completeSingleTask` 读 **`getFactionQuestContributionAmount`**，勿在 `npcData` 再写死贡献数。`map.html` 须在 **`npcData.js` 前**加载 `taskData.js`。**接取/交差门派差事**须 **`playerState.joinedFaction`**（苏瑶入派）；`isPlayerJoinedZhengyangFaction()`、`acceptTask`/`completeSingleTask` 与赵恪 `faction_need_join` 对白。
 - **战后地图不刷新**：曾在 `processBattleReturn` / `addKill` 之后才应刷新路径；已在战后回调里补 **`renderMap` + `updatePanel`**（见 `heifeng_dungeon.js` 中 `refreshDungeonAfterBattle`）。
 - **战后飘字期间仍可进战**：`addKill` 须在 **`playHeifengSettlementSequence` 之前** 执行（`init` 里胜场即 `processBattleReturn(true)`）；`startDungeonBattle` 另判 `isKilled` 防重复。
 - **战前敌方台词**（`battle.js`）：敌人数据里可选字段 **`battleIntro`**（`enemies.js`）；或 `dungeon_battle_context` JSON 里 **`battleIntro`** 覆盖。  
@@ -117,6 +117,8 @@
 
 **《陌路相逢》梗概（5 节任务链，≈主线一半篇幅，靠剧情/跑腿拉长）**：下山送阁中书信，信物被劫、受伤躲后巷 → 药铺/打听 → **战 1** → 揭仇 → **战 2** → 后巷邀请入队。
 
+**门派差事**：须 `playerState.joinedFaction === true`（苏瑶处入派）方可向赵恪接取/交差；`isPlayerJoinedZhengyangFaction()` / `isFactionQuestTaskId()` 见 `taskData.js`；未入派点「门派任务」走 `faction_need_join` 对白。
+
 **已实现（2026-05-17）**：`taskData.adventure` 五条 `adv_companion_01`～`05`；青石镇 `qingstoneCompanionQuest.js` + 地图 NPC 区（后巷叶轻绾、仁心药铺贺行舟、东市/镇口迎战）；战后 `companionJoined` + `battle.js` 未入队仅 id=1 出战；入队按钮「邀请同行」。镇口战 2 胜后步骤为 **`invite`**（`advCompanionAwaitInvite` / `companionBattle2Cleared`），勿与未完成的 `adv_companion_05` 混用，否则后巷无人、镇口可重复战。**战斗头像**：`game/assets/adv_companion_thug.png`（劫信泼皮伴战）、`adv_companion_ambush.png`（劫信骨头目）、`adv_companion_enforcer.png`（镇口执棍客）；`enemies.js` → `avatar`。**UI**：`companionParty.js` — 未入队不展示 charId 2。**养成**：队友独立 `playerMartialArts_2`、`char.exp` 战后阅历；武学页「阅历」仍全局共享（`playerExperience`）；切队友勿写 `save.player` 根级 hp/mp（已修 2026-05）。
 
 **后路（可选，未做）**：柳如意式队友养成/升级支线可挂 **浣花剑阁**（回阁、师叔赐招、同门试剑等）；实现时勿接 `npcData.suyao`。
@@ -142,6 +144,21 @@
 - 战斗内头像约 **`80×80` CSS 像素**（窄屏约 `68×68`），**无外框**（无描边/圆角装饰/阴影），`object-fit: cover`；底缘若 PNG 去底留硬边，用 **`mask-image` 最底约 22% 渐隐** 贴画卷（`battle.html`），非画框。素材仍宜在即梦/抠图时 **边缘弱化、勿带灰格底**。
 - 主角/山贼参考图在 **`game/assets/`**：`shaoxia.png`、`suyao.png`、`shanzei.png`（半写实国风胸像、黑底）。**山贼喽啰**战斗头像另用 **`shanze_louluo.png`**（`shanze_louluo_1` / `_2` 共用）。
 - **黑风寨三首领**在 `enemies.js` 使用 **`heifeng_*.png` 战斗 `avatar`**（与 `battle.html` 相对路径 `../assets/...`）；`icon` 仍保留作头像加载失败时的回退。
+
+### 5.1 体积与进包（demo 阶段约定，2026-05）
+
+- **现状粗算**（`game/` 整目录）：总约 **55 MB**；**`assets/` PNG ≈ 54 MB**（59 张，多张 UI 单张 1～2 MB）；**JS/HTML/CSS ≈ 1.2 MB**。商业 500 MB 级包多为引擎+音视频+大量已压资源；本作若按现有效率堆到同内容量会偏胖，**问题在图未量产规范，不在玩法代码**。
+- **目录**
+  - **`game/assets/`**：仅放**运行时会被页面引用**的正式资源（立绘、`images/UI/` 上屏切图等）。
+  - **`game/assets_dev/`**（可选，建议逐步启用）：**mockup、reference、AI 原图、概念稿**；本地可对路径，**打 zip / 对外发包时排除**。
+- **勿进发布包**（可留仓库或 `assets_dev/`）：文件名含 **`mockup`**、**`reference`** 的图（如 `martial_arts_wuxia_ui_mockup.png`、`*_reference.png`）——文档已写明为对齐布局，**非最终像素 UI**（见 §6.5、`game/docs/martial-arts-ui-wuxia-assets.md`）。
+- **进包前自检（给美术/协作者）**
+  1. **显示多大导出多大**：UI 九宫格最长边一般 **512～1024**；勿 4K 导出再 CSS 缩小。
+  2. **正式 PNG 体积心上限**：立绘/头像约 **≤300 KB**；UI 切图约 **≤500 KB**（超则压或拆图）。
+  3. 优先 **PNG-24 透明** 或 **WebP**；拆图、命名、招式两态见 **`martial-arts-ui-wuxia-assets.md`**。
+  4. 新图按用途分子目录：`assets/` 根立绘与战斗头像、`assets/images/UI/` 界面、`assets/images/UI/skills/` 招式图标。
+- **何时真压一轮**：日常开发**可不压**；**给外人测、上 CDN、打安装/静态 zip** 前，对 **`assets/`** 批量 pngquant / TinyPNG 等，**不要压 `assets_dev/`**。越晚文件越多，批量改路径+回归成本越高，故**先定规矩、发版再压**。
+- **协作者**：新增资源时勿把参考/mock 拷进 `assets/`「图省事」；发版前可用脚本列出 **`assets/` 下 >500 KB 的 .png** 做清单（`npm run pack:check` 类任务可后补）。
 
 ---
 
@@ -188,7 +205,7 @@
 - **青石镇「此地NPC」**：`qingstone_map.html` 统一 `#qingstoneNpcSection` / `refreshQingstoneNpcHub`（对齐正阳派 `map.html`）；点击 NPC 先出对话选项（含「打听几句闲话」），街坊见闻走 `QINGSTONE_TOWN_TIP_LINES` / `QINGSTONE_TOWN_RUMORS` 嵌在对话里，不外露按钮；同地点可多 NPC（如铁匠铺 **李师傅**购武 + **学徒**打听）。**常驻**：仁心药铺 **贺行舟**；**李记铁匠铺** `QINGSTONE_SMITH_SHOP` 售 `liji_tie_jian/dao/quan`（低品·十级·500两·不限购，入背包可装备）；东市/镇口敌对仍按任务刷。
 - **山林初阶敌人速度**：`shanze_louluo_1/2` 速度约 **56/62**（对齐少侠 `50+身法×2` 量级）；勿再用个位数，否则新档高身法会压满速补、喽啰不出手。青竹蛇同调至 **58/64**。
 - **教头喂招考校**：`enemies.js` → `qingstone_jiaotou_spar` 设 **`sparProtagonistOnly`**（`battle.js` 仅 id=1 入场）、气血约 **460**、攻弱于野怪，目标 **3～4 回合**打完（勿双人队战秒杀）。
-- **角色装备弹窗**：`character.js` 的 **`getEquipPickerItemsForChar`** 只列 **`playerData.inventory`** 里对应槽位装备（已去掉 `PLAYER_INVENTORY` 演示剑）。**木械三选一**：问径后仅展示 **`qingstoneDojoTutorial.weaponId`** 那一件木械；教头发抄本+木械**只入背包，不自动穿戴**，玩家到角色面板手动装备。
+- **角色装备弹窗**：`character.js` 的 **`getEquipPickerItemsForChar`** 只列 **`playerData.inventory`** 里对应槽位装备（已去掉 `PLAYER_INVENTORY` 演示剑）。**木械三选一**：问径后仅展示 **`qingstoneDojoTutorial.weaponId`** 那一件木械；教头发抄本+木械**只入背包，不自动穿戴**，玩家到角色面板手动装备。判定「已领木械」须含 **`phase: spar_done`**（考校后），勿只认 `picked`，否则 `inventory.js` 刷新会误删 `mu_jian`/`mu_dao`/`mu_quan`；缺件时开背包/角色页会按 `weaponId` 补回一格。
 - **`game_save_0.player` 四维**：`character.js` 落盘时同时写顶层 `strength`/`agility`/`bone`/`qi` 与 **`player.stats` 内同名字段**（避免武学浮窗等只读 `stats` 时与角色界面脱节）。
 - 战斗背景图：`game/assets/images/UI/panel_wuxia_master_bg_only.png`（**`UI` 大写**）。
 - 敌人主数据（队伍战）：**`game/js/data/enemies.js`**（勿与根下另一份 `characters.js` 里的旧 ENEMIES 混淆）。
@@ -205,4 +222,4 @@
 
 ---
 
-*最后更新：会话中建立本文件；后续请在改动相关行为时顺手更新对应小节。*
+*最后更新：2026-05-17 增补 §5.1 资源体积与进包约定；其它小节请在改动相关行为时顺手更新。*

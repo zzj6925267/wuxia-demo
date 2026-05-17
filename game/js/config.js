@@ -8,7 +8,7 @@
  */
 const GAME_CONFIG = {
   /** 对外展示与存档元数据（与根目录 version.json 保持一致，发版时一并改） */
-  GAME_VERSION: '0.1.1',
+  GAME_VERSION: '0.1.2',
 
   /**
    * 本地数据（如武学 localStorage）结构版本，与存档 version 分离。

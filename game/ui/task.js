@@ -187,7 +187,9 @@ function renderTaskList() {
       });
     const tip =
       currentType === 'faction'
-        ? '<p>暂无已领取的门派差事</p><p style="color:#888;font-size:13px;margin-top:8px;line-height:1.5;">请至<strong>正阳派 · 澄心堂</strong>找赵长老领取。「领取」只登记差事；须达成目标后<strong>再回澄心堂向赵长老交差</strong>，该条方算完成并获得贡献。三门派差事任领其一或轮换均可，并非「点领即完成」。</p>'
+        ? (typeof isPlayerJoinedZhengyangFaction === 'function' && !isPlayerJoinedZhengyangFaction()
+            ? '<p>暂无已领取的门派差事</p><p style="color:#888;font-size:13px;margin-top:8px;line-height:1.5;">须先至<strong>宁阳别院</strong>找苏瑶师妹<strong>加入正阳派</strong>，再到<strong>澄心堂</strong>向赵长老领取差事。</p>'
+            : '<p>暂无已领取的门派差事</p><p style="color:#888;font-size:13px;margin-top:8px;line-height:1.5;">请至<strong>正阳派 · 澄心堂</strong>找赵长老领取。「领取」只登记差事；须达成目标后<strong>再回澄心堂向赵长老交差</strong>，该条方算完成并获得贡献。三门派差事任领其一或轮换均可，并非「点领即完成」。</p>')
         : isMainAllDone
           ? '<p>主线已定，江湖路远。</p><p style="color:#888;font-size:13px;margin-top:8px;">当前章节皆已完成。</p>'
           : '<p>暂无任务</p>';
