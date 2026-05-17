@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>黑风寨</title>
+  <link rel="stylesheet" href="heifeng_dungeon.css" />
+  <link rel="stylesheet" href="submap_quick_nav.css" />
+  <script>
+    try {
+      if (localStorage.getItem('battle_exit_cinematic') === '1') {
+        document.documentElement.style.background = '#000';
+        if (document.body) document.body.style.background = '#000';
+      }
+    } catch (e) {}
+  </script>
+</head>
+<body>
+  <div class="map-container">
+    <div class="map-header">
+      <h1 class="map-title">黑风寨</h1>
+      <p class="map-subtitle">多房间探寨 · 清三酋后可从北口离开</p>
+    </div>
+
+    <div class="map-area">
+      <div class="gold-display">💰 银两：<span id="goldValue">0</span></div>
+      <svg class="map-lines" viewBox="0 0 800 580" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="map-nodes" id="mapNodes"></div>
+      <div class="character-button-area character-button-area--submap" aria-label="快捷入口">
+        <button type="button" class="btn-character" onclick="submapOpenCharacter()">👤 角色</button>
+        <button type="button" class="btn-character" onclick="submapOpenMartialArts()">⚔️ 武学</button>
+        <button type="button" class="btn-character" onclick="submapOpenInventory()">🎒 背包</button>
+        <button type="button" class="btn-character" onclick="submapOpenTask()">📋 任务</button>
+      </div>
+    </div>
+
+    <div class="location-panel">
+      <div class="panel-header">
+        <span class="location-icon" id="locIcon">⛺</span>
+        <h2 class="location-name" id="locName">乱石林营</h2>
+      </div>
+      <p class="location-description" id="locDesc"></p>
+      <div id="dungeonActions"></div>
+    </div>
+  </div>
+
+  <script src="submap_quick_nav.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../js/data/enemies.js"></script>
+  <script src="../js/data/items.js"></script>
+  <script src="../js/utils/battleEntry.js"></script>
+  <script src="../js/utils/battleSettlement.js"></script>
+  <script src="heifengDungeonMapData.js"></script>
+  <script src="taskData.js"></script>
+  <script src="heifeng_dungeon.js"></script>
+</body>
+</html>

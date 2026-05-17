@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>武侠风云 - 江湖再起</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Microsoft YaHei', 'SimHei', serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .game-container {
+      text-align: center;
+      padding: 40px;
+    }
+
+    .game-title {
+      font-size: 48px;
+      color: #f4d03f;
+      text-shadow: 0 0 20px rgba(244, 208, 63, 0.6),
+                   0 0 40px rgba(244, 208, 63, 0.3);
+      margin-bottom: 10px;
+      letter-spacing: 8px;
+    }
+
+    .game-subtitle {
+      font-size: 18px;
+      color: #999;
+      margin-bottom: 50px;
+      letter-spacing: 4px;
+    }
+
+    .menu {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .menu-btn {
+      width: 280px;
+      padding: 15px 30px;
+      font-size: 18px;
+      font-weight: bold;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: linear-gradient(145deg, #2d2d44, #1a1a2e);
+      border: 2px solid #c9a227;
+      color: #f4d03f;
+      letter-spacing: 2px;
+    }
+
+    .menu-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(201, 162, 39, 0.4);
+      background: linear-gradient(145deg, #c9a227, #f4d03f);
+      color: #1a1a2e;
+    }
+
+    .menu-btn:active {
+      transform: translateY(-1px);
+    }
+
+    .save-slots {
+      display: none;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-top: 30px;
+      max-width: 600px;
+    }
+
+    .save-slots.show {
+      display: grid;
+    }
+
+    .save-slot {
+      background: rgba(26, 26, 46, 0.8);
+      border: 1px solid #c9a227;
+      border-radius: 10px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-align: left;
+    }
+
+    .save-slot:hover {
+      border-color: #f4d03f;
+      box-shadow: 0 0 15px rgba(244, 208, 63, 0.3);
+    }
+
+    .save-slot.empty {
+      border-style: dashed;
+      opacity: 0.5;
+    }
+
+    .save-slot.empty:hover {
+      border-color: #4CAF50;
+      opacity: 0.8;
+    }
+
+    .save-name {
+      font-size: 16px;
+      color: #f4d03f;
+      margin-bottom: 8px;
+    }
+
+    .save-info {
+      font-size: 12px;
+      color: #999;
+      line-height: 1.5;
+    }
+
+    .save-date {
+      font-size: 11px;
+      color: #666;
+      margin-top: 8px;
+    }
+
+    .back-btn {
+      margin-top: 30px;
+      width: 150px;
+      padding: 10px 20px;
+      background: transparent;
+      border: 1px solid #666;
+      color: #999;
+    }
+
+    .back-btn:hover {
+      border-color: #f4d03f;
+      color: #f4d03f;
+      background: rgba(201, 162, 39, 0.1);
+    }
+
+    .version {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      font-size: 12px;
+      color: #444;
+    }
+
+    @media (max-width: 768px) {
+      .game-title {
+        font-size: 32px;
+      }
+
+      .save-slots {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <h1 class="game-title">武侠风云</h1>
+    <p class="game-subtitle">江湖再起</p>
+
+    <div class="menu" id="mainMenu">
+      <button class="menu-btn" id="btnNewGame">新的江湖</button>
+      <button class="menu-btn" id="btnLoadGame">继续征程</button>
+      <button class="menu-btn" id="btnAIWriter">AI文案</button>
+      <button class="menu-btn" id="btnSettings">游戏设置</button>
+    </div>
+
+    <div class="save-slots" id="saveSlots">
+      <!-- 存档槽位将由JS动态生成 -->
+    </div>
+  </div>
+
+  <div class="version" id="appVersion">v0.1.0</div>
+  <p style="position:absolute;bottom:20px;left:20px;font-size:12px;margin:0;">
+    <a href="play.html" style="color:#c9a227;text-decoration:none;">试玩：一键新档（分享用）</a>
+    ·
+    <a href="ui/dev_new_game.html" style="color:#666;text-decoration:none;">开发：新局重置</a>
+    ·
+    <a href="ui/dev_chapter_skip.html" style="color:#666;text-decoration:none;">章节跳过</a>
+    ·
+    <a href="ui/dev_reset_zhenyang_martial_level.html" style="color:#666;text-decoration:none;">正阳三件套→一重</a>
+  </p>
+
+  <!-- 类型定义 -->
+  <script src="js/types/index.js"></script>
+  
+  <!-- 数据层 -->
+  <script src="js/config.js"></script>
+  <script src="js/data/attributeNames.js"></script>
+  <script src="js/data/maps.js"></script>
+  <script src="js/data/characters.js"></script>
+  <script src="js/data/skills.js"></script>
+  <script src="js/data/dialogs.js"></script>
+  <script src="js/data/items.js"></script>
+  <script src="js/data/battlePassives.js"></script>
+  
+  <!-- 工具层 -->
+  <script src="js/utils/helpers.js"></script>
+  <script src="js/utils/statCalculator.js"></script>
+  <script src="js/utils/effects.js"></script>
+  <script src="js/utils/attributeHelper.js"></script>
+  <script src="js/utils/dataMigration.js"></script>
+  <script src="js/utils/dataBackup.js"></script>
+  <script src="js/utils/validator.js"></script>
+  <script src="js/utils/battleSettlement.js"></script>
+  <script src="js/tests/attributeTests.js"></script>
+  
+  <!-- 存储层 -->
+  <script src="js/save/StorageLayer.js"></script>
+  
+  <!-- 系统层 -->
+  <script src="js/systems/PlayerSystem.js"></script>
+  <script src="js/systems/MapSystem.js"></script>
+  <script src="js/systems/DialogSystem.js"></script>
+  <script src="js/systems/BattleSystem.js"></script>
+  <script src="js/systems/InventorySystem.js"></script>
+  <script src="js/systems/AIWriter.js"></script>
+  <script src="js/save/SaveManager.js"></script>
+  <script src="js/index.js"></script>
+
+  <script>
+    // DOM元素
+    const mainMenu = document.getElementById('mainMenu');
+    const saveSlots = document.getElementById('saveSlots');
+    const btnNewGame = document.getElementById('btnNewGame');
+    const btnLoadGame = document.getElementById('btnLoadGame');
+    const btnAIWriter = document.getElementById('btnAIWriter');
+    const btnSettings = document.getElementById('btnSettings');
+
+    // 使用全局游戏实例（已在index.js中创建）
+
+    /**
+     * 初始化
+     */
+    async function init() {
+      // 执行数据迁移（处理版本升级兼容性）
+      if (window.DataMigration) {
+        window.DataMigration.init();
+      }
+      await window.game.init();
+      bindEvents();
+      const el = document.getElementById('appVersion');
+      if (el && window.GAME_CONFIG && window.GAME_CONFIG.GAME_VERSION) {
+        el.textContent = 'v' + window.GAME_CONFIG.GAME_VERSION;
+      }
+    }
+
+    /**
+     * 绑定事件
+     */
+    function bindEvents() {
+      btnNewGame.addEventListener('click', handleNewGame);
+      btnLoadGame.addEventListener('click', handleLoadGame);
+      btnAIWriter.addEventListener('click', handleAIWriter);
+      btnSettings.addEventListener('click', handleSettings);
+    }
+
+    /**
+     * 处理AI文案
+     */
+    function handleAIWriter() {
+      window.location.href = './ui/ai_writer.html';
+    }
+
+    /**
+     * 处理新游戏
+     */
+    function handleNewGame() {
+      window.location.href = './ui/character_creation.html';
+    }
+
+    /**
+     * 处理加载游戏
+     */
+    async function handleLoadGame() {
+      mainMenu.style.display = 'none';
+      saveSlots.classList.add('show');
+      await renderSaveSlots();
+    }
+
+    /**
+     * 处理设置
+     */
+    function handleSettings() {
+      alert('游戏设置功能开发中...');
+    }
+
+    /**
+     * 渲染存档槽位
+     */
+    async function renderSaveSlots() {
+      saveSlots.innerHTML = '';
+
+      const saves = await window.game.saveManager.getAllSaveInfo();
+      
+      for (let i = 0; i < 5; i++) {
+        const save = saves.find(s => s.slot === i);
+        const slotElement = document.createElement('div');
+        
+        if (save) {
+          slotElement.className = 'save-slot';
+          const date = new Date(save.timestamp);
+          const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+          
+          slotElement.innerHTML = `
+            <div class="save-name">存档 ${i + 1}</div>
+            <div class="save-info">
+              <div>角色: ${save.playerName}</div>
+              <div>等级: ${save.level}</div>
+              <div>金币: ${save.gold}</div>
+            </div>
+            <div class="save-date">${dateStr}</div>
+          `;
+          
+          slotElement.addEventListener('click', async () => {
+            if (await window.game.loadGame(i)) {
+              openMap();
+            }
+          });
+        } else {
+          slotElement.className = 'save-slot empty';
+          slotElement.innerHTML = `<div class="save-name">存档 ${i + 1}</div><div class="save-info">空存档槽</div>`;
+          slotElement.addEventListener('click', async () => {
+            sessionStorage.setItem('pending_new_game_slot', String(i));
+            window.location.href = './ui/character_creation.html';
+          });
+        }
+        
+        saveSlots.appendChild(slotElement);
+      }
+
+      // 添加返回按钮
+      const backBtn = document.createElement('button');
+      backBtn.className = 'menu-btn back-btn';
+      backBtn.textContent = '返回';
+      backBtn.addEventListener('click', () => {
+        saveSlots.classList.remove('show');
+        mainMenu.style.display = 'flex';
+      });
+      saveSlots.appendChild(backBtn);
+    }
+
+    /**
+     * 打开地图界面
+     */
+    function openMap() {
+      window.location.href = './ui/map.html';
+    }
+
+    // 初始化（异步：需等存档探测与 Game 系统就绪）
+    init().catch((err) => console.error('游戏初始化失败:', err));
+  </script>
+</body>
+</html>

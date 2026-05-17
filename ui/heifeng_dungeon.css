@@ -1,0 +1,294 @@
+/* 黑风寨副本子地图 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+body {
+  font-family: 'Microsoft YaHei', 'SimHei', sans-serif;
+  background: linear-gradient(145deg, #1f1410 0%, #0d0806 55%, #120a08 100%);
+  min-height: 100vh;
+  color: #e0dcd8;
+}
+.map-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.map-header {
+  text-align: center;
+}
+.map-title {
+  font-size: 26px;
+  color: #bcaaa4;
+  text-shadow: 0 0 12px rgba(188, 170, 164, 0.35);
+}
+.map-subtitle {
+  font-size: 13px;
+  color: #888;
+  margin-top: 4px;
+}
+.map-area {
+  position: relative;
+  width: 800px;
+  height: 580px;
+  margin: 0 auto;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 12px;
+  border: 2px solid #5d4037;
+  overflow: hidden;
+}
+.map-area::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(93, 64, 55, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(93, 64, 55, 0.06) 1px, transparent 1px);
+  background-size: 28px 28px;
+  pointer-events: none;
+}
+.map-lines {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+.map-nodes {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+.location-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  cursor: default;
+  transition: transform 0.25s ease;
+}
+.location-node.available {
+  cursor: pointer;
+}
+.location-node.available:hover {
+  transform: translate(-50%, -50%) scale(1.06);
+}
+.node-inner {
+  width: 92px;
+  padding: 8px 6px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: linear-gradient(145deg, #3e2723, #261814);
+  border: 2px solid #6d4c41;
+}
+.location-node.current .node-inner {
+  border-color: #ffcc80;
+  box-shadow: 0 0 14px rgba(255, 204, 128, 0.45);
+}
+.location-node.unavailable .node-inner {
+  opacity: 0.45;
+}
+.location-node.exit-node .node-inner {
+  border-color: #81c784;
+}
+.node-icon {
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+.node-name {
+  font-size: 11px;
+  color: #fff;
+  text-align: center;
+}
+.node-status {
+  font-size: 8px;
+  color: #9e9e9e;
+  margin-top: 2px;
+}
+.location-panel {
+  background: rgba(30, 20, 16, 0.92);
+  border: 1px solid #5d4037;
+  border-radius: 12px;
+  padding: 18px;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+}
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.location-name {
+  font-size: 21px;
+  color: #ffcc80;
+}
+.location-description {
+  font-size: 14px;
+  color: #aaa;
+  line-height: 1.55;
+}
+.action-section {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #4e342e;
+}
+.action-title {
+  font-size: 15px;
+  color: #bcaaa4;
+  margin-bottom: 10px;
+}
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.btn-dungeon {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  background: linear-gradient(145deg, #6d4c41, #4e342e);
+  color: #fff;
+}
+.btn-dungeon:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+.btn-dungeon:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.btn-dungeon.primary {
+  background: linear-gradient(145deg, #c62828, #8e0000);
+}
+.btn-dungeon.exit {
+  background: linear-gradient(145deg, #2e7d32, #1b5e20);
+}
+.interact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.interact-item {
+  padding: 10px 12px;
+  background: rgba(62, 39, 35, 0.55);
+  border: 1px solid #5d4037;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.interact-item:hover {
+  border-color: #ffcc80;
+}
+.interact-item.done {
+  opacity: 0.4;
+  cursor: default;
+  text-decoration: line-through;
+}
+.gold-display {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 5;
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid #8d6e63;
+  border-radius: 16px;
+  color: #ffcc80;
+  font-size: 13px;
+  font-weight: bold;
+}
+.character-button-area--submap {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.btn-character {
+  padding: 8px 12px;
+  font-size: 13px;
+  border-radius: 8px;
+  border: 1px solid #6d4c41;
+  background: rgba(40, 24, 20, 0.9);
+  color: #ffcc80;
+  cursor: pointer;
+}
+
+/* 进战过场：中央「战」字闪烁 + 黑屏切入（与 forest_map 一致） */
+.battle-enter-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: all;
+}
+.battle-enter-zhan-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  background: rgba(0, 0, 0, 0.25);
+}
+.battle-enter-zhan-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: min(20vw, 86px);
+  height: min(20vw, 86px);
+  background: #e53935;
+  color: #0d0d0d;
+  font-size: clamp(28px, 6vw, 42px);
+  line-height: 1;
+  font-family: 'KaiTi', 'STKaiti', 'SimKai', 'FangSong', 'Microsoft YaHei', serif;
+  font-weight: 900;
+  clip-path: polygon(10% 4%, 90% 6%, 100% 40%, 70% 96%, 30% 96%, 0% 40%);
+  text-shadow:
+    1px 0 0 #000,
+    -1px 0 0 #000,
+    0 1px 0 #000,
+    0 -1px 0 #000;
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.45));
+  animation: battle-enter-zhan-flash 0.95s linear forwards;
+}
+@keyframes battle-enter-zhan-flash {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  5% { opacity: 0.35; transform: scale(1.05); }
+  10% { opacity: 1; transform: scale(1); }
+  15% { opacity: 0.45; transform: scale(1.04); }
+  20% { opacity: 1; transform: scale(1); }
+  25% { opacity: 0.3; transform: scale(1.06); }
+  32% { opacity: 1; transform: scale(1); }
+  40% { opacity: 0.5; transform: scale(1.03); }
+  48% { opacity: 1; transform: scale(1); }
+  55% { opacity: 0.25; transform: scale(1.07); }
+  62% { opacity: 1; transform: scale(1); }
+  70% { opacity: 0.4; transform: scale(1.04); }
+  78% { opacity: 1; transform: scale(1); }
+  86% { opacity: 0.35; transform: scale(1.05); }
+  94% { opacity: 1; transform: scale(1); }
+}
+.battle-enter-black {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: #000;
+  opacity: 0;
+  transition: opacity 0.32s ease-in;
+}
+.battle-enter-black.is-on {
+  opacity: 1;
+}

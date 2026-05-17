@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>自测：正阳三件套 → 一重</title>
+</head>
+<body style="font-family: 'Microsoft YaHei', sans-serif; padding: 24px; background: #1a1a1a; color: #e0e0e0;">
+  <p>已执行：</p>
+  <ol>
+    <li>遍历所有 <code>playerMartialArts_*</code>（及旧键 <code>playerMartialArts</code>）</li>
+    <li>将 <strong>正阳基础剑式 (id 1)</strong>、<strong>正阳吐纳诀 (id 3)</strong>、<strong>踏云步 (id 5)</strong> 的 <code>currentLevel</code> → <strong>1</strong>，<code>practiceTimes</code> → <strong>0</strong></li>
+    <li>保留是否已学、<code>equipped</code> 与其它武学条目；不改 <code>game_save_0</code>、武学阅历、任务</li>
+  </ol>
+  <p id="detail" style="color:#aaa;font-size:14px"></p>
+  <p>1 秒后进入武学页……</p>
+  <p>
+    <a href="martialArts.html" style="color:#ce93d8">若未跳转请点此 · 武学页</a>
+    · <a href="qingstone_map.html" style="color:#ce93d8">青石镇</a>
+  </p>
+  <script>
+    (function () {
+      var IDS = { 1: true, 3: true, 5: true };
+      var NAMES = { 1: '正阳基础剑式', 3: '正阳吐纳诀', 5: '踏云步' };
+      var touched = [];
+      var keys = [];
+      try {
+        for (var i = 0; i < localStorage.length; i++) {
+          var k = localStorage.key(i);
+          if (!k) continue;
+          if (k.indexOf('playerMartialArts_') === 0 || k === 'playerMartialArts') {
+            keys.push(k);
+          }
+        }
+      } catch (e) {}
+      keys.forEach(function (storageKey) {
+        var raw;
+        try {
+          raw = localStorage.getItem(storageKey);
+        } catch (e) {
+          return;
+        }
+        if (!raw) return;
+        var list;
+        try {
+          list = JSON.parse(raw);
+        } catch (e) {
+          return;
+        }
+        if (!Array.isArray(list)) return;
+        var changed = false;
+        list.forEach(function (m) {
+          if (!m || typeof m.id !== 'number' || !IDS[m.id]) return;
+          if (m.currentLevel !== 1 || (m.practiceTimes || 0) !== 0) changed = true;
+          m.currentLevel = 1;
+          m.practiceTimes = 0;
+          touched.push(storageKey + ' · ' + (NAMES[m.id] || m.id));
+        });
+        if (changed) {
+          try {
+            localStorage.setItem(storageKey, JSON.stringify(list));
+          } catch (e) {}
+        }
+      });
+      var el = document.getElementById('detail');
+      if (el) {
+        el.textContent = touched.length
+          ? '已重置：' + touched.join('；')
+          : '未找到三门武学条目（请先向苏瑶换齐或确认 playerMartialArts_* 有存档）。';
+      }
+    })();
+    setTimeout(function () {
+      window.location.replace('martialArts.html');
+    }, 1000);
+  </script>
+</body>
+</html>

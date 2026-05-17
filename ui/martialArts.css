@@ -1,0 +1,1059 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* 武学界面：与 task.css / inventory.css 同一套「外圈深蓝渐变 + 羊皮纸主卡片」板式（无 ma_ui_* 切图） */
+
+html {
+  height: 100%;
+}
+
+body {
+  font-family: "Microsoft YaHei", "SimHei", serif;
+  min-height: 100dvh;
+  height: 100%;
+  margin: 0;
+  color: #333;
+  padding: 10px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+}
+
+.martial-arts-container {
+  display: flex;
+  flex-direction: column;
+  width: min(1100px, 98vw);
+  max-height: min(92dvh, 900px);
+  min-height: 0;
+  flex: 0 1 auto;
+  gap: 0;
+  background: #d4c4a8;
+  border-radius: 15px;
+  padding: 15px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  border: 3px solid #8b7355;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+}
+
+/* 顶部（对齐任务页金条标题区） */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border-radius: 8px 8px 0 0;
+  border: 2px solid #8b7355;
+  border-bottom: none;
+  background: linear-gradient(180deg, #c9a227 0%, #a88524 100%);
+  box-shadow: none;
+}
+
+.back-btn {
+  min-width: 88px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 2px solid #8b7355;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+  background: linear-gradient(180deg, #fff 0%, #f0e6d3 100%);
+  text-shadow: none;
+  transition: filter 0.2s, transform 0.15s;
+}
+
+.back-btn:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+.title {
+  color: #fff;
+  font-size: 22px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  letter-spacing: 8px;
+}
+
+.exp-display {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 10px;
+  min-height: 36px;
+  border-radius: 8px;
+  border: 2px solid #8b7355;
+  background: linear-gradient(180deg, #fff 0%, #f0e6d3 100%);
+}
+
+.exp-value {
+  color: #5d4e37;
+  font-weight: bold;
+  text-shadow: none;
+}
+
+.test-reset-btn {
+  background: rgba(255, 152, 0, 0.35);
+  border: 1px solid rgba(255, 180, 100, 0.5);
+  color: #fff;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.test-reset-btn:hover {
+  background: rgba(255, 152, 0, 0.55);
+}
+
+/* 角色选择器 */
+.martial-character-list {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 10px;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.martial-char-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  transition: transform 0.2s, filter 0.2s;
+}
+
+.martial-char-item:hover {
+  transform: translateY(-1px);
+}
+
+.martial-char-card {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  border: 2px solid #8b7355;
+  background: linear-gradient(180deg, #fff 0%, #f0e6d3 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.martial-char-item.active .martial-char-card {
+  box-shadow: 0 0 0 2px rgba(201, 162, 39, 0.45);
+  border-color: #a88524;
+}
+
+.martial-char-name-tag {
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  max-height: 72px;
+  padding: 4px 2px;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 0.12em;
+  line-height: 1.1;
+  color: #5d4e37;
+  text-shadow: none;
+  background: linear-gradient(180deg, #f5ead6 0%, #e8dcc8 100%);
+  border: 1px solid #8b7355;
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.martial-char-portrait-wrap {
+  position: absolute;
+  left: 28%;
+  top: 10%;
+  right: 8%;
+  bottom: 10%;
+  border-radius: 8px;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.martial-char-portrait {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  display: block;
+}
+
+.martial-char-portrait.martial-char-portrait--flip-h {
+  transform: scaleX(-1);
+}
+
+.martial-char-portrait--broken {
+  display: none !important;
+}
+
+.martial-char-icon-fallback {
+  display: none;
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  background: #2f3335;
+}
+
+.martial-char-portrait--broken + .martial-char-icon-fallback {
+  display: flex;
+}
+
+.martial-char-icon {
+  font-size: 40px;
+}
+
+.martial-char-name {
+  display: none;
+}
+
+/* 主内容 */
+.main-content {
+  display: grid;
+  grid-template-columns: minmax(260px, 380px) 1fr;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+}
+
+/* 左侧面板（对齐任务侧栏） */
+.left-panel {
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+  border: 2px solid #8b7355;
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.08);
+  background: linear-gradient(180deg, #f5ead6 0%, #e8dcc8 100%);
+}
+
+.type-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.martial-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(201, 162, 39, 0.45) rgba(0, 0, 0, 0.08);
+}
+
+.martial-list::-webkit-scrollbar,
+.right-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.martial-list::-webkit-scrollbar-thumb,
+.right-panel::-webkit-scrollbar-thumb {
+  background: rgba(201, 162, 39, 0.35);
+  border-radius: 6px;
+}
+
+.type-tab {
+  flex: 1;
+  padding: 10px 8px;
+  border: 2px solid #d4c4a8;
+  background: linear-gradient(180deg, #fff 0%, #f0e6d3 100%);
+  color: #333;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 15px;
+  text-shadow: none;
+}
+
+.type-tab:hover {
+  transform: translateX(2px);
+  border-color: #a88524;
+}
+
+.type-tab.active {
+  border-color: #2e7d32;
+  color: #fff;
+  font-weight: bold;
+  background: linear-gradient(180deg, #4caf50 0%, #388e3c 100%);
+  box-shadow: none;
+}
+
+.martial-list::-webkit-scrollbar-track,
+.right-panel::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.martial-item {
+  border-radius: 10px;
+  padding: 14px 14px 14px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid #d4c4a8;
+  position: relative;
+  color: #333;
+  text-shadow: none;
+  background: linear-gradient(180deg, #fff 0%, #f0e6d3 100%);
+}
+
+.martial-item:hover {
+  transform: translateX(3px);
+  border-color: #a88524;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.martial-item.selected {
+  border-color: #c9a227;
+  box-shadow: 0 0 0 2px rgba(201, 162, 39, 0.3);
+}
+
+.martial-item.equipped::before {
+  content: "已激活";
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 3px 8px;
+  border-radius: 4px;
+  color: #5d4030;
+  background: linear-gradient(180deg, #fff3e0 0%, #ffe0b2 100%);
+  border: 1px solid #ff9800;
+  pointer-events: none;
+}
+
+.martial-item-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.martial-item-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+}
+
+/* 初阶秘笈图：仅卷轴，无底格 */
+.martial-item-icon:has(.martial-rank-icon-img--list) {
+  width: 56px;
+  height: 56px;
+  overflow: visible;
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+
+.martial-item-icon-emoji {
+  line-height: 1;
+}
+
+.martial-rank-icon-img--list {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  display: block;
+  transform: scale(1.35);
+  transform-origin: center center;
+}
+
+.martial-item-rank {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-left: auto;
+}
+
+.rank-chu-jie {
+  background: #616161;
+  color: #fff;
+}
+
+.rank-zhong-jie {
+  background: #4caf50;
+  color: #fff;
+}
+
+.rank-gao-jie {
+  background: #2196f3;
+  color: #fff;
+}
+
+.rank-jue-jie {
+  background: #ff9800;
+  color: #fff;
+}
+
+.martial-item-name {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+}
+
+.martial-item-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #666;
+}
+
+.martial-item-level {
+  color: #a88524;
+  font-weight: bold;
+}
+
+/* 右侧面板（对齐任务主区 / 详情） */
+.right-panel {
+  border-radius: 10px;
+  padding: 16px 18px 18px;
+  overflow-y: auto;
+  min-height: 0;
+  border: 2px solid #8b7355;
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.08);
+  color: #333;
+  background: linear-gradient(180deg, #f5ead6 0%, #e8dcc8 100%);
+}
+
+.no-selection {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: #666;
+}
+
+.no-selection-icon {
+  font-size: 80px;
+  margin-bottom: 15px;
+  opacity: 0.45;
+}
+
+.no-selection-text {
+  font-size: 18px;
+}
+
+/* 详情面板 */
+.detail-panel {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #c4b59a;
+}
+
+.martial-icon {
+  font-size: 52px;
+  min-width: 100px;
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 10px;
+  border: 2px solid #d4c4a8;
+  background: linear-gradient(180deg, #fff 0%, #f0e6d3 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+/* 初阶秘笈图：不要金框/米色预览格，只显示卷轴并放大 */
+.martial-icon--rank-png {
+  min-width: 0;
+  min-height: 0;
+  width: auto;
+  height: auto;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.martial-icon-emoji {
+  line-height: 1;
+}
+
+.martial-rank-icon-img--detail {
+  width: 108px;
+  height: 108px;
+  object-fit: contain;
+  display: block;
+  transform: scale(1.35);
+  transform-origin: center center;
+}
+
+.martial-name {
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 8px;
+  text-shadow: none;
+}
+
+.martial-info {
+  flex: 1;
+}
+
+.martial-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.rank-badge {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.school-badge {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  background: linear-gradient(180deg, #fff 0%, #f0e6d3 100%);
+  color: #5d4e37;
+  border: 1px solid #8b7355;
+}
+
+.detail-desc {
+  padding: 14px 16px;
+  border-radius: 10px;
+  color: #444;
+  font-size: 14px;
+  line-height: 1.65;
+  margin-bottom: 20px;
+  text-shadow: none;
+  border: 2px solid #d4c4a8;
+  background: linear-gradient(180deg, #fff 0%, #f0e6d3 100%);
+}
+
+/* 境界 */
+.level-section {
+  padding: 16px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  border: 2px solid #d4c4a8;
+  background: linear-gradient(180deg, #fff 0%, #f0e6d3 100%);
+  box-shadow: none;
+}
+
+.level-header {
+  margin-bottom: 15px;
+}
+
+.realm-container {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.level-label {
+  color: #666;
+  font-size: 14px;
+}
+
+.level-value {
+  color: #a88524;
+  font-size: 18px;
+  font-weight: bold;
+  text-shadow: none;
+}
+
+.realm-box {
+  flex: 1;
+  height: 28px;
+  border-radius: 4px;
+  border: 1px solid #c4b59a;
+  background: #e0d5c0;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.realm-box.filled {
+  background: linear-gradient(180deg, #d4a84b 0%, #a88524 100%);
+  border-color: #8b7355;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.practice-section {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 10px;
+}
+
+.practice-btn {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 16px;
+  border: 1px solid rgba(60, 120, 70, 0.5);
+  color: #f5fff0;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: bold;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
+  background: linear-gradient(180deg, #2d6b3a 0%, #1a4022 100%);
+  transition: filter 0.2s, transform 0.15s;
+}
+
+.practice-btn:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.practice-btn:disabled {
+  filter: grayscale(0.85) brightness(0.65);
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 属性加成 */
+.stats-section {
+  margin-bottom: 20px;
+}
+
+.stats-section h3 {
+  color: #c9a227;
+  font-size: 16px;
+  margin-bottom: 12px;
+  padding-left: 10px;
+  border-left: 3px solid #c9a227;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.stat-badge {
+  padding: 12px 10px;
+  border-radius: 8px;
+  text-align: center;
+  border: 2px solid #d4c4a8;
+  background: linear-gradient(180deg, #fff 0%, #f0e6d3 100%);
+}
+
+.stat-badge-label {
+  font-size: 12px;
+  color: #666;
+}
+
+.stat-badge-value {
+  font-size: 16px;
+  color: #2e7d32;
+  font-weight: bold;
+  text-shadow: none;
+}
+
+/* 招式 */
+.skills-section h3 {
+  color: #c9a227;
+  font-size: 16px;
+  margin-bottom: 12px;
+  padding-left: 10px;
+  border-left: 3px solid #c9a227;
+}
+
+.skills-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+  align-items: start;
+}
+
+.skill-item {
+  padding: 14px 10px 12px;
+  border-radius: 10px;
+  text-align: center;
+  border: 2px solid #d4c4a8;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #333;
+  text-shadow: none;
+  background: linear-gradient(180deg, #fff 0%, #f0e6d3 100%);
+}
+
+.skill-item:hover:not(.locked) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  border-color: #a88524;
+}
+
+.skill-item.locked {
+  cursor: not-allowed;
+  background: linear-gradient(180deg, #e8e4dc 0%, #d8d0c8 100%);
+  color: #777;
+}
+
+.skill-item.locked > .skill-name,
+.skill-item.locked > .skill-type {
+  opacity: 0.48;
+  filter: grayscale(35%);
+}
+
+.skill-item.locked > .skill-icon-wrap > .skill-icon {
+  opacity: 0.55;
+  filter: grayscale(40%);
+}
+
+.skill-item.active {
+  box-shadow: 0 0 12px rgba(76, 175, 80, 0.35);
+  border-color: rgba(120, 200, 120, 0.45);
+}
+
+.skill-icon-wrap {
+  position: relative;
+  align-self: center;
+  margin-bottom: 8px;
+  min-width: 2.5em;
+  min-height: 2.5em;
+}
+
+.skill-icon-wrap .skill-icon {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 0;
+}
+
+.skill-icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  min-height: 48px;
+}
+
+.skill-icon-img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+}
+
+.skill-icon-emoji {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.skill-item--icon-only .skill-name,
+.skill-item--icon-only .skill-type {
+  display: none;
+}
+
+/* 纯图标：不要程序侧「外圈」米色格/描边，只显示 PNG 自带框体 */
+.skill-item--icon-only {
+  padding: 0;
+  min-height: 72px;
+  width: 72px;
+  justify-content: flex-start;
+  align-items: center;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.skill-item--icon-only:hover:not(.locked) {
+  transform: scale(1.04);
+  box-shadow: none;
+  border: none;
+  background: transparent;
+}
+
+.skill-item--icon-only.locked {
+  background: transparent;
+  border: none;
+  cursor: help;
+}
+
+.skill-item--icon-only.locked:hover {
+  transform: scale(1.04);
+  box-shadow: none;
+  border: none;
+}
+
+/* 未解锁：当前修为 < unlockLevel，图标全灰（如六重时七重招式） */
+.skill-item--icon-only.locked .skill-icon--locked,
+.skill-item--icon-only.locked .skill-icon--locked .skill-icon-img {
+  filter: grayscale(1) brightness(0.62);
+  opacity: 0.88;
+}
+
+.skill-item--icon-only .skill-icon-wrap {
+  margin-bottom: 0;
+}
+
+.skill-item--icon-only .skill-icon {
+  min-width: 0;
+  min-height: 0;
+  margin-bottom: 0;
+}
+
+.skill-item--icon-only .skill-icon-img {
+  width: 72px;
+  height: 72px;
+}
+
+.skill-item--icon-only .skill-lock-visual,
+.skill-item--icon-only .skill-icon-backing {
+  display: none;
+}
+
+.skill-item--icon-only .skill-unlock-caption {
+  display: none;
+}
+
+.skill-name {
+  font-size: 13px;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.skill-icon-backing {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: 8px;
+  pointer-events: none;
+  background: #e0d5c0;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.skill-lock-visual {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.35);
+  box-shadow: inset 0 0 0 2px rgba(139, 115, 85, 0.35);
+}
+
+.skill-type {
+  font-size: 11px;
+  color: #666;
+}
+
+.skill-type.active {
+  color: #c45c00;
+}
+
+.skill-type.passive {
+  color: #2e7d32;
+}
+
+.skill-note {
+  font-size: 10px;
+  color: #a88524;
+  margin-top: 6px;
+  background: rgba(201, 162, 39, 0.12);
+  padding: 4px 6px;
+  border-radius: 4px;
+  text-align: center;
+}
+
+/* 装备按钮 */
+.action-buttons {
+  display: flex;
+  gap: 15px;
+}
+
+.skill-unlock-caption {
+  margin-top: auto;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 10px;
+  border-radius: 0 0 8px 8px;
+  border: none;
+  background: linear-gradient(180deg, #f5ead6 0%, #e8dcc8 100%);
+  border-top: 1px solid #8b7355;
+}
+
+.skill-unlock-text {
+  display: block;
+  font-size: 10px;
+  font-family: "Songti SC", "SimSun", "Noto Serif SC", serif;
+  color: #5d4e37;
+  line-height: 1.25;
+  letter-spacing: 0.04em;
+  text-shadow: none;
+}
+
+.skill-desc {
+  font-size: 11px;
+  color: #666;
+  margin-top: 8px;
+  line-height: 1.4;
+  text-align: left;
+  padding: 0 4px;
+}
+
+.equip-btn {
+  flex: 1;
+  min-height: 48px;
+  padding: 14px 16px;
+  border: 2px solid #8b7355;
+  color: #fff;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  background: linear-gradient(180deg, #c9a227 0%, #a88524 100%);
+  transition: filter 0.2s, transform 0.15s;
+}
+
+.equip-btn:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.equip-btn.unequip {
+  filter: brightness(0.75) saturate(0.7);
+}
+
+/* 招式tooltip */
+.skill-tooltip {
+  position: fixed;
+  background: rgba(0, 0, 0, 0.95);
+  padding: 15px;
+  border-radius: 8px;
+  max-width: 280px;
+  color: #fff;
+  font-size: 13px;
+  z-index: 1000;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  display: none;
+}
+
+.skill-tooltip-name {
+  color: #c9a227;
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.skill-tooltip-type {
+  color: #4caf50;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+.skill-tooltip-lock {
+  color: #e0b060;
+  font-size: 12px;
+  font-weight: bold;
+  margin: -4px 0 10px;
+  letter-spacing: 0.04em;
+}
+
+.skill-tooltip-desc {
+  color: #ccc;
+  line-height: 1.6;
+}
+
+.skill-tooltip-effect {
+  color: #c9a227;
+  font-size: 11px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(201, 162, 39, 0.3);
+}
+
+@media (max-width: 900px) {
+  .main-content {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 36dvh) minmax(0, 1fr);
+  }
+
+  .left-panel {
+    max-height: none;
+    min-height: 0;
+  }
+}
+
+@media (max-height: 700px) {
+  .title {
+    font-size: 22px;
+    letter-spacing: 6px;
+  }
+
+  .martial-char-item {
+    padding: 4px 6px;
+  }
+
+  .martial-char-card {
+    width: 78px;
+    height: 78px;
+  }
+
+  .martial-char-name-tag {
+    font-size: 10px;
+    max-height: 58px;
+    left: 4px;
+  }
+
+  .martial-char-icon-fallback {
+    font-size: 22px;
+  }
+}

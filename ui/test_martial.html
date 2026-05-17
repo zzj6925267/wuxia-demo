@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>武学测试工具</title>
+  <style>
+    body {
+      font-family: 'Microsoft YaHei', sans-serif;
+      padding: 20px;
+      background: #1a1a2e;
+      color: #eee;
+    }
+    h1 {
+      color: #ffd700;
+    }
+    .section {
+      margin: 20px 0;
+      padding: 15px;
+      background: #16213e;
+      border-radius: 8px;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .btn-reset {
+      background: #e74c3c;
+      color: white;
+    }
+    .btn-set {
+      background: #3498db;
+      color: white;
+    }
+    .btn-primary {
+      background: #27ae60;
+      color: white;
+    }
+    input {
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #555;
+      background: #0f3460;
+      color: white;
+      width: 60px;
+    }
+    .info {
+      color: #aaa;
+      margin-top: 10px;
+    }
+    .warning {
+      color: #f39c12;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 武学测试工具</h1>
+
+  <div class="section">
+    <h3>角色选择</h3>
+    <select id="characterSelect" onchange="switchCharacter()">
+      <option value="1">少侠</option>
+      <option value="2">苏瑶</option>
+    </select>
+    <p>当前角色：<span id="currentCharacter">少侠</span></p>
+    <button class="btn-reset" onclick="resetCurrentCharacterMartial()">重置当前角色武学</button>
+  </div>
+
+  <div class="section">
+    <h3>正阳吐纳诀（内功）</h3>
+    <p>当前等级：<span id="tlnj-level">加载中...</span></p>
+    <button class="btn-set" onclick="setMartialLevel('正阳吐纳诀', 1)">设为1级</button>
+    <button class="btn-set" onclick="setMartialLevel('正阳吐纳诀', 4)">设为4级</button>
+    <button class="btn-set" onclick="setMartialLevel('正阳吐纳诀', 7)">设为7级</button>
+    <button class="btn-set" onclick="setMartialLevel('正阳吐纳诀', 10)">设为10级</button>
+    <button class="btn-reset" onclick="resetMartialArts()">重置所有武学</button>
+  </div>
+
+  <div class="section">
+    <h3>正阳基础剑诀（武功）</h3>
+    <p>当前等级：<span id="zyjc-level">加载中...</span></p>
+    <button class="btn-set" onclick="setMartialLevel('正阳基础剑诀', 1)">设为1级</button>
+    <button class="btn-set" onclick="setMartialLevel('正阳基础剑诀', 4)">设为4级</button>
+    <button class="btn-set" onclick="setMartialLevel('正阳基础剑诀', 7)">设为7级</button>
+    <button class="btn-set" onclick="setMartialLevel('正阳基础剑诀', 10)">设为10级</button>
+  </div>
+
+  <div class="section">
+    <h3>踏云步（轻功）</h3>
+    <p>当前等级：<span id="tyb-level">加载中...</span></p>
+    <button class="btn-set" onclick="setMartialLevel('踏云步', 1)">设为1级</button>
+    <button class="btn-set" onclick="setMartialLevel('踏云步', 4)">设为4级</button>
+    <button class="btn-set" onclick="setMartialLevel('踏云步', 7)">设为7级</button>
+    <button class="btn-set" onclick="setMartialLevel('踏云步', 10)">设为10级</button>
+  </div>
+
+  <div class="section">
+    <h3>自定义等级</h3>
+    <input type="number" id="customLevel" min="1" max="10" placeholder="等级">
+    <button class="btn-set" onclick="setCustomLevel()">设置内功等级</button>
+    <button class="btn-set" onclick="setCustomLevel剑法()">设置剑法等级</button>
+  </div>
+
+  <div class="section">
+    <h3>阅历设置</h3>
+    <p>当前阅历：<span id="exp-value">0</span></p>
+    <button class="btn-set" onclick="setExp(500)">设为500</button>
+    <button class="btn-set" onclick="setExp(1000)">设为1000</button>
+    <button class="btn-set" onclick="setExp(5000)">设为5000</button>
+    <input type="number" id="customExp" placeholder="阅历值">
+    <button class="btn-set" onclick="setCustomExp()">设置</button>
+  </div>
+
+  <div class="section">
+    <h3>测试功能</h3>
+    <button class="btn-primary" onclick="testInnerSkillBonuses()">测试内功加成计算</button>
+    <button class="btn-primary" onclick="fixOldData()">修复旧数据（vitality→bone）</button>
+  </div>
+
+  <div class="info">
+    <p class="warning">⚠️ 注意：修改后建议刷新页面再测试</p>
+    <button onclick="location.reload()" style="background:#27ae60;color:white;">刷新页面</button>
+    <button onclick="openMap()" style="background:#9b59b6;color:white;">返回大地图</button>
+  </div>
+
+  <script src="../js/data/martialSkillDamage.js"></script>
+  <script src="martialArtsData.js"></script>
+  <script>
+    let currentCharId = localStorage.getItem('currentMartialCharacterId') || '1';
+    let storageKey = `playerMartialArts_${currentCharId}`;
+
+    function getCharacterName(id) {
+      return id === '1' ? '少侠' : '苏瑶';
+    }
+
+    function switchCharacter() {
+      currentCharId = document.getElementById('characterSelect').value;
+      storageKey = `playerMartialArts_${currentCharId}`;
+      localStorage.setItem('currentMartialCharacterId', currentCharId);
+      document.getElementById('currentCharacter').textContent = getCharacterName(currentCharId);
+      updateDisplay();
+    }
+
+    function loadData() {
+      let data = localStorage.getItem(storageKey);
+      if (!data) {
+        data = JSON.stringify(MARTIAL_ARTS_LIBRARY);
+        localStorage.setItem(storageKey, data);
+      }
+      return JSON.parse(data);
+    }
+
+    function saveData(data) {
+      localStorage.setItem(storageKey, JSON.stringify(data));
+    }
+
+    function updateDisplay() {
+      const data = loadData();
+
+      const tlnj = data.find(m => m.name === '正阳吐纳诀');
+      const zyjc = data.find(m => m.name === '正阳基础剑诀');
+      const tyb = data.find(m => m.name === '踏云步');
+
+      document.getElementById('tlnj-level').textContent = tlnj ? `第${tlnj.currentLevel}重` : '未找到';
+      document.getElementById('zyjc-level').textContent = zyjc ? `第${zyjc.currentLevel}重` : '未找到';
+      document.getElementById('tyb-level').textContent = tyb ? `第${tyb.currentLevel}重` : '未找到';
+
+      const exp = localStorage.getItem(`playerExperience_${currentCharId}`) || '0';
+      document.getElementById('exp-value').textContent = exp;
+    }
+
+    function setMartialLevel(name, level) {
+      const data = loadData();
+      const martial = data.find(m => m.name === name);
+      if (martial) {
+        martial.currentLevel = level;
+        saveData(data);
+        updateDisplay();
+        alert(`${name}已设为第${level}重`);
+      } else {
+        alert(`未找到${name}`);
+      }
+    }
+
+    function setCustomLevel() {
+      const level = parseInt(document.getElementById('customLevel').value) || 1;
+      setMartialLevel('正阳吐纳诀', level);
+    }
+
+    function setCustomLevel剑法() {
+      const level = parseInt(document.getElementById('customLevel').value) || 1;
+      setMartialLevel('正阳基础剑诀', level);
+    }
+
+    function setExp(exp) {
+      localStorage.setItem(`playerExperience_${currentCharId}`, exp.toString());
+      updateDisplay();
+      alert(`${getCharacterName(currentCharId)}的阅历已设为${exp}`);
+    }
+
+    function setCustomExp() {
+      const exp = parseInt(document.getElementById('customExp').value) || 0;
+      setExp(exp);
+    }
+
+    function resetCurrentCharacterMartial() {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(MARTIAL_ARTS_LIBRARY));
+        localStorage.setItem(`playerExperience_${currentCharId}`, '500');
+        updateDisplay();
+        alert(`${getCharacterName(currentCharId)}的武学已重置为初始状态`);
+      } catch (e) {
+        console.error('重置失败:', e);
+        alert('重置失败，请检查浏览器控制台');
+      }
+    }
+
+    function resetMartialArts() {
+      try {
+        localStorage.setItem(`playerMartialArts_1`, JSON.stringify(MARTIAL_ARTS_LIBRARY));
+        localStorage.setItem(`playerMartialArts_2`, JSON.stringify(MARTIAL_ARTS_LIBRARY));
+        localStorage.setItem('playerExperience_1', '500');
+        localStorage.setItem('playerExperience_2', '500');
+        updateDisplay();
+        alert('所有角色的武学已重置为初始状态');
+      } catch (e) {
+        console.error('重置失败:', e);
+        alert('重置失败，请检查浏览器控制台');
+      }
+    }
+
+    function testInnerSkillBonuses() {
+      const data = loadData();
+      const neigong = data.find(m => m.type === '内功');
+      
+      let result = '内功加成测试结果:\n\n';
+      
+      if (neigong && neigong.skills) {
+        neigong.skills.forEach(skill => {
+          if (skill.effect) {
+            let bonus = skill.effect.baseValue || 0;
+            if (skill.effect.bonusAttr) {
+              const attrValue = 10; // 默认测试值
+              bonus += attrValue * (skill.effect.bonusPerPoint || 0);
+            }
+            result += `${skill.name}: ${Math.ceil(bonus)}\n`;
+          }
+        });
+      }
+      
+      alert(result);
+    }
+
+    function fixOldData() {
+      try {
+        ['1', '2'].forEach(charId => {
+          const key = `playerMartialArts_${charId}`;
+          let data = localStorage.getItem(key);
+          if (data) {
+            data = data.replace(/"bonusAttr":\s*"vitality"/g, '"bonusAttr": "bone"');
+            data = data.replace(/"bonusAttr":\s*"spirit"/g, '"bonusAttr": "qi"');
+            localStorage.setItem(key, data);
+          }
+        });
+        alert('数据修复完成！');
+      } catch (e) {
+        console.error('修复失败:', e);
+        alert('修复失败，请检查浏览器控制台');
+      }
+    }
+
+    function openMap() {
+      window.location.href = 'map.html';
+    }
+
+    updateDisplay();
+  </script>
+</body>
+</html>

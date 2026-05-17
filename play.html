@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>武侠 demo · 新档体验</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "Microsoft YaHei", sans-serif;
+      background: #0f1218;
+      color: #c9a227;
+      letter-spacing: 0.08em;
+    }
+    p { font-size: 18px; }
+    .err { color: #ffab91; max-width: 420px; line-height: 1.6; padding: 24px; text-align: center; }
+  </style>
+</head>
+<body>
+  <p id="status">正在开启新档…</p>
+  <script src="js/config.js"></script>
+  <script src="js/utils/newGameBootstrap.js"></script>
+  <script>
+    (function () {
+      var el = document.getElementById('status');
+      if (typeof NewGameBootstrap === 'undefined') {
+        el.outerHTML =
+          '<p class="err">请先在 <code>game</code> 目录运行 <code>node server.js</code>，<br>用 <code>http://127.0.0.1:3000/play.html</code> 打开，勿用 file://。</p>';
+        return;
+      }
+      try {
+        NewGameBootstrap.resetNewGame(NewGameBootstrap.defaultFourDim(), 0);
+        sessionStorage.removeItem('pending_new_game_slot');
+        window.location.replace('ui/character_creation.html');
+      } catch (e) {
+        el.className = 'err';
+        el.textContent = '开新档失败：' + (e && e.message ? e.message : String(e));
+      }
+    })();
+  </script>
+</body>
+</html>

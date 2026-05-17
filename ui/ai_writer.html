@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI文案生成器</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Microsoft YaHei', 'SimHei', serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #fff;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .title {
+      font-size: 32px;
+      color: #f4d03f;
+      text-shadow: 0 0 10px rgba(244, 208, 63, 0.5);
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #999;
+      font-size: 14px;
+    }
+
+    .section {
+      background: rgba(26, 26, 46, 0.8);
+      border: 1px solid #333;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      color: #f4d03f;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #333;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      color: #ccc;
+      font-size: 14px;
+    }
+
+    input[type="text"],
+    textarea,
+    select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #333;
+      border-radius: 5px;
+      background: rgba(0, 0, 0, 0.3);
+      color: #fff;
+      font-family: inherit;
+      font-size: 14px;
+      resize: vertical;
+    }
+
+    input[type="text"]:focus,
+    textarea:focus,
+    select:focus {
+      outline: none;
+      border-color: #f4d03f;
+    }
+
+    textarea {
+      min-height: 100px;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 12px 30px;
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: linear-gradient(145deg, #c9a227, #f4d03f);
+      color: #1a1a2e;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(244, 208, 63, 0.4);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: linear-gradient(145deg, #444, #666);
+      color: #fff;
+    }
+
+    .btn-secondary:hover {
+      box-shadow: 0 5px 20px rgba(100, 100, 100, 0.4);
+    }
+
+    .result-section {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 5px;
+      padding: 15px;
+      min-height: 150px;
+      white-space: pre-wrap;
+      line-height: 1.8;
+      font-size: 15px;
+      color: #ddd;
+    }
+
+    .loading {
+      color: #f4d03f;
+      font-style: italic;
+    }
+
+    .error {
+      color: #ff6b6b;
+    }
+
+    .success {
+      color: #4ecdc4;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .tab-btn {
+      padding: 10px 20px;
+      border: 1px solid #333;
+      background: rgba(26, 26, 46, 0.5);
+      color: #999;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .tab-btn.active {
+      background: #f4d03f;
+      color: #1a1a2e;
+      border-color: #f4d03f;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .character-selector {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .character-card {
+      padding: 15px;
+      border: 1px solid #333;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-align: center;
+    }
+
+    .character-card:hover,
+    .character-card.selected {
+      border-color: #f4d03f;
+      background: rgba(244, 208, 63, 0.1);
+    }
+
+    .character-name {
+      font-weight: bold;
+      color: #f4d03f;
+      margin-bottom: 5px;
+    }
+
+    .character-role {
+      font-size: 12px;
+      color: #999;
+    }
+
+    .nav-buttons {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .tabs {
+        flex-wrap: wrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1 class="title">AI文案生成器</h1>
+      <p class="subtitle">为您的武侠游戏生成精彩文案</p>
+    </div>
+
+    <div class="nav-buttons">
+      <button class="btn btn-secondary" onclick="goBack()">返回游戏</button>
+    </div>
+
+    <!-- 配置区域 -->
+    <div class="section">
+      <h2 class="section-title">API配置</h2>
+      <div class="form-group">
+        <label for="provider">服务提供商</label>
+        <select id="provider">
+          <option value="WENXIN_YIYAN">文心一言 (推荐)</option>
+          <option value="DOUBAO">豆包</option>
+          <option value="TONGYI_QIANWEN">通义千问</option>
+          <option value="OPENAI">OpenAI</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="apiKey">API Key</label>
+        <input type="text" id="apiKey" placeholder="请输入您的API Key">
+      </div>
+      <div class="form-group">
+        <label for="secretKey">Secret Key (文心一言必填)</label>
+        <input type="text" id="secretKey" placeholder="请输入您的Secret Key">
+      </div>
+      <button class="btn" onclick="saveConfig()">保存配置</button>
+    </div>
+
+    <!-- 生成器选项卡 -->
+    <div class="section">
+      <div class="tabs">
+        <button class="tab-btn active" onclick="showTab('dialog')">对话生成</button>
+        <button class="tab-btn" onclick="showTab('scene')">场景描述</button>
+        <button class="tab-btn" onclick="showTab('line')">角色台词</button>
+        <button class="tab-btn" onclick="showTab('story')">故事章节</button>
+      </div>
+
+      <!-- 对话生成 -->
+      <div id="dialog" class="tab-content active">
+        <div class="form-group">
+          <label for="dialogPrompt">生成需求</label>
+          <textarea id="dialogPrompt" placeholder="例如：写一段令狐冲与任盈盈在竹林中相遇的对话"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="dialogCharacter">角色名称（可选）</label>
+          <input type="text" id="dialogCharacter" placeholder="例如：令狐冲">
+        </div>
+        <div class="form-group">
+          <label for="dialogContext">背景描述（可选）</label>
+          <textarea id="dialogContext" placeholder="例如：竹林幽静，月光如水"></textarea>
+        </div>
+        <button class="btn" onclick="generateDialog()">生成对话</button>
+      </div>
+
+      <!-- 场景描述 -->
+      <div id="scene" class="tab-content">
+        <div class="form-group">
+          <label for="sceneLocation">地点名称</label>
+          <input type="text" id="sceneLocation" placeholder="例如：华山之巅、江南水乡">
+        </div>
+        <div class="form-group">
+          <label for="sceneStyle">风格描述</label>
+          <input type="text" id="sceneStyle" placeholder="例如：古风武侠、仙侠奇幻" value="古风武侠">
+        </div>
+        <button class="btn" onclick="generateScene()">生成场景</button>
+      </div>
+
+      <!-- 角色台词 -->
+      <div id="line" class="tab-content">
+        <div class="form-group">
+          <label>选择角色</label>
+          <div class="character-selector" id="characterSelector">
+            <!-- 角色卡片将动态生成 -->
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="lineEmotion">情绪状态</label>
+          <input type="text" id="lineEmotion" placeholder="例如：豪迈、悲伤、愤怒">
+        </div>
+        <div class="form-group">
+          <label for="lineSituation">场景描述</label>
+          <textarea id="lineSituation" placeholder="例如：在酒馆与朋友饮酒"></textarea>
+        </div>
+        <button class="btn" onclick="generateLine()">生成台词</button>
+      </div>
+
+      <!-- 故事章节 -->
+      <div id="story" class="tab-content">
+        <div class="form-group">
+          <label for="storyTitle">章节标题</label>
+          <input type="text" id="storyTitle" placeholder="例如：第一章：初入江湖">
+        </div>
+        <div class="form-group">
+          <label for="storyLength">字数要求</label>
+          <input type="text" id="storyLength" placeholder="例如：500" value="500">
+        </div>
+        <button class="btn" onclick="generateStory()">生成章节</button>
+      </div>
+    </div>
+
+    <!-- 结果区域 -->
+    <div class="section">
+      <h2 class="section-title">生成结果</h2>
+      <div id="result" class="result-section">
+        生成的内容将显示在这里...
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/systems/AIWriter.js"></script>
+  <script>
+    // AI实例
+    let aiWriter;
+
+    // 预设角色数据
+    const characters = {
+      linghuchong: { name: '令狐冲', role: '华山派大弟子', personality: '放荡不羁，重情重义' },
+      renyingying: { name: '任盈盈', role: '日月神教圣姑', personality: '聪慧美丽，柔情似水' },
+      yuebuqun: { name: '岳不群', role: '华山派掌门', personality: '道貌岸然，野心勃勃' },
+      wuyouji: { name: '无崖子', role: '逍遥派掌门', personality: '仙风道骨，高深莫测' },
+      xuzhu: { name: '虚竹', role: '逍遥派掌门', personality: '心地善良，憨厚老实' },
+      guojing: { name: '郭靖', role: '大侠', personality: '忠厚老实，义薄云天' }
+    };
+
+    // 初始化
+    function init() {
+      aiWriter = new AIWriter();
+      loadConfig();
+      renderCharacterSelector();
+    }
+
+    // 加载配置
+    function loadConfig() {
+      const config = localStorage.getItem('ai_config');
+      if (config) {
+        const data = JSON.parse(config);
+        document.getElementById('provider').value = data.provider || 'WENXIN_YIYAN';
+        document.getElementById('apiKey').value = data.apiKey || '';
+        document.getElementById('secretKey').value = data.secretKey || '';
+      }
+    }
+
+    // 保存配置
+    function saveConfig() {
+      const config = {
+        provider: document.getElementById('provider').value,
+        apiKey: document.getElementById('apiKey').value,
+        secretKey: document.getElementById('secretKey').value
+      };
+      localStorage.setItem('ai_config', JSON.stringify(config));
+      
+      aiWriter.setProvider(config.provider);
+      aiWriter.setApiKey(config.apiKey, config.secretKey);
+      
+      alert('配置已保存！');
+    }
+
+    // 渲染角色选择器
+    function renderCharacterSelector() {
+      const selector = document.getElementById('characterSelector');
+      selector.innerHTML = '';
+
+      Object.keys(characters).forEach(key => {
+        const char = characters[key];
+        const card = document.createElement('div');
+        card.className = 'character-card';
+        card.dataset.key = key;
+        card.innerHTML = `
+          <div class="character-name">${char.name}</div>
+          <div class="character-role">${char.role}</div>
+        `;
+        card.addEventListener('click', () => selectCharacter(key));
+        selector.appendChild(card);
+      });
+    }
+
+    // 选择角色
+    function selectCharacter(key) {
+      document.querySelectorAll('.character-card').forEach(card => {
+        card.classList.remove('selected');
+      });
+      document.querySelector(`[data-key="${key}"]`).classList.add('selected');
+    }
+
+    // 显示选项卡
+    function showTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      
+      event.target.classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+    }
+
+    // 生成对话
+    async function generateDialog() {
+      const prompt = document.getElementById('dialogPrompt').value;
+      const character = document.getElementById('dialogCharacter').value;
+      const context = document.getElementById('dialogContext').value;
+
+      if (!prompt) {
+        alert('请输入生成需求');
+        return;
+      }
+
+      await executeGeneration(() => aiWriter.generateWuxiaDialog(prompt, character, context));
+    }
+
+    // 生成场景
+    async function generateScene() {
+      const location = document.getElementById('sceneLocation').value;
+      const style = document.getElementById('sceneStyle').value;
+
+      if (!location) {
+        alert('请输入地点名称');
+        return;
+      }
+
+      await executeGeneration(() => aiWriter.generateSceneDescription(location, style));
+    }
+
+    // 生成台词
+    async function generateLine() {
+      const selectedCard = document.querySelector('.character-card.selected');
+      if (!selectedCard) {
+        alert('请选择一个角色');
+        return;
+      }
+
+      const characterKey = selectedCard.dataset.key;
+      const character = characters[characterKey];
+      const emotion = document.getElementById('lineEmotion').value;
+      const situation = document.getElementById('lineSituation').value;
+
+      if (!emotion) {
+        alert('请输入情绪状态');
+        return;
+      }
+
+      await executeGeneration(() => aiWriter.generateCharacterLine(character, emotion, situation));
+    }
+
+    // 生成故事
+    async function generateStory() {
+      const title = document.getElementById('storyTitle').value;
+      const length = parseInt(document.getElementById('storyLength').value) || 500;
+
+      if (!title) {
+        alert('请输入章节标题');
+        return;
+      }
+
+      await executeGeneration(() => aiWriter.generateStoryChapter(title, length));
+    }
+
+    // 执行生成
+    async function executeGeneration(generateFunc) {
+      const resultDiv = document.getElementById('result');
+      resultDiv.className = 'result-section loading';
+      resultDiv.textContent = '正在生成中...';
+
+      try {
+        const result = await generateFunc();
+        resultDiv.className = 'result-section';
+        resultDiv.textContent = result;
+      } catch (error) {
+        resultDiv.className = 'result-section error';
+        resultDiv.textContent = `生成失败: ${error.message}`;
+      }
+    }
+
+    // 返回游戏
+    function goBack() {
+      window.location.href = '../index.html';
+    }
+
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

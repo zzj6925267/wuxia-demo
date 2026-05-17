@@ -1,0 +1,345 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  font-family: 'Microsoft YaHei', 'SimSun', serif;
+}
+
+/* —— 黑屏开场 / 收尾 —— */
+.cc-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #000;
+  color: #c8c4b8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 32px;
+  opacity: 1;
+  transition: opacity 0.85s ease;
+}
+
+.cc-overlay.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cc-overlay-text {
+  max-width: 520px;
+  font-size: 17px;
+  line-height: 1.85;
+  letter-spacing: 0.06em;
+  min-height: 4.5em;
+  text-align: center;
+}
+
+.cc-overlay-hint {
+  margin-top: 28px;
+  font-size: 13px;
+  color: #666;
+  cursor: pointer;
+  user-select: none;
+}
+
+.cc-overlay-hint:hover {
+  color: #aaa;
+}
+
+/* —— 卷轴主界面 —— */
+.cc-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(160deg, #3d3528 0%, #1a1610 100%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+
+.cc-sheet.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.cc-scroll {
+  width: min(920px, 96vw);
+  height: min(620px, 92vh);
+  background: linear-gradient(180deg, #e8d9b5 0%, #d4c49a 48%, #c9b88a 100%);
+  border: 3px solid #8b7355;
+  border-radius: 4px;
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.45),
+    inset 0 0 60px rgba(139, 115, 85, 0.15);
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  grid-template-rows: auto 1fr auto;
+  overflow: hidden;
+}
+
+.cc-spine {
+  grid-row: 1 / -1;
+  background: linear-gradient(90deg, #b8986a, #d4bc8a 40%, #b8986a);
+  border-right: 2px solid #8b7355;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: bold;
+  color: #4a3728;
+  letter-spacing: 0.35em;
+  padding: 16px 0;
+}
+
+.cc-steps {
+  grid-column: 2;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 20px 8px;
+  border-bottom: 1px solid rgba(74, 55, 40, 0.2);
+}
+
+.cc-step {
+  width: 28px;
+  height: 28px;
+  border: 2px solid #8b7355;
+  transform: rotate(45deg);
+  background: #d9c9a3;
+  opacity: 0.45;
+  transition: opacity 0.25s, background 0.25s;
+}
+
+.cc-step.is-done,
+.cc-step.is-current {
+  opacity: 1;
+  background: #c9a227;
+}
+
+.cc-main {
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 12px 20px 16px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.cc-narrative-wrap {
+  grid-column: 1 / -1;
+  border: 1px solid #a89070;
+  background: rgba(255, 252, 240, 0.55);
+  padding: 14px 16px;
+  min-height: 120px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.cc-narrative {
+  font-size: 15px;
+  line-height: 1.75;
+  color: #3d2e22;
+}
+
+.cc-narrative em {
+  font-style: normal;
+  color: #a83232;
+  font-weight: bold;
+}
+
+.cc-stats-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cc-stats-title {
+  font-size: 13px;
+  color: #5c4a38;
+  margin-bottom: 4px;
+}
+
+.cc-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.cc-stat-row {
+  display: flex;
+  border: 1px solid #8b7355;
+  background: #f5edd8;
+  font-size: 14px;
+}
+
+.cc-stat-label {
+  flex: 0 0 52px;
+  background: #5c4a38;
+  color: #f0e6d0;
+  padding: 6px 8px;
+  text-align: center;
+}
+
+.cc-stat-val {
+  flex: 1;
+  padding: 6px 10px;
+  text-align: center;
+  font-weight: bold;
+  color: #2a2018;
+  transition: color 0.2s, transform 0.2s;
+}
+
+.cc-stat-val.is-bump {
+  color: #a83232;
+  transform: scale(1.08);
+}
+
+.cc-derived {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #6b5a48;
+  line-height: 1.5;
+}
+
+.cc-choices-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.cc-choices-title {
+  font-size: 13px;
+  color: #5c4a38;
+  margin-bottom: 8px;
+}
+
+.cc-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.cc-choice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #8b7355;
+  background: rgba(255, 252, 240, 0.7);
+  cursor: pointer;
+  text-align: left;
+  font-size: 14px;
+  color: #3d2e22;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.cc-choice:hover {
+  background: #fff8e8;
+  border-color: #c9a227;
+}
+
+.cc-choice-box {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #5c4a38;
+  flex-shrink: 0;
+  background: #d9cfc0;
+}
+
+.cc-choice.is-selected {
+  border-color: #c9a227;
+  background: #fff3d6;
+  box-shadow: inset 0 0 0 1px rgba(201, 162, 39, 0.35);
+}
+
+.cc-choice.is-selected .cc-choice-box {
+  background: #c9a227;
+  border-color: #8b6914;
+}
+
+.cc-choice:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.cc-stat-val.is-preview {
+  color: #b8860b;
+}
+
+.cc-stat-val.is-preview::after {
+  content: ' (+1)';
+  font-size: 11px;
+  font-weight: normal;
+  color: #8b6914;
+}
+
+.cc-confirm-bar {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px dashed #8b7355;
+  background: rgba(255, 248, 232, 0.85);
+  border-radius: 4px;
+}
+
+.cc-confirm-text {
+  font-size: 13px;
+  color: #4a3728;
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+
+.cc-confirm-btn {
+  width: 100%;
+  padding: 10px 16px;
+  font-size: 15px;
+  font-weight: bold;
+  font-family: inherit;
+  color: #f5edd8;
+  background: linear-gradient(180deg, #6b5344 0%, #4a3728 100%);
+  border: 1px solid #3d2e22;
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: 0.2em;
+}
+
+.cc-confirm-btn:hover {
+  filter: brightness(1.08);
+}
+
+.cc-confirm-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.cc-footer {
+  grid-column: 2;
+  padding: 8px 20px 14px;
+  font-size: 12px;
+  color: #6b5a48;
+  text-align: center;
+  border-top: 1px solid rgba(74, 55, 40, 0.15);
+}
+
+@media (max-width: 720px) {
+  .cc-main {
+    grid-template-columns: 1fr;
+  }
+
+  .cc-scroll {
+    height: 96vh;
+  }
+}

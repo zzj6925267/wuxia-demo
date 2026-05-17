@@ -1,0 +1,52 @@
+
+&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;title&gt;重置玩家状态&lt;/title&gt;
+&lt;/head&gt;
+&lt;body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;"&gt;
+    &lt;h1&gt;正在重置玩家状态...&lt;/h1&gt;
+    &lt;script&gt;
+        console.log('========== 开始重置玩家状态 ==========');
+        
+        // 清除主要的玩家状态
+        localStorage.removeItem('playerState');
+        localStorage.removeItem('playerMartialArts');
+        
+        // 显示当前 localStorage 内容
+        console.log('重置前 localStorage 内容:');
+        for (let i = 0; i &lt; localStorage.length; i++) {
+            const key = localStorage.key(i);
+            console.log(`  ${key}:`, localStorage.getItem(key));
+        }
+        
+        // 清除所有可能的玩家数据
+        let keysToRemove = [];
+        for (let i = 0; i &lt; localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key &amp;&amp; (
+                key.includes('player') || 
+                key.includes('skill') || 
+                key.includes('task') ||
+                key.includes('faction') ||
+                key.includes('contribution')
+            )) {
+                keysToRemove.push(key);
+            }
+        }
+        keysToRemove.forEach(key =&gt; localStorage.removeItem(key));
+        
+        console.log('========== 重置完成 ==========');
+        console.log(`已清除 ${keysToRemove.length + 2} 条数据`);
+        console.log('所有武功已恢复到未学习状态，贡献值已重置为0');
+        
+        document.body.innerHTML = `
+            &lt;h1 style="color: green;"&gt;✓ 玩家状态已成功重置！&lt;/h1&gt;
+            &lt;p&gt;已清除 ${keysToRemove.length + 2} 条数据&lt;/p&gt;
+            &lt;p&gt;所有武功已恢复到未学习状态，贡献值已重置为0&lt;/p&gt;
+            &lt;p&gt;&lt;a href="map.html" style="display: inline-block; padding: 15px 30px; background: #4caf50; color: white; text-decoration: none; border-radius: 5px; font-size: 18px;"&gt;返回大地图&lt;/a&gt;&lt;/p&gt;
+        `;
+    &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;

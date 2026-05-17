@@ -1,0 +1,1029 @@
+/**
+ * 物品数据
+ * @module items
+ */
+
+/**
+ * 物品定义
+ */
+const ITEMS = {
+  // 消耗品
+  potion_small: {
+    id: 'potion_small',
+    name: '小型疗伤药',
+    type: 'consumable',
+    category: 'potion',
+    description: '恢复少量生命值',
+    icon: '🧪',
+    effects: {
+      hpRestore: 30
+    },
+    price: 10
+  },
+
+  potion_medium: {
+    id: 'potion_medium',
+    name: '中型疗伤药',
+    type: 'consumable',
+    category: 'potion',
+    description: '恢复中等生命值',
+    icon: '🧴',
+    effects: {
+      hpRestore: 60
+    },
+    price: 25
+  },
+
+  potion_large: {
+    id: 'potion_large',
+    name: '大型疗伤药',
+    type: 'consumable',
+    category: 'potion',
+    description: '恢复大量生命值',
+    icon: '⚗️',
+    effects: {
+      hpRestore: 100
+    },
+    price: 50
+  },
+
+  mp_potion_small: {
+    id: 'mp_potion_small',
+    name: '小型内力丹',
+    type: 'consumable',
+    category: 'potion',
+    description: '恢复少量内力',
+    icon: '💎',
+    effects: {
+      mpRestore: 20
+    },
+    price: 15
+  },
+
+  mp_potion_medium: {
+    id: 'mp_potion_medium',
+    name: '中型内力丹',
+    type: 'consumable',
+    category: 'potion',
+    description: '恢复中等内力',
+    icon: '🔮',
+    effects: {
+      mpRestore: 40
+    },
+    price: 35
+  },
+
+  meat: {
+    id: 'meat',
+    name: '生肉',
+    type: 'consumable',
+    category: 'food',
+    description: '可以食用的生肉',
+    icon: '🥩',
+    effects: {
+      hpRestore: 15
+    },
+    price: 5
+  },
+
+  gold: {
+    id: 'gold',
+    name: '金币',
+    type: 'consumable',
+    category: 'currency',
+    description: '江湖通用货币',
+    icon: '💰',
+    effects: {
+      gold: 10
+    },
+    price: 0
+  },
+
+  // 武器
+  iron_sword: {
+    id: 'iron_sword',
+    name: '铁剑',
+    type: 'weapon',
+    category: 'weapon',
+    description: '普通的铁制长剑',
+    icon: '⚔️',
+    bonus: {
+      attack: 10
+    },
+    price: 30
+  },
+
+  steel_sword: {
+    id: 'steel_sword',
+    name: '钢剑',
+    type: 'weapon',
+    category: 'weapon',
+    description: '精钢打造的长剑，锋利无比',
+    icon: '🗡️',
+    bonus: {
+      attack: 20
+    },
+    price: 80
+  },
+
+  jade_sword: {
+    id: 'jade_sword',
+    name: '玉剑',
+    type: 'weapon',
+    category: 'weapon',
+    description: '罕见的玉石宝剑',
+    icon: '💚',
+    bonus: {
+      attack: 35
+    },
+    price: 200
+  },
+
+  dagger: {
+    id: 'dagger',
+    name: '匕首',
+    type: 'weapon',
+    category: 'weapon',
+    description: '短小精悍的短刀',
+    icon: '🔪',
+    bonus: {
+      attack: 8
+    },
+    price: 20
+  },
+
+  // 装备 - 武器
+  iron_sword: {
+    id: 'iron_sword',
+    name: '铁剑',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'weapon',
+    quality: 'common',
+    requiredLevel: 1,
+    description: '普通的铁制长剑',
+    icon: '⚔️',
+    bonus: {
+      attack: 10
+    },
+    price: 30
+  },
+  
+  tie_sword: {
+    id: 'tie_sword',
+    name: '铁剑',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'weapon',
+    quality: 'common',
+    requiredLevel: 1,
+    description: '普通的铁制长剑',
+    icon: '⚔️',
+    bonus: {
+      attack: 10
+    },
+    price: 30
+  },
+
+  /** 青石武馆教头线：一级木械三件套（与三本入门秘籍发放一一对应） */
+  mu_jian: {
+    id: 'mu_jian',
+    name: '木剑',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'weapon',
+    quality: 'common',
+    requiredLevel: 1,
+    description: '武馆桩上削的木头剑，刃不开锋，只练架势与落点。',
+    icon: '🪵',
+    bonus: {
+      attack: 6
+    },
+    price: 5
+  },
+  mu_dao: {
+    id: 'mu_dao',
+    name: '木刀',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'weapon',
+    quality: 'common',
+    requiredLevel: 1,
+    description: '厚木片嵌柄，分量近似单刀，劈砍不伤刃，专练开合力道。',
+    icon: '🪵',
+    bonus: {
+      attack: 6
+    },
+    price: 5
+  },
+  mu_quan: {
+    id: 'mu_quan',
+    name: '木拳',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'weapon',
+    quality: 'common',
+    requiredLevel: 1,
+    description: '藤条与软木扎成的手靶，套在手上练钉劲与沉肩，不打伤人。',
+    icon: '🪵',
+    bonus: {
+      attack: 6
+    },
+    price: 5
+  },
+
+  /** 李记铁匠铺（青石镇）：十级铁械三件套，品质对齐 items.quality → 背包残品/低品等 */
+  liji_tie_jian: {
+    id: 'liji_tie_jian',
+    name: '铁剑',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'weapon',
+    quality: 'uncommon',
+    requiredLevel: 10,
+    description: '李师傅炉中淬炼的铁剑，剑身沉手，十级弟子方能使开。',
+    icon: '⚔️',
+    bonus: {
+      attack: 20,
+      critRate: 2
+    },
+    price: 500
+  },
+  liji_tie_dao: {
+    id: 'liji_tie_dao',
+    name: '铁刀',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'weapon',
+    quality: 'uncommon',
+    requiredLevel: 10,
+    description: '单刀厚背，刃口微卷仍利；练刀者十级方可挥得圆转。',
+    icon: '🔪',
+    bonus: {
+      attack: 20
+    },
+    price: 500
+  },
+  liji_tie_quan: {
+    id: 'liji_tie_quan',
+    name: '铁拳套',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'weapon',
+    quality: 'uncommon',
+    requiredLevel: 10,
+    description: '铁皮指节与软皮内衬，沉桥拳诀弟子十级常用，护指不碍钉劲。',
+    icon: '✊',
+    bonus: {
+      attack: 18,
+      defense: 2
+    },
+    price: 500
+  },
+  
+  jingang_sword: {
+    id: 'jingang_sword',
+    name: '金刚剑',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'weapon',
+    quality: 'rare',
+    requiredLevel: 10,
+    description: '精钢打造，坚硬无比',
+    icon: '⚔️',
+    bonus: {
+      attack: 30,
+      defense: 5
+    },
+    price: 200
+  },
+
+  steel_sword: {
+    id: 'steel_sword',
+    name: '钢剑',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'weapon',
+    quality: 'uncommon',
+    requiredLevel: 10,
+    description: '精钢打造的长剑，锋利无比',
+    icon: '🗡️',
+    bonus: {
+      attack: 20,
+      critRate: 2
+    },
+    price: 80
+  },
+
+  jade_sword: {
+    id: 'jade_sword',
+    name: '玉剑',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'weapon',
+    quality: 'rare',
+    requiredLevel: 25,
+    description: '罕见的玉石宝剑，蕴含灵气',
+    icon: '💚',
+    bonus: {
+      attack: 35,
+      critRate: 5
+    },
+    price: 200
+  },
+
+  dragon_sword: {
+    id: 'dragon_sword',
+    name: '青龙剑',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'weapon',
+    quality: 'epic',
+    requiredLevel: 40,
+    description: '传说中的青龙宝剑，削铁如泥',
+    icon: '🐉',
+    bonus: {
+      attack: 60,
+      critRate: 8,
+      strength: 10
+    },
+    price: 500
+  },
+
+  divine_sword: {
+    id: 'divine_sword',
+    name: '大夏龙雀',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'weapon',
+    quality: 'legendary',
+    requiredLevel: 60,
+    description: '上古神兵，威力无穷',
+    icon: '⚡',
+    bonus: {
+      attack: 100,
+      critRate: 15,
+      strength: 20,
+      agility: 10
+    },
+    price: 2000
+  },
+
+  // 装备 - 护甲
+  cloth_armor: {
+    id: 'cloth_armor',
+    name: '布袍',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'armor',
+    quality: 'common',
+    requiredLevel: 1,
+    description: '普通的布制长袍',
+    icon: '👕',
+    bonus: {
+      defense: 3,
+      mp: 10
+    },
+    price: 15
+  },
+
+  /** 黑风寨茅老獾概率掉落：仅当 30% 命中后再随机白/绿/蓝三档之一 */
+  cubu_jinzhuang_bai: {
+    id: 'cubu_jinzhuang_bai',
+    name: '粗布劲装',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'armor',
+    quality: 'common',
+    requiredLevel: 20,
+    description: '二十级凡品。山贼私藏的粗布短打，耐磨不耐砍。',
+    icon: '👕',
+    bonus: {
+      defense: 14,
+      hp: 28
+    },
+    price: 40
+  },
+  cubu_jinzhuang_lv: {
+    id: 'cubu_jinzhuang_lv',
+    name: '粗布劲装',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'armor',
+    quality: 'uncommon',
+    requiredLevel: 20,
+    description: '二十级良品。纺线密实，筋骨处加了双层布。',
+    icon: '👕',
+    bonus: {
+      defense: 20,
+      hp: 45,
+      agility: 4
+    },
+    price: 85
+  },
+  cubu_jinzhuang_lan: {
+    id: 'cubu_jinzhuang_lan',
+    name: '粗布劲装',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'armor',
+    quality: 'rare',
+    requiredLevel: 20,
+    description: '二十级上品。浸过桐油的里衬，寻常劈砍不易透。',
+    icon: '👕',
+    bonus: {
+      defense: 28,
+      hp: 62,
+      agility: 6,
+      dodgeRate: 4
+    },
+    price: 160
+  },
+
+  leather_armor: {
+    id: 'leather_armor',
+    name: '皮甲',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'armor',
+    quality: 'common',
+    requiredLevel: 5,
+    description: '轻便的皮制护甲',
+    icon: '🥋',
+    bonus: {
+      defense: 8,
+      agility: 3
+    },
+    price: 40
+  },
+  
+  pojiu_yeyi: {
+    id: 'pojiu_yeyi',
+    name: '破旧夜行衣',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'armor',
+    quality: 'legendary',
+    requiredLevel: 20,
+    description: '二十级绝品。山贼头目私藏的夜行衣，虽显破旧，裁缝里仍留着旧日身法的余劲。',
+    icon: '🥷',
+    bonus: {
+      defense: 10,
+      agility: 8,
+      dodgeRate: 5
+    },
+    price: 80
+  },
+
+  iron_armor: {
+    id: 'iron_armor',
+    name: '铁甲',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'armor',
+    quality: 'uncommon',
+    requiredLevel: 15,
+    description: '坚固的铁制铠甲',
+    icon: '🛡️',
+    bonus: {
+      defense: 15,
+      vitality: 5
+    },
+    price: 100
+  },
+
+  silver_armor: {
+    id: 'silver_armor',
+    name: '银甲',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'armor',
+    quality: 'rare',
+    requiredLevel: 30,
+    description: '银光闪耀的铠甲，轻便而坚固',
+    icon: '✨',
+    bonus: {
+      defense: 25,
+      vitality: 10,
+      dodgeRate: 5
+    },
+    price: 300
+  },
+
+  // 装备 - 头盔
+  iron_helmet: {
+    id: 'iron_helmet',
+    name: '铁盔',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'helmet',
+    quality: 'common',
+    requiredLevel: 8,
+    description: '普通的铁制头盔',
+    icon: '⛑️',
+    bonus: {
+      defense: 5
+    },
+    price: 35
+  },
+
+  steel_helmet: {
+    id: 'steel_helmet',
+    name: '精钢盔',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'helmet',
+    quality: 'uncommon',
+    requiredLevel: 20,
+    description: '精钢打造的头盔',
+    icon: '🪖',
+    bonus: {
+      defense: 10,
+      vitality: 3
+    },
+    price: 85
+  },
+
+  // 装备 - 靴子
+  cloth_boots: {
+    id: 'cloth_boots',
+    name: '布鞋',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'shoes',
+    quality: 'common',
+    requiredLevel: 1,
+    description: '普通的布制鞋子',
+    icon: '👟',
+    bonus: {
+      agility: 2
+    },
+    price: 10
+  },
+
+  leather_boots: {
+    id: 'leather_boots',
+    name: '皮靴',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'shoes',
+    quality: 'uncommon',
+    requiredLevel: 12,
+    description: '轻便的皮制靴子',
+    icon: '🥾',
+    bonus: {
+      agility: 5,
+      dodgeRate: 3
+    },
+    price: 50
+  },
+
+  // 装备 - 饰品
+  gold_ring: {
+    id: 'gold_ring',
+    name: '金戒指',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'accessory',
+    quality: 'rare',
+    requiredLevel: 20,
+    description: '镶嵌宝石的金戒指',
+    icon: '💍',
+    bonus: {
+      attack: 8,
+      spirit: 5
+    },
+    price: 150
+  },
+
+  /** 黑风寨刁老炮概率掉落占位（粗布护腕，20 级白装骨架，数值可再调） */
+  cubu_wrist: {
+    id: 'cubu_wrist',
+    name: '粗布护腕',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'accessory',
+    quality: 'common',
+    requiredLevel: 20,
+    description: '山贼堆里常见的粗布条缠腕，略挡擦刮。',
+    icon: '🧤',
+    bonus: {
+      defense: 4,
+      parry: 3
+    },
+    price: 12
+  },
+
+  jade_pendant: {
+    id: 'jade_pendant',
+    name: '玉佩',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'accessory',
+    quality: 'epic',
+    requiredLevel: 35,
+    description: '温润如玉的玉佩，蕴含灵气',
+    icon: '🔮',
+    bonus: {
+      mp: 30,
+      spirit: 10,
+      hp: 20
+    },
+    price: 400
+  },
+
+  // 丹药
+  hp_potion_small: {
+    id: 'hp_potion_small',
+    name: '小还丹',
+    type: 'consumable',
+    category: 'potion',
+    description: '恢复少量生命值',
+    icon: '🧪',
+    effects: {
+      hpRestore: 30
+    },
+    price: 10
+  },
+
+  hp_potion_medium: {
+    id: 'hp_potion_medium',
+    name: '中还丹',
+    type: 'consumable',
+    category: 'potion',
+    description: '恢复中等生命值',
+    icon: '🧴',
+    effects: {
+      hpRestore: 60
+    },
+    price: 25
+  },
+
+  hp_potion_large: {
+    id: 'hp_potion_large',
+    name: '大还丹',
+    type: 'consumable',
+    category: 'potion',
+    description: '恢复大量生命值',
+    icon: '⚗️',
+    effects: {
+      hpRestore: 100
+    },
+    price: 50
+  },
+
+  mp_potion_small: {
+    id: 'mp_potion_small',
+    name: '清心丹',
+    type: 'consumable',
+    category: 'potion',
+    description: '恢复少量内力',
+    icon: '💎',
+    effects: {
+      mpRestore: 20
+    },
+    price: 15
+  },
+
+  mp_potion_medium: {
+    id: 'mp_potion_medium',
+    name: '凝神丹',
+    type: 'consumable',
+    category: 'potion',
+    description: '恢复中等内力',
+    icon: '🔮',
+    effects: {
+      mpRestore: 40
+    },
+    price: 35
+  },
+
+  strength_potion: {
+    id: 'strength_potion',
+    name: '大力丸',
+    type: 'consumable',
+    category: 'potion',
+    description: '服用后力量大增',
+    icon: '💪',
+    effects: {
+      strength: 5
+    },
+    price: 40
+  },
+
+  // 秘籍
+  skillbook_liuyun: {
+    id: 'skillbook_liuyun',
+    name: '阵形剑诀秘籍',
+    type: 'consumable',
+    category: 'skillbook',
+    quality: 'chu_jie',
+    description: '青石武馆旧抄。相传早年有一位走镖归来的教头，把阵上步法化入剑路，整理成诀；所录不过对位、守中之要，深浅全在习练者自家火候。',
+    icon: '📖',
+    martialArtId: 10,
+    cultivationGain: 0,
+    learningRequirement: {
+      skillType: 'sword',
+      value: 0
+    },
+    effects: {},
+    price: 200
+  },
+
+  skillbook_chenqiao_quan: {
+    id: 'skillbook_chenqiao_quan',
+    name: '沉桥拳诀秘籍',
+    type: 'consumable',
+    category: 'skillbook',
+    quality: 'chu_jie',
+    description: '青石镇民壮练拳多用此谱。诀里讲「钉小锤、沉肩」：小抡短打先练短劲与落点；肩一沉，招架才敢贴身去架。为拳脚入门铺路。',
+    icon: '📖',
+    martialArtId: 13,
+    cultivationGain: 0,
+    learningRequirement: { skillType: 'fist', value: 0 },
+    effects: {},
+    price: 200
+  },
+
+  skillbook_polang_dao: {
+    id: 'skillbook_polang_dao',
+    name: '开合刀法秘籍',
+    type: 'consumable',
+    category: 'skillbook',
+    quality: 'chu_jie',
+    description: '馆中旧抄，署无可考。相传源自边镇护院所习刀法，后人删繁就简，诀里只留「开、合」二字：先学一刀势开出去，再学劲往刃口合，供弟子筑刀术根基。',
+    icon: '📖',
+    martialArtId: 14,
+    cultivationGain: 0,
+    learningRequirement: { skillType: 'blade', value: 0 },
+    effects: {},
+    price: 200
+  },
+
+  skillbook_yangqi_shu: {
+    id: 'skillbook_yangqi_shu',
+    name: '养气术秘籍',
+    type: 'consumable',
+    category: 'skillbook',
+    quality: 'chu_jie',
+    description: '从武馆珍藏的一部残经中摘录而来，无名氏批注云「先养后练」。诀里「纳息、归根」皆被动：纳息垫厚气血上限（根骨越厚越能多容），归根每回合借内息细水长流回血。',
+    icon: '📿',
+    martialArtId: 11,
+    cultivationGain: 0,
+    learningRequirement: { skillType: 'innerSkill', value: 0 },
+    effects: {},
+    price: 200
+  },
+
+  skillbook_nuobu_jue: {
+    id: 'skillbook_nuobu_jue',
+    name: '挪步诀秘籍',
+    type: 'consumable',
+    category: 'skillbook',
+    quality: 'chu_jie',
+    description: '馆中教习脚下所用的抄本。传闻得自一位瘸腿老客：身法不全，却最擅半步换形。诀里「挪寸、卸风」皆被动：挪寸先学闪避，卸风再学脚下生风。',
+    icon: '👟',
+    martialArtId: 12,
+    cultivationGain: 0,
+    learningRequirement: { skillType: 'lightSkill', value: 0 },
+    effects: {},
+    price: 200
+  },
+
+  skillbook_zixia: {
+    id: 'skillbook_zixia',
+    name: '紫霞心经秘籍',
+    type: 'consumable',
+    category: 'skillbook',
+    quality: 'gao_jie',
+    description: '正阳派高阶内功手抄。相传为前辈长老闭关时所录，言紫气东来、周天运转之法；非内功根基深厚者难以窥其门径。',
+    icon: '📿',
+    martialArtId: 4,
+    learningRequirement: {
+      skillType: 'innerSkill',
+      value: 30
+    },
+    effects: {},
+    price: 500
+  },
+
+  skillbook_tayun: {
+    id: 'skillbook_tayun',
+    name: '踏云步秘籍',
+    type: 'consumable',
+    category: 'skillbook',
+    quality: 'chu_jie',
+    description: '正阳派入门轻功抄本。相传创自一位爱云游的长老，取「足不沾尘、步若行云」之意，为弟子打轻功根基。',
+    icon: '👟',
+    martialArtId: 5,
+    learningRequirement: {
+      skillType: 'lightSkill',
+      value: 15
+    },
+    effects: {},
+    price: 150
+  },
+  
+  luocao_jianjing: {
+    id: 'luocao_jianjing',
+    name: '落草剑经',
+    type: 'consumable',
+    category: 'skillbook',
+    quality: 'chu_jie',
+    description: '绿林里口口相传的手抄剑经，不知出自何人手笔。所录几式只求快字，狠辣不足，却是许多亡命徒的第一本剑谱。',
+    icon: '📖',
+    martialArtId: 6,
+    learningRequirement: {
+      skillType: 'sword',
+      value: 25
+    },
+    effects: {},
+    price: 300
+  },
+
+  // 材料
+  herb_ginseng: {
+    id: 'herb_ginseng',
+    name: '人参',
+    type: 'material',
+    category: 'material',
+    description: '珍贵的药材',
+    icon: '🌿',
+    price: 20
+  },
+
+  herb_lingzhi: {
+    id: 'herb_lingzhi',
+    name: '灵芝',
+    type: 'material',
+    category: 'material',
+    description: '千年灵芝',
+    icon: '🍄',
+    price: 50
+  },
+  
+  lingzhi_cao: {
+    id: 'lingzhi_cao',
+    name: '灵芝草',
+    type: 'material',
+    category: 'material',
+    description: '山林里生长的普通灵芝草，可用于制药',
+    icon: '🌿',
+    price: 10
+  },
+  
+  she_dan: {
+    id: 'she_dan',
+    name: '蛇胆',
+    type: 'material',
+    category: 'material',
+    description: '青竹蛇的蛇胆，可用于制药',
+    icon: '🐍',
+    price: 25
+  },
+  
+  she_tui: {
+    id: 'she_tui',
+    name: '蛇蜕',
+    type: 'material',
+    category: 'material',
+    description: '青竹蛇蜕下的皮，可用于制药',
+    icon: '🦴',
+    price: 15
+  },
+
+  iron_ore: {
+    id: 'iron_ore',
+    name: '铁矿石',
+    type: 'material',
+    category: 'material',
+    description: '坚硬的铁矿石',
+    icon: '🪨',
+    price: 5
+  },
+
+  silver_ore: {
+    id: 'silver_ore',
+    name: '银矿石',
+    type: 'material',
+    category: 'material',
+    description: '闪亮的银矿石',
+    icon: '⚪',
+    price: 15
+  },
+
+  ancient_scroll: {
+    id: 'ancient_scroll',
+    name: '古卷',
+    type: 'material',
+    category: 'material',
+    description: '古老的卷轴',
+    icon: '📜',
+    price: 30
+  },
+
+  // 任务物品
+  quest_item_key: {
+    id: 'quest_item_key',
+    name: '任务钥匙',
+    type: 'quest',
+    category: 'quest',
+    description: '任务所需的特殊钥匙',
+    icon: '🔑',
+    price: 0
+  },
+
+  quest_item_letter: {
+    id: 'quest_item_letter',
+    name: '密信',
+    type: 'quest',
+    category: 'quest',
+    description: '重要的任务信件',
+    icon: '✉️',
+    price: 0
+  },
+
+  quest_item_medallion: {
+    id: 'quest_item_medallion',
+    name: '门派令牌',
+    type: 'quest',
+    category: 'quest',
+    description: '证明身份的令牌',
+    icon: '🛡️',
+    price: 0
+  },
+
+  // 杂项
+  gold: {
+    id: 'gold',
+    name: '金币',
+    type: 'consumable',
+    category: 'misc',
+    description: '江湖通用货币',
+    icon: '💰',
+    effects: {
+      gold: 10
+    },
+    price: 0
+  },
+
+  meat: {
+    id: 'meat',
+    name: '生肉',
+    type: 'consumable',
+    category: 'misc',
+    description: '可以食用的生肉',
+    icon: '🥩',
+    effects: {
+      hpRestore: 15
+    },
+    price: 5
+  },
+
+  water: {
+    id: 'water',
+    name: '清水',
+    type: 'consumable',
+    category: 'misc',
+    description: '干净的清水',
+    icon: '�',
+    effects: {
+      hpRestore: 5
+    },
+    price: 2
+  }
+};
+
+/**
+ * 获取物品列表
+ * @returns {Array} 物品数组
+ */
+function getItemList() {
+  return Object.values(ITEMS);
+}
+
+/**
+ * 根据ID获取物品
+ * @param {string} itemId - 物品ID
+ * @returns {object|null} 物品对象
+ */
+function getItemById(itemId) {
+  return ITEMS[itemId] || null;
+}
+
+// 暴露到全局
+window.ITEMS = ITEMS;
+window.getItemList = getItemList;
+window.getItemById = getItemById;
+
+/**
+ * 获取分类物品
+ * @param {string} category - 分类名称
+ * @returns {Array} 物品数组
+ */
+function getItemsByCategory(category) {
+  return Object.values(ITEMS).filter(item => item.category === category);
+}
+
+// 暴露到全局（续）
+window.getItemsByCategory = getItemsByCategory;

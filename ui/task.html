@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>任务系统</title>
+  <link rel="stylesheet" href="task.css">
+</head>
+<body>
+  <div class="task-container">
+    <div class="task-sidebar">
+      <div class="sidebar-title">任务分类</div>
+      <div class="task-type-list">
+        <div class="task-type active" data-type="main">
+          <span class="type-icon">🏆</span>
+          <span class="type-name">主线</span>
+        </div>
+        <div class="task-type" data-type="branch">
+          <span class="type-icon">🎯</span>
+          <span class="type-name">支线</span>
+        </div>
+        <div class="task-type" data-type="faction">
+          <span class="type-icon">🏛️</span>
+          <span class="type-name">门派</span>
+        </div>
+        <div class="task-type" data-type="adventure">
+          <span class="type-icon">🎲</span>
+          <span class="type-name">奇遇</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="task-main">
+      <div class="task-header">
+        <div class="header-title" id="currentTypeTitle">门派任务</div>
+      </div>
+      
+      <div class="task-list" id="taskList"></div>
+    </div>
+
+    <div class="task-detail-panel" id="taskDetail">
+      <div class="empty-detail">
+        <div class="empty-icon">📋</div>
+        <p>请选择任务查看详情</p>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn-close" id="btnClose">离开</button>
+
+  <script src="../js/config.js"></script>
+  <script src="taskData.js"></script>
+  <script src="qingstoneCompanionQuest.js"></script>
+  <script src="task.js"></script>
+</body>
+</html>

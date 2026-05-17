@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>创建人物 - 武侠风云</title>
+  <link rel="stylesheet" href="character_creation.css" />
+</head>
+<body>
+  <div id="introOverlay" class="cc-overlay" aria-live="polite">
+    <p class="cc-overlay-text" id="introText"></p>
+    <p class="cc-overlay-hint" id="introHint" hidden></p>
+  </div>
+
+  <div id="creationSheet" class="cc-sheet" hidden>
+    <div class="cc-scroll">
+      <div class="cc-spine">创建人物</div>
+      <div class="cc-steps" id="stepDots" aria-hidden="true"></div>
+      <div class="cc-main">
+        <div class="cc-narrative-wrap">
+          <p class="cc-narrative" id="narrativeText"></p>
+        </div>
+        <div class="cc-stats-panel">
+          <div class="cc-stats-title">四维属性</div>
+          <div class="cc-stats-grid" id="statsGrid"></div>
+          <p class="cc-derived" id="derivedPreview"></p>
+        </div>
+        <div class="cc-choices-panel">
+          <div class="cc-choices-title" id="choicesTitle">请选择</div>
+          <div class="cc-choices" id="choicesList" role="listbox"></div>
+          <div class="cc-confirm-bar" id="confirmBar" hidden>
+            <p class="cc-confirm-text" id="confirmPreviewText"></p>
+            <button type="button" class="cc-confirm-btn" id="confirmBtn">确定</button>
+          </div>
+        </div>
+      </div>
+      <p class="cc-footer" id="footerHint">每题选一后点「确定」；四维基础 5 点，写入角色系统</p>
+    </div>
+  </div>
+
+  <div id="outroOverlay" class="cc-overlay is-hidden" aria-live="polite">
+    <p class="cc-overlay-text" id="outroText"></p>
+    <p class="cc-overlay-hint" id="outroHint" hidden></p>
+  </div>
+
+  <script src="../js/config.js"></script>
+  <script src="../js/data/characterCreation.js"></script>
+  <script src="../js/utils/newGameBootstrap.js"></script>
+  <script src="character_creation.js"></script>
+</body>
+</html>

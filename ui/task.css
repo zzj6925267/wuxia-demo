@@ -1,0 +1,353 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Microsoft YaHei', 'SimHei', serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+/* 任务系统容器 */
+.task-container {
+  display: flex;
+  gap: 15px;
+  background: #d4c4a8;
+  border-radius: 15px;
+  padding: 15px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  border: 3px solid #8b7355;
+  width: 900px;
+  height: 600px;
+}
+
+/* 左侧任务分类栏 */
+.task-sidebar {
+  width: 150px;
+  background: linear-gradient(180deg, #f5ead6 0%, #e8dcc8 100%);
+  border-radius: 10px;
+  border: 2px solid #8b7355;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-title {
+  background: linear-gradient(180deg, #c9a227 0%, #a88524 100%);
+  color: #fff;
+  padding: 12px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 8px 8px 0 0;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.task-type-list {
+  flex: 1;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.task-type {
+  padding: 12px 10px;
+  background: linear-gradient(180deg, #fff 0%, #f0e6d3 100%);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid #d4c4a8;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.task-type:hover {
+  transform: translateX(3px);
+  border-color: #a88524;
+}
+
+.task-type.active {
+  background: linear-gradient(180deg, #4CAF50 0%, #388E3C 100%);
+  color: white;
+  border-color: #2E7D32;
+}
+
+.type-icon {
+  font-size: 20px;
+}
+
+.type-name {
+  font-weight: bold;
+  font-size: 15px;
+}
+
+/* 中间任务列表 */
+.task-main {
+  flex: 1;
+  background: linear-gradient(180deg, #f5ead6 0%, #e8dcc8 100%);
+  border-radius: 10px;
+  border: 2px solid #8b7355;
+  display: flex;
+  flex-direction: column;
+}
+
+.task-header {
+  background: linear-gradient(180deg, #c9a227 0%, #a88524 100%);
+  color: #fff;
+  padding: 12px;
+  border-radius: 8px 8px 0 0;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.header-title {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.task-list {
+  flex: 1;
+  padding: 10px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 任务卡片 */
+.task-card {
+  background: linear-gradient(180deg, #fff 0%, #f0e6d3 100%);
+  border-radius: 10px;
+  padding: 15px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid #d4c4a8;
+  position: relative;
+}
+
+.task-card:hover {
+  transform: translateX(3px);
+  border-color: #a88524;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.task-card.active {
+  border-color: #c9a227;
+  box-shadow: 0 0 0 2px rgba(201, 162, 39, 0.3);
+}
+
+.task-card.completed {
+  opacity: 0.7;
+  background: linear-gradient(180deg, #e8f5e9 0%, #c8e6c9 100%);
+}
+
+.task-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.task-name {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+}
+
+.task-status {
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: bold;
+}
+
+.task-status.accepted {
+  background: #fff3e0;
+  color: #ff9800;
+}
+
+.task-status.completed {
+  background: #e8f5e9;
+  color: #4CAF50;
+}
+
+.task-description {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 10px;
+}
+
+.task-progress {
+  background: #e0d5c0;
+  border-radius: 10px;
+  height: 8px;
+  overflow: hidden;
+}
+
+.task-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4CAF50 0%, #8BC34A 100%);
+  transition: width 0.3s;
+  border-radius: 10px;
+}
+
+.task-progress-text {
+  margin-top: 5px;
+  font-size: 12px;
+  color: #888;
+  text-align: right;
+}
+
+/* 右侧任务详情面板 */
+.task-detail-panel {
+  width: 240px;
+  background: linear-gradient(180deg, #f5ead6 0%, #e8dcc8 100%);
+  border-radius: 10px;
+  border: 2px solid #8b7355;
+  overflow-y: auto;
+}
+
+.empty-detail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #666;
+  padding: 30px;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 10px;
+  opacity: 0.5;
+}
+
+/* 任务详情内容 */
+.task-detail-content {
+  padding: 15px;
+}
+
+.detail-header {
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #d4c4a8;
+}
+
+.detail-name {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.detail-type-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+  color: white;
+}
+
+.detail-section {
+  margin-bottom: 15px;
+}
+
+.detail-section-title {
+  font-size: 14px;
+  font-weight: bold;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.detail-desc {
+  font-size: 14px;
+  color: #444;
+  line-height: 1.6;
+}
+
+.detail-location {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 14px;
+  color: #555;
+}
+
+.detail-rewards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reward-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #d4c4a8;
+}
+
+.reward-icon {
+  font-size: 20px;
+}
+
+.reward-name {
+  flex: 1;
+  font-size: 14px;
+  color: #444;
+}
+
+.reward-value {
+  font-weight: bold;
+  color: #c9a227;
+  font-size: 15px;
+}
+
+/* 离开按钮 */
+.btn-close {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  padding: 12px 30px;
+  background: linear-gradient(180deg, #e53935 0%, #c62828 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(229, 57, 53, 0.3);
+  transition: all 0.2s;
+}
+
+.btn-close:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(229, 57, 53, 0.4);
+}
+
+/* 空状态 */
+.no-tasks {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #888;
+}
+
+.no-tasks-icon {
+  font-size: 40px;
+  margin-bottom: 10px;
+  opacity: 0.5;
+}

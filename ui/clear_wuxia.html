@@ -1,0 +1,35 @@
+
+&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;title&gt;清理武学数据&lt;/title&gt;
+    &lt;style&gt;
+        body { font-family: Arial, sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; }
+        button { padding: 15px 30px; font-size: 16px; margin: 10px; }
+    &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;h2&gt;清理武学数据&lt;/h2&gt;
+    &lt;p&gt;点击下面按钮清理localStorage中的旧武学数据，然后重新打开武学系统&lt;/p&gt;
+    &lt;button onclick="clearWuxiaData()"&gt;清理武学数据&lt;/button&gt;
+    &lt;button onclick="window.location.href='map.html'"&gt;返回大地图&lt;/button&gt;
+    
+    &lt;div id="result" style="margin-top: 20px;"&gt;&lt;/div&gt;
+    
+    &lt;script&gt;
+        function clearWuxiaData() {
+            let cleared = [];
+            for (let i = 0; i &lt; localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key &amp;&amp; key.includes('playerMartialArts')) {
+                    cleared.push(key);
+                }
+            }
+            cleared.forEach(key =&gt; localStorage.removeItem(key));
+            document.getElementById('result').innerHTML = 
+                `&lt;p style="color: green;"&gt;已清理 ${cleared.length} 条武学数据！&lt;/p&gt;`;
+        }
+    &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;

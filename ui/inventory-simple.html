@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>背包系统(测试版)</title>
+  <link rel="stylesheet" href="inventory.css">
+</head>
+<body>
+  <div class="inventory-container">
+    <div class="detail-panel">
+      <div class="panel-title">包裹</div>
+      <div class="item-detail" id="itemDetail">
+        <div class="empty-detail">
+          <div class="empty-icon">📦</div>
+          <p>请选择物品查看详情</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="main-panel">
+      <div class="tabs-bar">
+        <div class="tab active" data-category="misc" onclick="testClick('杂项')">
+          <span class="tab-icon">📦</span>
+          <span class="tab-name">杂项</span>
+        </div>
+        <div class="tab" data-category="equipment" onclick="testClick('装备')">
+          <span class="tab-icon">⚔️</span>
+          <span class="tab-name">装备</span>
+        </div>
+        <div class="tab" data-category="potion" onclick="testClick('丹药')">
+          <span class="tab-icon">🧪</span>
+          <span class="tab-name">丹药</span>
+        </div>
+        <div class="tab" data-category="skillbook" onclick="testClick('秘籍')">
+          <span class="tab-icon">📖</span>
+          <span class="tab-name">秘籍</span>
+        </div>
+        <div class="tab" data-category="material" onclick="testClick('材料')">
+          <span class="tab-icon">💎</span>
+          <span class="tab-name">材料</span>
+        </div>
+        <div class="tab" data-category="quest" onclick="testClick('任务')">
+          <span class="tab-icon">📜</span>
+          <span class="tab-name">任务</span>
+        </div>
+      </div>
+
+      <div class="items-grid" id="itemsGrid"></div>
+
+      <div class="bottom-bar">
+        <div class="capacity-info">
+          <span>包裹容量</span>
+          <span class="capacity-count" id="capacityCount">0/200</span>
+        </div>
+        <button class="btn整理" id="btnSort" onclick="testClick('整理')">整理</button>
+        <button class="btn离开" id="btnClose" onclick="testClick('离开')">离开</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function testClick(name) {
+      alert('点击了：' + name);
+    }
+  </script>
+</body>
+</html>
