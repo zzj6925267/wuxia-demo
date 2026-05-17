@@ -1,4 +1,4 @@
-# 将 game/ 作为静态站发布到 GitHub Pages（无需 build）
+# 将 game/ 发布到 gh-pages 分支，供 GitHub Pages 托管（无需 build）
 name: Deploy game to GitHub Pages
 
 on:
@@ -7,32 +7,20 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
+  contents: write
 
 jobs:
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload static site (game/)
-        uses: actions/upload-pages-artifact@v3
+      - name: Publish game/ to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: game
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./game
+          publish_branch: gh-pages
+          force_orphan: true
+          commit_message: deploy static game site

@@ -22,15 +22,20 @@ git push -u origin master
 
 若 GitHub 默认分支是 `main`，可先 `git branch -M main` 再 push。
 
-### 3. 打开 GitHub Pages
+### 3. 等 Actions 先跑绿
 
-仓库网页 → **Settings** → **Pages**：
+**Actions** 页 → **Deploy game to GitHub Pages** 成功（会把 `game/` 推到 **`gh-pages`** 分支）。
 
-- **Build and deployment** → Source 选 **GitHub Actions**（不要选 “Deploy from a branch”）。
+若失败在 **Setup Pages**：说明曾用旧版 workflow；拉最新代码再 push，或见下方「常见问题」。
 
-### 4. 等 Actions 跑绿
+### 4. 打开 GitHub Pages
 
-**Actions** 页里 **Deploy game to GitHub Pages** 成功即可。
+仓库 → **Settings** → **Pages** → **Build and deployment**：
+
+- **Source** 选 **Deploy from a branch**
+- **Branch** 选 **`gh-pages`**，文件夹选 **`/ (root)`**，保存
+
+（不要选 GitHub Actions 源；本站由 Actions 更新 `gh-pages` 分支，Pages 只负责托管该分支。）
 
 ### 5. 发给朋友的链接
 
@@ -52,7 +57,8 @@ https://<你的GitHub用户名>.github.io/wuxia-demo/
 
 | 现象 | 处理 |
 |------|------|
-| 404 | 确认 Pages 源是 **GitHub Actions**；Actions 是否成功 |
+| Actions 在 **Setup Pages** 失败 | 用最新 workflow（推 `gh-pages` 分支）；**Settings → Pages** 改为 **Deploy from branch → gh-pages → /** |
+| 404 | Actions 是否成功；Pages 是否指向 **gh-pages** 根目录 |
 | 页面无样式/脚本报错 | 必须用 `https://` 打开，且路径里要带仓库名 `/wuxia-demo/` |
 | 国内打开慢 | 可改用下方 Gitee Pages，或以后绑自己的域名 + CDN |
 
