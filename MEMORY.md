@@ -21,6 +21,7 @@
 - **自测：正阳三件套一重**（验招式未解锁灰态）：**`http://127.0.0.1:3000/ui/dev_reset_zhenyang_martial_level.html`** — 仅把 id **1 / 3 / 5** 的 `currentLevel`→1、`practiceTimes`→0（保留已学/装备），约 1 秒后跳武学页。
 - **新局全量归零（2026-05）**：须先 **`node server.js`**（在 `game/` 目录）。**正式入口**：首页「新的江湖」→ **`ui/character_creation.html`**（黑屏开场打字机 → 卷轴五题、四维默认 5、每题 +1 预览 → 黑屏淡出 → **青石镇镇口** `qingstone_gate`）。写入逻辑 **`js/utils/newGameBootstrap.js`**（`NewGameBootstrap.resetNewGame(fourDim, saveSlot?)`）。**开发跳过问答**：`ui/dev_new_game.html`（四维全 5，仍清档进青石镇）。勿用 `file://` 打开。开局：**1 级、阅历 0、银两 0、气血/内力/攻击由四维推导、五维修为 0、无已学武学**；问答文案在 **`js/data/characterCreation.js`**（须原创，勿复用他游角色创建句式，如「没落武林世家」「宠溺放任」等）。
 - **PowerShell** 不要用 `cd ... && node ...`；用 `Set-Location ...; node server.js`。
+- **外地试玩（静态托管）**：发布目录 **`game/`**；一键新档 **`play.html`**。部署步骤见仓库根 **`DEPLOY.md`**（GitHub Pages Actions / Gitee / Cloudflare）。
 
 ---
 
