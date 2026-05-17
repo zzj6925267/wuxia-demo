@@ -1,0 +1,25 @@
+---
+description: 含大量中文 UI 串的脚本勿用 StrReplace 大块改写，防 UTF-8 变 ??
+alwaysApply: true
+---
+
+# 中文 UI 脚本 — 防编码损坏
+
+下列文件**含大量内嵌中文字符串**（按钮、提示、品质名等）。用 Cursor **StrReplace / Write 整块替换含中文的代码** 时，偶发会把 UTF-8 写成 `??`，整页 UI 报废。
+
+**高风险（优先遵守）**：`game/ui/inventory.js`  
+**同类**：`character.js`、`battle.js`、`map.js`、`martialArts.js`、`task.js`、`taskData.js`、`martialArtsData.js`、`npcData.js`、`qingstoneCompanionQuest.js` 及同目录 `*Data.js`、大块中文的 `.html`。
+
+## 必须
+
+1. **禁止**对上述文件用 StrReplace/Write 替换**含中文的多行块**（哪怕只改一行逻辑，也不要连带重写整段中文 map / 模板字符串）。
+2. **优先**只改**纯 ASCII** 行（英文 id、函数名、`parry` 键名、import 路径等）；中文展示走已有 **`AttributeHelper.getDisplayName`**、`QUALITY_CONFIG`、`items.js` / 数据表，少在 UI 脚本里新增中文常量。
+3. **必须改中文或大块逻辑时**：在仓库根写临时 **Node 脚本**，`fs.readFileSync` / `writeFileSync(path, content, 'utf8')` 打补丁；改完 **删除**临时脚本。
+4. **勿用** PowerShell 重定向、`echo` 写回、无 BOM 的批量替换来写这些文件。
+5. **改完自检**：Read 该文件或搜索 `??`；进游戏看按钮/等级文案是否正常。
+
+## 已损坏时
+
+在**本仓库 git 根**执行：`git restore game/ui/<文件名>`，再用 Node UTF-8 重改。勿在已是 `??` 的文件上继续 StrReplace。
+
+详见 **`MEMORY.md`** §4「改 inventory.js 防乱码」。

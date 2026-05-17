@@ -1313,7 +1313,7 @@
               const martialAdded = BattleSettlement.applyMartialYueliFromBattleRewards(rewards);
               if (martialAdded > 0) {
                 console.log(
-                  `武学修炼阅历 +${martialAdded}, 当前: ${BattleSettlement.getPlayerMartialExperience()}`
+                  `武学修炼${typeof getMartialPracticeDisplayName === 'function' ? getMartialPracticeDisplayName() : '历练'} +${martialAdded}, 当前: ${BattleSettlement.getPlayerMartialExperience()}`
                 );
               }
             } else {
@@ -1410,9 +1410,21 @@
           const gold = parseInt(data.gold, 10) || 0;
           const expReward = parseInt(data.expReward, 10) || 0;
           const lines = [];
-          if (exp > 0) lines.push([`经验 +${exp}`, '#ffeb3b']);
+          if (exp > 0) {
+            const lvExp =
+              typeof getCharLevelExpDisplayName === 'function'
+                ? getCharLevelExpDisplayName()
+                : '经验';
+            lines.push([`${lvExp} +${exp}`, '#ffeb3b']);
+          }
           if (gold > 0) lines.push([`银两 +${gold}`, '#ff9800']);
-          if (expReward > 0) lines.push([`阅历 +${expReward}`, '#9c27b0']);
+          if (expReward > 0) {
+            const yl =
+              typeof getMartialPracticeDisplayName === 'function'
+                ? getMartialPracticeDisplayName()
+                : '历练';
+            lines.push([`${yl} +${expReward}`, '#9c27b0']);
+          }
           if (lines.length === 0) {
             finish();
             return;

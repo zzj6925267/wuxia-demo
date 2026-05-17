@@ -142,9 +142,9 @@
               <span class="char-item-icon">👨‍🦰</span>
               <span class="char-item-name">少侠</span>
             </div>
-            <div class="char-item" onclick="switchCharacter(1)">
-              <span class="char-item-icon">👧</span>
-              <span class="char-item-name">苏瑶</span>
+            <div class="char-item char-item--companion" onclick="switchCharacter(1)" style="display: none;">
+              <span class="char-item-icon">🌸</span>
+              <span class="char-item-name">叶轻绾</span>
             </div>
           </div>
 
@@ -197,7 +197,7 @@
               <div class="status-tooltip" id="healthTooltip">100/100，剩余0</div>
             </div>
             <div class="status-row">
-              <span>经验</span>
+              <span id="charExpRowLabel">经验</span>
               <div class="status-bar-container">
                 <div class="status-bar exp" id="charExpBar"></div>
               </div>
@@ -426,6 +426,7 @@
   <script src="../js/systems/InventorySystem.js"></script>
   
   <!-- UI层 -->
+  <script src="../js/utils/companionParty.js"></script>
   <script src="character.js"></script>
   <script src="map.js"></script>
   
@@ -496,9 +497,21 @@
       const gold = parseInt(data.gold, 10) || 0;
       const expReward = parseInt(data.expReward, 10) || 0;
       const lines = [];
-      if (exp > 0) lines.push([`经验 +${exp}`, '#ffeb3b']);
+      if (exp > 0) {
+        const lvExp =
+          typeof getCharLevelExpDisplayName === 'function'
+            ? getCharLevelExpDisplayName()
+            : '经验';
+        lines.push([`${lvExp} +${exp}`, '#ffeb3b']);
+      }
       if (gold > 0) lines.push([`银两 +${gold}`, '#ff9800']);
-      if (expReward > 0) lines.push([`阅历 +${expReward}`, '#9c27b0']);
+      if (expReward > 0) {
+        const martialExp =
+          typeof getMartialPracticeDisplayName === 'function'
+            ? getMartialPracticeDisplayName()
+            : '历练';
+        lines.push([`${martialExp} +${expReward}`, '#9c27b0']);
+      }
       let i = 0;
       function next() {
         if (i >= lines.length) return;
@@ -801,7 +814,7 @@
           const martialAdded = BattleSettlement.applyMartialYueliFromBattleRewards(rewards);
           if (martialAdded > 0) {
             console.log(
-              `武学修炼阅历 +${martialAdded}, 当前: ${BattleSettlement.getPlayerMartialExperience()}`
+              `武学修炼${typeof getMartialPracticeDisplayName === 'function' ? getMartialPracticeDisplayName() : '历练'} +${martialAdded}, 当前: ${BattleSettlement.getPlayerMartialExperience()}`
             );
           }
         } else {

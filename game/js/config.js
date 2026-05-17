@@ -8,7 +8,7 @@
  */
 const GAME_CONFIG = {
   /** 对外展示与存档元数据（与根目录 version.json 保持一致，发版时一并改） */
-  GAME_VERSION: '0.1.0',
+  GAME_VERSION: '0.1.1',
 
   /**
    * 本地数据（如武学 localStorage）结构版本，与存档 version 分离。
@@ -45,6 +45,11 @@ const GAME_CONFIG = {
 
   /** 每升 1 级获得的四维属性点（1 级不发，从 2 级起每级 +N） */
   STAT_POINTS_PER_LEVEL: 5,
+
+  /** 角色面板 · 等级池（game_save_0.player.exp / char.exp.current）对外名 */
+  CHAR_LEVEL_EXP_DISPLAY_NAME: '经验',
+  /** 武学页 · 修炼池（localStorage.playerExperience / 战后 expReward）对外名 */
+  MARTIAL_PRACTICE_DISPLAY_NAME: '历练',
 
   // 属性影响系数
   STAT_MULTIPLIERS: {
@@ -244,11 +249,16 @@ function processPartyBattleYueli(save, partyCharIds, amount, options) {
     syncPartyMemberToSavePlayer(save, ch);
     membersUpdated++;
 
-    if (typeof window !== 'undefined' && window.characters && window.characters[idx]) {
-      window.characters[idx].level = ch.level;
-      ensureCharacterExp(window.characters[idx]);
-      window.characters[idx].exp.current = ch.exp.current;
-      window.characters[idx].remainingPoints = ch.remainingPoints;
+    if (typeof window !== 'undefined' && window.characters) {
+      const mem = window.characters.find(function (c) {
+        return Number(c.id) === numId;
+      });
+      if (mem) {
+        mem.level = ch.level;
+        ensureCharacterExp(mem);
+        mem.exp.current = ch.exp.current;
+        mem.remainingPoints = ch.remainingPoints;
+      }
     }
   });
 
@@ -387,7 +397,7 @@ function reconcileYueliOnCharacterPanel() {
             reconcileProtagonistStatPoints(slot);
           }
         }
-        if (typeof window !== 'undefined' && window.characters && window.characters[idx]) {
+        if (typeof window !== 'undefined' && window.characters) {
           const mem = window.characters.find(function (c) {
             return Number(c.id) === Number(slot.id);
           });
@@ -397,6 +407,26 @@ function reconcileYueliOnCharacterPanel() {
             mem.exp.current = slot.exp.current;
             mem.remainingPoints = slot.remainingPoints;
           }
+        }
+        try {
+          const rawPc = localStorage.getItem('playerCharacters');
+          if (rawPc) {
+            const pcList = JSON.parse(rawPc);
+            const pcMem = Array.isArray(pcList)
+              ? pcList.find(function (c) {
+                  return Number(c.id) === Number(slot.id);
+                })
+              : null;
+            if (pcMem && slot.exp) {
+              ensureCharacterExp(pcMem);
+              pcMem.level = slot.level;
+              pcMem.exp.current = slot.exp.current;
+              pcMem.remainingPoints = slot.remainingPoints;
+              localStorage.setItem('playerCharacters', JSON.stringify(pcList));
+            }
+          }
+        } catch (e) {
+          console.warn('reconcileYueli companion playerCharacters', e);
         }
       });
     }
@@ -469,7 +499,31 @@ function processYueliLevelUpsForSave(save, options) {
 }
 
 // 暴露到全局
+/** 角色等级经验条 / 战后 save.player.exp 飘字 */
+function getCharLevelExpDisplayName() {
+  if (GAME_CONFIG && GAME_CONFIG.CHAR_LEVEL_EXP_DISPLAY_NAME) {
+    return String(GAME_CONFIG.CHAR_LEVEL_EXP_DISPLAY_NAME);
+  }
+  return '经验';
+}
+
+/** 武学修炼 / playerExperience / 战后 expReward 飘字 */
+function getMartialPracticeDisplayName() {
+  if (GAME_CONFIG && GAME_CONFIG.MARTIAL_PRACTICE_DISPLAY_NAME) {
+    return String(GAME_CONFIG.MARTIAL_PRACTICE_DISPLAY_NAME);
+  }
+  return '历练';
+}
+
+/** @deprecated 请用 getMartialPracticeDisplayName（武学池）或 getCharLevelExpDisplayName（角色等级池） */
+function getYueliDisplayName() {
+  return getMartialPracticeDisplayName();
+}
+
 window.GAME_CONFIG = GAME_CONFIG;
+window.getCharLevelExpDisplayName = getCharLevelExpDisplayName;
+window.getMartialPracticeDisplayName = getMartialPracticeDisplayName;
+window.getYueliDisplayName = getYueliDisplayName;
 window.GAME_STATE = GAME_STATE;
 window.SKILL_TYPE = SKILL_TYPE;
 window.CHARACTER_TYPE = CHARACTER_TYPE;
@@ -483,6 +537,42 @@ window.syncProtagonistLevelExpFromPlayer = syncProtagonistLevelExpFromPlayer;
 window.processYueliLevelUpsForSave = processYueliLevelUpsForSave;
 window.reconcileProtagonistStatPoints = reconcileProtagonistStatPoints;
 window.deriveBaseStatFromFourDim = deriveBaseStatFromFourDim;
+
+/**
+ * 角色面板打开队友时：结算该角色独立阅历池（char.exp.current）并写回存档。
+ * @returns {{ levelsGained: number, pointsGained: number }}
+ */
+function reconcilePartyMemberYueliOnPanel(char) {
+  if (!char || Number(char.id) === 1) {
+    return { levelsGained: 0, pointsGained: 0 };
+  }
+  ensureCharacterExp(char);
+  const ups = applyCharacterYueliLevelUps(char);
+  if (ups <= 0) {
+    return { levelsGained: 0, pointsGained: 0 };
+  }
+  const pointsGained = ups * getStatPointsPerLevel();
+  char.remainingPoints = (char.remainingPoints || 0) + pointsGained;
+  if (typeof reconcileProtagonistStatPoints === 'function') {
+    reconcileProtagonistStatPoints(char);
+  }
+  try {
+    if (typeof window !== 'undefined' && window.characters) {
+      localStorage.setItem('playerCharacters', JSON.stringify(window.characters));
+    }
+    const sd = localStorage.getItem('game_save_0');
+    if (sd) {
+      const save = JSON.parse(sd);
+      syncPartyMemberToSavePlayer(save, char);
+      localStorage.setItem('game_save_0', JSON.stringify(save));
+    }
+  } catch (e) {
+    console.warn('reconcilePartyMemberYueliOnPanel', e);
+  }
+  return { levelsGained: ups, pointsGained: pointsGained };
+}
+
+window.reconcilePartyMemberYueliOnPanel = reconcilePartyMemberYueliOnPanel;
 
 /**
  * 队伍战/角色面板共用：气血上限 = 四维基础 + 武学 stats.hp + 装备 + 被动 maxHpBuff

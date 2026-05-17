@@ -1,12 +1,12 @@
 {
-  "version": "0.1.0",
-  "build": 10,
-  "date": "2026-05-17",
-  "description": "武学图标与黑风寨养成检验、队友阅历与主线黑风寨等重大进度",
+  "version": "0.1.1",
+  "build": 11,
+  "date": "2026-05-16",
+  "description": "开局角色创建、陌路相逢队友线、青石镇 NPC 与战斗头像等整合",
   "changes": [
-    "1. 武学页：招式纯图标、未解锁灰态、悬停说明；浮窗数值整数化；正阳/踏云/落草招式 PNG（ma_skill_*）",
-    "2. 队友战后角色阅历、角色页阅历积压结算；装备悬停预览；martialSkillDamage 主动伤害表",
-    "3. 黑风寨副本推进与 Boss 数值（单人满重三件套基准）、主线 b08～b10、正阳贡献与苏瑶传功",
-    "4. 开发自测：新局重置、章节跳过、正阳三件套一重；git 983df6a"
+    "1. 新局：首页「新的江湖」→ 开局问答（黑屏打字机、五题四维预览+确定）→ 青石镇；newGameBootstrap + characterCreation 数据",
+    "2. 奇遇《陌路相逢》：taskData / qingstoneCompanionQuest、队友入队与战后阅历；三敌战斗头像 adv_companion_*.png",
+    "3. 青石镇：此地 NPC 枢纽、李师傅铁匠铺、贺行舟常驻；背包 parry 中文与 AttributeHelper",
+    "4. 角色/武学立绘放大；inventory 编码与装备掉落整理；开发页 dev_companion_reset"
   ]
 }

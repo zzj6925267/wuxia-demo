@@ -1,6 +1,6 @@
 # 武侠风云（wuxia-demo）— 协作小约定
 
-面向：新开聊天、换模型、或他人接手时，先扫 **`MEMORY.md`**（项目记忆与决策）再扫本文。**Cursor Agent**：见 **`.cursor/rules/read-wuxia-demo-memory.mdc`**（父仓库根）或 **`wuxia-demo/.cursor/rules/read-project-memory.mdc`**（仅打开子目录时）— `alwaysApply: true`，写代码前应先读 MEMORY + AGENTS。
+面向：新开聊天、换模型、或他人接手时，先扫 **`MEMORY.md`**（项目记忆与决策）再扫本文。**Cursor Agent**：见 **`.cursor/rules/read-project-memory.mdc`**、**`.cursor/rules/utf8-chinese-ui-files.mdc`**（`alwaysApply: true`）；从父目录 `WuXiaDemo/` 打开工程时，上层 `.cursor/rules/` 可作镜像。
 
 ## 项目与运行
 

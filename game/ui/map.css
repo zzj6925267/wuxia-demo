@@ -638,11 +638,11 @@ body {
 .char-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
+  gap: 12px;
+  padding: 10px 20px 10px 12px;
   background: linear-gradient(145deg, #2d3436, #1a1a2e);
   border: 2px solid #3d4345;
-  border-radius: 25px;
+  border-radius: 28px;
   cursor: pointer;
   transition: all 0.3s;
 }
@@ -660,12 +660,35 @@ body {
 
 .char-item-icon {
   font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.char-item-icon--portrait {
+  width: 96px;
+  height: 96px;
+  font-size: 0;
+  flex-shrink: 0;
+}
+
+.char-portrait-img--list {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  object-position: center bottom;
+  display: block;
+}
+
+.char-portrait-emoji--list {
+  font-size: 42px;
+  line-height: 1;
 }
 
 .char-item-name {
   color: #e0e0e0;
   font-weight: bold;
-  font-size: 14px;
+  font-size: 15px;
 }
 
 /* 信息页签 */
@@ -696,6 +719,36 @@ body {
   padding: 18px;
   border: 3px solid #c9a227;
   box-shadow: 0 0 20px rgba(201, 162, 39, 0.3);
+}
+
+.char-icon--portrait {
+  font-size: 0;
+  width: 220px;
+  height: 220px;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+
+.char-portrait-img--center {
+  width: 208px;
+  height: 208px;
+  max-width: none;
+  max-height: none;
+  object-fit: contain;
+  object-position: center bottom;
+  display: block;
+}
+
+.char-portrait-img--flip-h {
+  transform: scaleX(-1);
+}
+
+.char-portrait-emoji--center {
+  font-size: 100px;
+  line-height: 1;
 }
 
 .char-level {
@@ -1234,6 +1287,24 @@ body {
   .char-icon {
     font-size: 64px;
     padding: 14px;
+  }
+
+  .char-icon--portrait {
+    width: 176px;
+    height: 176px;
+    padding: 5px;
+    font-size: 0;
+  }
+
+  .char-portrait-img--center {
+    width: 166px;
+    height: 166px;
+  }
+
+  .char-item-icon--portrait,
+  .char-portrait-img--list {
+    width: 80px;
+    height: 80px;
   }
 
   .char-display {

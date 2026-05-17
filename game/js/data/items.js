@@ -231,21 +231,54 @@ const ITEMS = {
     },
     price: 5
   },
-  
-  shijian_sword: {
-    id: 'shijian_sword',
-    name: '石剑',
+
+  /** 李记铁匠铺（青石镇）：十级铁械三件套，品质对齐 items.quality → 背包残品/低品等 */
+  liji_tie_jian: {
+    id: 'liji_tie_jian',
+    name: '铁剑',
     type: 'equipment',
     category: 'equipment',
     equipSlot: 'weapon',
-    quality: 'common',
-    requiredLevel: 5,
-    description: '石制长剑，较为粗糙',
-    icon: '🗿',
+    quality: 'uncommon',
+    requiredLevel: 10,
+    description: '李师傅炉中淬炼的铁剑，剑身沉手，十级弟子方能使开。',
+    icon: '⚔️',
     bonus: {
-      attack: 15
+      attack: 20,
+      critRate: 2
     },
-    price: 50
+    price: 500
+  },
+  liji_tie_dao: {
+    id: 'liji_tie_dao',
+    name: '铁刀',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'weapon',
+    quality: 'uncommon',
+    requiredLevel: 10,
+    description: '单刀厚背，刃口微卷仍利；练刀者十级方可挥得圆转。',
+    icon: '🔪',
+    bonus: {
+      attack: 20
+    },
+    price: 500
+  },
+  liji_tie_quan: {
+    id: 'liji_tie_quan',
+    name: '铁拳套',
+    type: 'equipment',
+    category: 'equipment',
+    equipSlot: 'weapon',
+    quality: 'uncommon',
+    requiredLevel: 10,
+    description: '铁皮指节与软皮内衬，沉桥拳诀弟子十级常用，护指不碍钉劲。',
+    icon: '✊',
+    bonus: {
+      attack: 18,
+      defense: 2
+    },
+    price: 500
   },
   
   jingang_sword: {

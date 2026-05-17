@@ -407,7 +407,13 @@
     const lines = [];
     if (exp > 0) lines.push({ v: exp, text: '经验 +' + exp, color: '#ffeb3b' });
     if (gold > 0) lines.push({ v: gold, text: '银两 +' + gold, color: '#ff9800' });
-    if (expReward > 0) lines.push({ v: expReward, text: '阅历 +' + expReward, color: '#9c27b0' });
+    if (expReward > 0) {
+      const yl =
+        typeof getMartialPracticeDisplayName === 'function'
+          ? getMartialPracticeDisplayName()
+          : '历练';
+      lines.push({ v: expReward, text: yl + ' +' + expReward, color: '#9c27b0' });
+    }
     lines.sort(function (a, b) {
       return a.v - b.v;
     });

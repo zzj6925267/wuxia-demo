@@ -807,6 +807,49 @@ function resolveBattleMaxMp(char) {
   return base + martialMp + equipMp;
 }
 
+function isCompanionJoinedFromSave() {
+  try {
+    const raw = localStorage.getItem('playerState');
+    if (!raw) return false;
+    return !!JSON.parse(raw).companionJoined;
+  } catch (e) {
+    return false;
+  }
+}
+
+function resolveBattleDerivedStat(char, kind) {
+  const s = (char && char.stats) || {};
+  const lv = Math.max(1, parseInt(char && char.level, 10) || 1);
+  const anchor = 5;
+  const str = s.strength != null ? s.strength : anchor;
+  const agi = s.agility != null ? s.agility : anchor;
+  if (typeof deriveBaseStatFromFourDim === 'function') {
+    if (kind === 'attack') return deriveBaseStatFromFourDim('attack', str, lv);
+    if (kind === 'speed') return deriveBaseStatFromFourDim('speed', agi, lv);
+    if (kind === 'hit') return deriveBaseStatFromFourDim('hit', agi, lv);
+    if (kind === 'dodge') return deriveBaseStatFromFourDim('dodge', agi, lv);
+  }
+  if (kind === 'attack') return 50 + (str - anchor) * 3;
+  if (kind === 'speed') return 50 + (agi - anchor) * 2;
+  if (kind === 'hit') return 70 + (agi - anchor);
+  if (kind === 'dodge') return 20 + Math.floor((agi - anchor) * 0.5);
+  return 0;
+}
+
+function getCompanionAllyDisplayName() {
+  if (typeof window.characters !== 'undefined' && window.characters[1] && window.characters[1].name) {
+    return window.characters[1].name;
+  }
+  try {
+    const raw = localStorage.getItem('playerCharacters');
+    if (raw) {
+      const chars = JSON.parse(raw);
+      if (chars[1] && chars[1].name) return chars[1].name;
+    }
+  } catch (e) {}
+  return '叶轻绾';
+}
+
 function getPlayerCharactersFromSave() {
   if (typeof window.applyPlayerCharactersFromStorage === 'function') {
     window.applyPlayerCharactersFromStorage();
@@ -825,7 +868,7 @@ function getPlayerCharactersFromSave() {
   console.log('=== battle.js 检查角色系统 ===');
   console.log('typeof window.characters:', typeof window.characters);
   console.log('window.characters?.length:', window.characters?.length);
-  console.log('阳刚加成(少侠/苏瑶):', yangGangBonus1, yangGangBonus2);
+  console.log('阳刚加成(少侠/队友):', yangGangBonus1, yangGangBonus2);
   
   if (typeof window.characters !== 'undefined' && window.characters.length >= 2) {
     console.log('走角色系统路径');
@@ -848,7 +891,7 @@ function getPlayerCharactersFromSave() {
     const char2FinalMaxMp = resolveBattleMaxMp(window.characters[1]);
     
     console.log('少侠血量 - 最终:', char1FinalMaxHp, '内力:', char1FinalMaxMp);
-    console.log('苏瑶血量 - 最终:', char2FinalMaxHp, '内力:', char2FinalMaxMp);
+    console.log('队友血量 - 最终:', char2FinalMaxHp, '内力:', char2FinalMaxMp);
     
     // 获取武学基础加成
     const char1MartialAttack = getMartialBonusForChar(window.characters[0], 'attack');
@@ -869,28 +912,28 @@ function getPlayerCharactersFromSave() {
         maxHp: char1FinalMaxHp,
         mp: char1FinalMaxMp,
         maxMp: char1FinalMaxMp,
-        attack: Math.floor((50 + window.characters[0].stats.strength * 3) * yangGangBonus1) + char1MartialAttack + char1InnerBonuses.attackBonus, 
-        defense: (window.characters[0].stats.defense || 50) + char1InnerBonuses.defenseBonus, 
-        speed: 50 + window.characters[0].stats.agility * 2 + char1MartialSpeed + char1InnerBonuses.speedBonus,
-        hit: 70 + window.characters[0].stats.agility + (char1InnerBonuses.hitBonus || 0), 
-        dodge: 20 + Math.floor(window.characters[0].stats.agility * 0.5) + char1MartialDodge + char1InnerBonuses.dodgeBonus, 
+        attack: Math.floor(resolveBattleDerivedStat(window.characters[0], 'attack') * yangGangBonus1) + char1MartialAttack + char1InnerBonuses.attackBonus,
+        defense: (window.characters[0].stats.defense || 50) + char1InnerBonuses.defenseBonus,
+        speed: resolveBattleDerivedStat(window.characters[0], 'speed') + char1MartialSpeed + char1InnerBonuses.speedBonus,
+        hit: resolveBattleDerivedStat(window.characters[0], 'hit') + (char1InnerBonuses.hitBonus || 0),
+        dodge: resolveBattleDerivedStat(window.characters[0], 'dodge') + char1MartialDodge + char1InnerBonuses.dodgeBonus, 
         parry: (window.characters[0].stats.parry || 20) + (char1InnerBonuses.parryBonus || 0),
         stats: window.characters[0].stats
       },
       { 
         id: 2, 
-        name: '苏瑶', 
+        name: getCompanionAllyDisplayName(), 
         avatar: femaleAvatar, 
         level: char2Level, 
         hp: char2FinalMaxHp,
         maxHp: char2FinalMaxHp,
         mp: char2FinalMaxMp,
         maxMp: char2FinalMaxMp,
-        attack: Math.floor((50 + window.characters[1].stats.strength * 3) * yangGangBonus2) + char2MartialAttack + char2InnerBonuses.attackBonus, 
-        defense: (window.characters[1].stats.defense || 50) + char2InnerBonuses.defenseBonus, 
-        speed: 50 + window.characters[1].stats.agility * 2 + char2MartialSpeed + char2InnerBonuses.speedBonus,
-        hit: 70 + window.characters[1].stats.agility + (char2InnerBonuses.hitBonus || 0), 
-        dodge: 20 + Math.floor(window.characters[1].stats.agility * 0.5) + char2MartialDodge + char2InnerBonuses.dodgeBonus, 
+        attack: Math.floor(resolveBattleDerivedStat(window.characters[1], 'attack') * yangGangBonus2) + char2MartialAttack + char2InnerBonuses.attackBonus,
+        defense: (window.characters[1].stats.defense || 50) + char2InnerBonuses.defenseBonus,
+        speed: resolveBattleDerivedStat(window.characters[1], 'speed') + char2MartialSpeed + char2InnerBonuses.speedBonus,
+        hit: resolveBattleDerivedStat(window.characters[1], 'hit') + (char2InnerBonuses.hitBonus || 0),
+        dodge: resolveBattleDerivedStat(window.characters[1], 'dodge') + char2MartialDodge + char2InnerBonuses.dodgeBonus, 
         parry: (window.characters[1].stats.parry || 20) + (char2InnerBonuses.parryBonus || 0),
         stats: window.characters[1].stats
       }
@@ -937,11 +980,11 @@ function getPlayerCharactersFromSave() {
             maxHp: char1FinalMaxHp,
             mp: char1FinalMaxMp,
             maxMp: char1FinalMaxMp,
-            attack: Math.floor((50 + char1Str * 3) * yangGangBonus1) + b1Atk + char1InnerBonuses.attackBonus, 
-            defense: (chars[0].stats.defense || 50) + char1InnerBonuses.defenseBonus, 
-            speed: 50 + char1Agi * 2 + b1Spd + char1InnerBonuses.speedBonus,
-            hit: 70 + char1Agi + (char1InnerBonuses.hitBonus || 0), 
-            dodge: 20 + Math.floor(char1Agi * 0.5) + b1Dod + char1InnerBonuses.dodgeBonus, 
+            attack: Math.floor(resolveBattleDerivedStat(chars[0], 'attack') * yangGangBonus1) + b1Atk + char1InnerBonuses.attackBonus,
+            defense: (chars[0].stats.defense || 50) + char1InnerBonuses.defenseBonus,
+            speed: resolveBattleDerivedStat(chars[0], 'speed') + b1Spd + char1InnerBonuses.speedBonus,
+            hit: resolveBattleDerivedStat(chars[0], 'hit') + (char1InnerBonuses.hitBonus || 0),
+            dodge: resolveBattleDerivedStat(chars[0], 'dodge') + b1Dod + char1InnerBonuses.dodgeBonus, 
             parry: (chars[0].stats.parry || 20) + (char1InnerBonuses.parryBonus || 0),
             stats: chars[0].stats
           },
@@ -954,11 +997,11 @@ function getPlayerCharactersFromSave() {
             maxHp: char2FinalMaxHp,
             mp: char2FinalMaxMp,
             maxMp: char2FinalMaxMp,
-            attack: Math.floor((50 + char2Str * 3) * yangGangBonus2) + b2Atk + char2InnerBonuses.attackBonus, 
-            defense: (chars[1].stats.defense || 50) + char2InnerBonuses.defenseBonus, 
-            speed: 50 + char2Agi * 2 + b2Spd + char2InnerBonuses.speedBonus,
-            hit: 70 + char2Agi + (char2InnerBonuses.hitBonus || 0), 
-            dodge: 20 + Math.floor(char2Agi * 0.5) + b2Dod + char2InnerBonuses.dodgeBonus, 
+            attack: Math.floor(resolveBattleDerivedStat(chars[1], 'attack') * yangGangBonus2) + b2Atk + char2InnerBonuses.attackBonus,
+            defense: (chars[1].stats.defense || 50) + char2InnerBonuses.defenseBonus,
+            speed: resolveBattleDerivedStat(chars[1], 'speed') + b2Spd + char2InnerBonuses.speedBonus,
+            hit: resolveBattleDerivedStat(chars[1], 'hit') + (char2InnerBonuses.hitBonus || 0),
+            dodge: resolveBattleDerivedStat(chars[1], 'dodge') + b2Dod + char2InnerBonuses.dodgeBonus, 
             parry: (chars[1].stats.parry || 20) + (char2InnerBonuses.parryBonus || 0),
             stats: chars[1].stats
           }
@@ -986,7 +1029,7 @@ function getPlayerCharactersFromSave() {
     
     return [
       { id: 1, name: '少侠', avatar: maleAvatar, level: 10, hp: 250, maxHp: 250, mp: 120, maxMp: 120, attack: Math.floor(80 * yangGangBonus1), defense: 52, speed: 72, hit: 80, dodge: 45, parry: 38, stats: { strength: 10, agility: 10, bone: 10, qi: 10, mp: 120, maxMp: 120 }, equipped: {} },
-      { id: 2, name: char2Data?.name || '苏瑶', avatar: femaleAvatar, level: char2Data?.level || 1, hp: char2Hp, maxHp: char2Hp, mp: char2Mp, maxMp: char2Mp, attack: Math.floor(80 * yangGangBonus2), defense: 45, speed: 72, hit: 80, dodge: 45, parry: 28, stats: char2Data?.stats || { strength: 10, agility: 10, bone: 10, qi: 10, mp: char2Mp, maxMp: char2Mp }, equipped: char2Data?.equipped || {} }
+      { id: 2, name: char2Data?.name || getCompanionAllyDisplayName(), avatar: femaleAvatar, level: char2Data?.level || 1, hp: char2Hp, maxHp: char2Hp, mp: char2Mp, maxMp: char2Mp, attack: Math.floor(80 * yangGangBonus2), defense: 45, speed: 72, hit: 80, dodge: 45, parry: 28, stats: char2Data?.stats || { strength: 10, agility: 10, bone: 10, qi: 10, mp: char2Mp, maxMp: char2Mp }, equipped: char2Data?.equipped || {} }
     ];
   }
   
@@ -1072,7 +1115,7 @@ function getPlayerCharactersFromSave() {
       },
       { 
         id: 2, 
-        name: char2Data?.name || '苏瑶', 
+        name: char2Data?.name || getCompanionAllyDisplayName(), 
         avatar: femaleAvatar, 
         level: char2Level, 
         hp: char2MaxHp, 
@@ -1104,7 +1147,7 @@ function getPlayerCharactersFromSave() {
     
     return [
       { id: 1, name: '少侠', avatar: maleAvatar, level: 10, hp: 250, maxHp: 250, mp: fallbackMp1, maxMp: fallbackMp1, attack: Math.floor(80 * yangGangBonus1), defense: 52, speed: 72, hit: 80, dodge: 45, parry: 38, stats: { strength: 10, agility: 10, bone: 10, qi: 10 }, equipped: {} },
-      { id: 2, name: char2Data?.name || '苏瑶', avatar: femaleAvatar, level: char2Level, hp: fallbackHp2, maxHp: fallbackHp2, mp: fallbackMp2, maxMp: fallbackMp2, attack: Math.floor((50 + char2Str * 3) * yangGangBonus2), defense: 45, speed: 50 + char2Agi * 2, hit: 70 + char2Agi, dodge: 20 + Math.floor(char2Agi * 0.5), parry: 28, stats: { strength: char2Str, agility: char2Agi, bone: char2Bone, qi: char2Qi }, equipped: char2Data?.equipped || {} }
+      { id: 2, name: char2Data?.name || getCompanionAllyDisplayName(), avatar: femaleAvatar, level: char2Level, hp: fallbackHp2, maxHp: fallbackHp2, mp: fallbackMp2, maxMp: fallbackMp2, attack: Math.floor((50 + char2Str * 3) * yangGangBonus2), defense: 45, speed: 50 + char2Agi * 2, hit: 70 + char2Agi, dodge: 20 + Math.floor(char2Agi * 0.5), parry: 28, stats: { strength: char2Str, agility: char2Agi, bone: char2Bone, qi: char2Qi }, equipped: char2Data?.equipped || {} }
     ];
   }
 }
@@ -1165,6 +1208,14 @@ async function initBattle() {
   }
 
   let alliesForBattle = currentPlayerCharacters;
+  if (!isCompanionJoinedFromSave()) {
+    alliesForBattle = alliesForBattle.filter(function (c) {
+      return Number(c.id) === 1;
+    });
+    if (!alliesForBattle.length && currentPlayerCharacters.length) {
+      alliesForBattle = [currentPlayerCharacters[0]];
+    }
+  }
   if (enemy && enemy.sparProtagonistOnly) {
     alliesForBattle = alliesForBattle.filter(function (c) {
       return Number(c.id) === 1;
@@ -1467,7 +1518,7 @@ function renderCharacterCard(char) {
   const isActive =
     !battleState.battleEnded &&
     battleState.turnOrder[battleState.currentTurnIndex] === char;
-  const fallbackIcon = char.name === '少侠' ? '⚔️' : char.name === '苏瑶' ? '🌸' : (char.icon || '👤');
+  const fallbackIcon = char.name === '少侠' ? '⚔️' : (char.name === '叶轻绾' || char.id === 2) ? '🌸' : (char.icon || '👤');
   const hasAvatar = char.avatar && char.avatar !== '';
   const flipMap =
     typeof window !== 'undefined' && window.CHARACTER_PORTRAIT_FLIP_H_BY_ID
@@ -2692,6 +2743,23 @@ async function showSettlement() {
           localStorage.setItem('qingstone_dojo_spar_victory', '1');
         } catch (err) {
           console.warn('qingstone_dojo_spar_victory', err);
+        }
+      }
+      const advIds = (battleState.enemyTeam || []).map(function (e) {
+        return e && e.id;
+      });
+      if (advIds.indexOf('adv_companion_ambush') >= 0) {
+        try {
+          localStorage.setItem('adv_companion_battle1_victory', '1');
+        } catch (err) {
+          console.warn('adv_companion_battle1_victory', err);
+        }
+      }
+      if (advIds.indexOf('adv_companion_enforcer') >= 0) {
+        try {
+          localStorage.setItem('adv_companion_battle2_victory', '1');
+        } catch (err) {
+          console.warn('adv_companion_battle2_victory', err);
         }
       }
     }

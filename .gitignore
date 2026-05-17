@@ -1,6 +1,8 @@
-# Cursor MCP（含 API Key，勿提交）
+# Cursor MCP（含 API Key，勿提交）；协作规则 .cursor/rules/ 纳入版控
 .cursor/mcp.json
-.cursor/
+.cursor/*
+!.cursor/rules/
+!.cursor/rules/**
 
 # 本地备份目录，勿提交
 _backup_battle_merge_*/

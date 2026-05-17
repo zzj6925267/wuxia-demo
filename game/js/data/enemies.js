@@ -77,6 +77,72 @@ const ENEMIES = {
     ]
   },
   
+  /** 《陌路相逢》奇遇 · 劫信泼皮（伴战） */
+  adv_companion_thug: {
+    id: 'adv_companion_thug',
+    name: '劫信泼皮',
+    level: 8,
+    icon: '🗡️',
+    avatar: '../assets/adv_companion_thug.png',
+    hp: 108,
+    maxHp: 108,
+    attack: 24,
+    defense: 6,
+    speed: 48,
+    hit: 76,
+    dodge: 16,
+    parry: 6,
+    expReward: 22,
+    goldReward: 5,
+    drops: []
+  },
+  /** 《陌路相逢》战 1 · 东市（少侠单挑 + 1 泼皮） */
+  adv_companion_ambush: {
+    id: 'adv_companion_ambush',
+    name: '劫信骨头目',
+    level: 9,
+    icon: '⚔️',
+    avatar: '../assets/adv_companion_ambush.png',
+    battleIntro:
+      '竹棚阴影里转出一名汉子，袖中短刃一亮：「信呢？人也要留下！」',
+    sparProtagonistOnly: true,
+    encounterEnemyIds: ['adv_companion_thug'],
+    hp: 132,
+    maxHp: 132,
+    attack: 30,
+    defense: 9,
+    speed: 54,
+    hit: 80,
+    dodge: 18,
+    parry: 10,
+    expReward: 38,
+    goldReward: 10,
+    drops: [{ itemId: 'gold', chance: 0.85, minAmount: 6, maxAmount: 14 }]
+  },
+  /** 《陌路相逢》战 2 · 镇口（少侠单挑 + 1 泼皮） */
+  adv_companion_enforcer: {
+    id: 'adv_companion_enforcer',
+    name: '镇口执棍客',
+    level: 10,
+    icon: '🏮',
+    avatar: '../assets/adv_companion_enforcer.png',
+    battleIntro:
+      '牌坊下三人堵上来，为首者横棍一拦：「浣花剑阁的小丫头，今日休想走。」',
+    sparProtagonistOnly: true,
+    encounterEnemyIds: ['adv_companion_thug'],
+    hp: 148,
+    maxHp: 148,
+    attack: 34,
+    defense: 11,
+    speed: 56,
+    hit: 82,
+    dodge: 20,
+    parry: 12,
+    expReward: 48,
+    goldReward: 14,
+    drops: [{ itemId: 'gold', chance: 0.9, minAmount: 8, maxAmount: 18 }]
+  },
+
   /** 青石武馆教头线：喂招考校（无武学表，普攻教学；少侠单挑，约 3～4 回合） */
   qingstone_jiaotou_spar: {
     id: 'qingstone_jiaotou_spar',
@@ -185,8 +251,7 @@ const ENEMIES = {
     expReward: 200,
     goldReward: 85,
     drops: [
-      { itemId: 'gold', chance: 1, minAmount: 60, maxAmount: 140 },
-      { itemId: 'shijian_sword', chance: 0.3 }
+      { itemId: 'gold', chance: 1, minAmount: 60, maxAmount: 140 }
     ]
   },
   

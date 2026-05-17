@@ -138,6 +138,12 @@ function fmtAttrBonusPct(attrValue, perPoint) {
 let currentType = '武功';
 let selectedMartialArt = null;
 
+function yueliLabel() {
+  return typeof getMartialPracticeDisplayName === 'function'
+    ? getMartialPracticeDisplayName()
+    : '历练';
+}
+
 /**
  * 测试重置阅历（仅供测试用）
  */
@@ -164,19 +170,56 @@ function testResetExp() {
       renderDetail();
     }
 
-    alert(`已添加2000阅历！当前阅历：${newExp}`);
+    alert(`已添加2000${yueliLabel()}！当前${yueliLabel()}：${newExp}`);
   } catch (e) {
-    console.error('添加阅历失败:', e);
-    alert('添加阅历失败！');
+    console.error('添加' + yueliLabel() + '失败:', e);
+    alert('添加' + yueliLabel() + '失败！');
   }
 }
 
-// 图标映射
+// 图标映射（非初阶或 PNG 加载失败时回退）
 const TYPE_ICONS = {
   '武功': '⚔️',
   '内功': '📿',
   '轻功': '👟'
 };
+
+/** 品阶通用武学图标：初阶武功/内功/轻功列表与详情共用 */
+const MARTIAL_RANK_ICON_URL = {
+  初阶: '../assets/images/UI/ma_ui_martial_icon_chu.png'
+};
+function getMartialRankIconUrl(rank) {
+  return MARTIAL_RANK_ICON_URL[rank] || '';
+}
+
+/** 列表项 / 详情头图：初阶用卷轴 PNG，其余品阶仍按类型 emoji */
+function renderMartialArtIconInner(martial, variant) {
+  const url = getMartialRankIconUrl(martial.rank);
+  const emoji = TYPE_ICONS[martial.type] || '📜';
+  if (!url) {
+    const cls = variant === 'list' ? 'martial-item-icon-emoji' : 'martial-icon-emoji';
+    return '<span class="' + cls + '" aria-hidden="true">' + emoji + '</span>';
+  }
+  const imgClass =
+    variant === 'list' ? 'martial-rank-icon-img martial-rank-icon-img--list' : 'martial-rank-icon-img martial-rank-icon-img--detail';
+  const fallbackClass =
+    variant === 'list'
+      ? 'martial-item-icon-emoji martial-item-icon-emoji--fallback'
+      : 'martial-icon-emoji martial-icon-emoji--fallback';
+  return (
+    '<img class="' +
+    imgClass +
+    '" src="' +
+    url +
+    '" alt="" loading="lazy" decoding="async" ' +
+    'onerror="this.style.display=\'none\';var s=this.nextElementSibling;if(s)s.style.display=\'\'" />' +
+    '<span class="' +
+    fallbackClass +
+    '" aria-hidden="true" style="display:none">' +
+    emoji +
+    '</span>'
+  );
+}
 
 const RANK_CLASSES = {
   '初阶': 'rank-chu-jie',
@@ -223,7 +266,9 @@ function initPage() {
     localStorage.removeItem('martialArtsType');
   }
 
-  // 更新阅历显示
+  const yl = yueliLabel();
+  const ylEl = document.getElementById('martialYueliLabel');
+  if (ylEl) ylEl.textContent = yl + '：';
   document.getElementById('playerExp').textContent = playerExperience;
 
   // 绑定返回按钮（若从小地图/嵌套正阳进入则回到原界面）
@@ -256,11 +301,23 @@ function initPage() {
 // 渲染角色选择器
 function renderCharacterList() {
   const container = document.getElementById('martialCharacterList');
+  if (!container) return;
   const flipMap =
     typeof window !== 'undefined' && window.CHARACTER_PORTRAIT_FLIP_H_BY_ID
       ? window.CHARACTER_PORTRAIT_FLIP_H_BY_ID
       : {};
-  container.innerHTML = martialCharacters.map((char) => `
+  if (
+    typeof CompanionParty !== 'undefined' &&
+    !CompanionParty.canSelectCharacterId(currentMartialCharacterId) &&
+    typeof switchMartialCharacter === 'function'
+  ) {
+    switchMartialCharacter(1);
+  }
+  const roster =
+    typeof CompanionParty !== 'undefined'
+      ? CompanionParty.filterMartialRoster(martialCharacters)
+      : martialCharacters;
+  container.innerHTML = roster.map((char) => `
     <div class="martial-char-item ${char.id === currentMartialCharacterId ? 'active' : ''}" 
          onclick="handleCharacterSwitch(${char.id})">
       <div class="martial-char-card" aria-label="${char.name}">
@@ -278,6 +335,9 @@ function renderCharacterList() {
 
 // 处理角色切换
 function handleCharacterSwitch(charId) {
+  if (typeof CompanionParty !== 'undefined' && !CompanionParty.canSelectCharacterId(charId)) {
+    return;
+  }
   if (charId === currentMartialCharacterId) return;
   if (typeof switchMartialCharacter === 'function') {
     switchMartialCharacter(charId);
@@ -326,7 +386,7 @@ function renderList() {
     <div class="martial-item ${selectedMartialArt?.id === martial.id ? 'selected' : ''} ${martial.equipped ? 'equipped' : ''}" 
          onclick="selectMartialArt(${martial.id})">
       <div class="martial-item-header">
-        <span class="martial-item-icon">${TYPE_ICONS[martial.type]}</span>
+        <span class="martial-item-icon">${renderMartialArtIconInner(martial, 'list')}</span>
         <span class="martial-item-name">${martial.name}</span>
         <span class="martial-item-rank ${RANK_CLASSES[martial.rank]}">${martial.rank}</span>
       </div>
@@ -375,7 +435,11 @@ function renderDetail() {
   }
 
   // 基础信息
-  document.getElementById('detailIcon').textContent = TYPE_ICONS[m.type];
+  const detailIconEl = document.getElementById('detailIcon');
+  detailIconEl.className = getMartialRankIconUrl(m.rank)
+    ? 'martial-icon martial-icon--rank-png'
+    : 'martial-icon';
+  detailIconEl.innerHTML = renderMartialArtIconInner(m, 'detail');
   document.getElementById('detailName').textContent = m.name;
   document.getElementById('detailDesc').textContent = m.description;
 
@@ -408,10 +472,10 @@ function renderDetail() {
     practiceBtn.textContent = '已达最高境界';
     practiceBtn.disabled = true;
   } else if (playerExperience < cost) {
-    practiceBtn.textContent = `修炼 (消耗 ${cost} 阅历) - 阅历不足`;
+    practiceBtn.textContent = `修炼 (消耗 ${cost} ${yueliLabel()}) - ${yueliLabel()}不足`;
     practiceBtn.disabled = true;
   } else {
-    practiceBtn.textContent = `修炼 (消耗 ${cost} 阅历)`;
+    practiceBtn.textContent = `修炼 (消耗 ${cost} ${yueliLabel()})`;
     practiceBtn.disabled = false;
     practiceBtn.onclick = () => practiceMartialArt();
   }
@@ -507,7 +571,7 @@ function practiceMartialArt() {
   const cost = calculatePracticeCost(selectedMartialArt);
   
   if (playerExperience < cost) {
-    showMartialFloatText('阅历不足！', '#ff4444');
+    showMartialFloatText(yueliLabel() + '不足！', '#ff4444');
     return;
   }
 

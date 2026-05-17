@@ -20,13 +20,37 @@ function renderTaskTypes() {
   }
 }
 
+function syncCompanionQuestFromStorage() {
+  if (window.QingstoneCompanionQuest && QingstoneCompanionQuest.reconcileCompanionQuestChain) {
+    QingstoneCompanionQuest.reconcileCompanionQuestChain();
+  }
+}
+
+function applyTaskPageTypeFromUrl() {
+  try {
+    const type = new URLSearchParams(window.location.search).get('type');
+    if (type && typeof TASK_TYPE_CONFIG !== 'undefined' && TASK_TYPE_CONFIG[type]) {
+      currentType = type;
+    } else {
+      const st = JSON.parse(localStorage.getItem('playerState') || '{}');
+      if (st.activeTasks && st.activeTasks.adv_companion_01 && !st.companionJoined) {
+        currentType = 'adventure';
+      }
+    }
+  } catch (e) {}
+}
+
 // 初始化
 function init() {
+  applyTaskPageTypeFromUrl();
+  syncCompanionQuestFromStorage();
   bindEvents();
   renderTaskTypes();
   renderTaskList();
   renderTaskDetail();
   window.addEventListener('pageshow', function () {
+    applyTaskPageTypeFromUrl();
+    syncCompanionQuestFromStorage();
     renderTaskTypes();
     renderTaskList();
     renderTaskDetail();
@@ -76,6 +100,39 @@ function switchTaskType(type) {
   renderTaskDetail();
 }
 
+/** 奇遇《陌路相逢》：只显示链上当前一节（避免多节同时「已完成」误导） */
+function getAdventureCompanionQuestSlice(adventureTasks, playerState) {
+  const active = playerState.activeTasks || {};
+  const companion = adventureTasks
+    .filter(function (t) {
+      return t.id && String(t.id).indexOf('adv_companion_') === 0;
+    })
+    .sort(function (a, b) {
+      return (a.chainOrder || 0) - (b.chainOrder || 0);
+    });
+  const other = adventureTasks.filter(function (t) {
+    return !t.id || String(t.id).indexOf('adv_companion_') !== 0;
+  });
+  let companionSlice = [];
+  if (companion.length && active[companion[0].id]) {
+    for (let i = 0; i < companion.length; i++) {
+      const ts = active[companion[i].id];
+      if (!ts || !(ts.completed || ts.isCompleted)) {
+        companionSlice = [companion[i]];
+        break;
+      }
+    }
+    if (!companionSlice.length) {
+      const last = companion[companion.length - 1];
+      if (active[last.id]) companionSlice = [last];
+    }
+  }
+  const otherDisplay = other.filter(function (task) {
+    return active[task.id];
+  });
+  return companionSlice.concat(otherDisplay);
+}
+
 // 主线串行：只显示「当前」一条（按 chainOrder 首个未完成的）；全部完成后列表为空并提示
 function getCurrentMainQuestSlice(sortedMain, playerState) {
   const active = playerState.activeTasks || {};
@@ -110,6 +167,8 @@ function renderTaskList() {
         ? [...tasksInType].sort((a, b) => (a.chainOrder || 0) - (b.chainOrder || 0))
         : [];
     displayTasks = getCurrentMainQuestSlice(sorted, playerState);
+  } else if (currentType === 'adventure') {
+    displayTasks = getAdventureCompanionQuestSlice(tasksInType, playerState);
   } else {
     const doneFq = playerState.completedFactionQuests || {};
     displayTasks = tasksInType.filter(
@@ -321,7 +380,7 @@ function renderTaskDetail() {
           ${task.rewards.map(reward => `
             <div class="reward-item">
               <span class="reward-icon">${getRewardIcon(reward.type)}</span>
-              <span class="reward-name">${reward.name}</span>
+              <span class="reward-name">${getRewardDisplayName(reward)}</span>
               <span class="reward-value">+${reward.value}</span>
             </div>
           `).join('')}
@@ -329,6 +388,20 @@ function renderTaskDetail() {
       </div>
     </div>
   `;
+}
+
+function getRewardDisplayName(reward) {
+  if (reward && reward.type === 'yueli') {
+    return typeof getMartialPracticeDisplayName === 'function'
+      ? getMartialPracticeDisplayName()
+      : '历练';
+  }
+  if (reward && reward.type === 'exp') {
+    return typeof getCharLevelExpDisplayName === 'function'
+      ? getCharLevelExpDisplayName()
+      : '经验';
+  }
+  return reward && reward.name != null ? reward.name : '';
 }
 
 // 获取奖励图标

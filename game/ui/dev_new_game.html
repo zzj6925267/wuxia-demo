@@ -79,12 +79,16 @@
   </p>
 
   <script src="../js/config.js"></script>
+  <script src="../js/utils/newGameBootstrap.js"></script>
   <script>
+    var FOUR_DIM_DEFAULT =
+      typeof NewGameBootstrap !== 'undefined'
+        ? NewGameBootstrap.FOUR_DIM_ANCHOR
+        : 5;
     var INIT =
       typeof GAME_CONFIG !== 'undefined' && GAME_CONFIG.INITIAL_STATS
         ? GAME_CONFIG.INITIAL_STATS
         : {};
-    var FOUR_DIM_DEFAULT = INIT.strength != null ? INIT.strength : 5;
     var BASE_HP = INIT.maxHp != null ? INIT.maxHp : 100;
     var BASE_MP = INIT.maxMp != null ? INIT.maxMp : 50;
     var BASE_LEVEL = INIT.level != null ? INIT.level : 1;
@@ -172,15 +176,15 @@
       );
       return {
         id: 2,
-        name: '苏瑶',
+        name: '叶轻绾',
         icon: '👧',
         level: BASE_LEVEL,
         gender: '女',
-        faction: '',
+        faction: '浣花剑阁',
         power: 0,
         health: { current: BASE_HP, max: BASE_HP },
         exp: { current: 0, max: 100 },
-        description: '正阳派内门弟子。',
+        description: '浣花剑阁外门弟子，奇遇《陌路相逢》入队后可同行。',
         equipped: {
           weapon: null,
           armor: null,

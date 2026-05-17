@@ -3,13 +3,13 @@
 **用途**：给以后的自己、别的 AI、或同事接手用——**新开对话先读本文 + `AGENTS.md`**，能较快对齐「已经有什么、约定是什么」，减少重复踩坑。  
 **维护**：每次做完**可复用的设计决策、修掉的重要 bug、或换了关键路径**，用一两句话更新对应小节（写日期更好）。
 
-**Cursor**：已在 **`.cursor/rules/read-project-memory.mdc`**（若从父目录打开工程，则还有 **`WuXiaDemo/.cursor/rules/read-wuxia-demo-memory.mdc`**）里设为 **alwaysApply**，Agent 写代码前应自动带上「先读 MEMORY + AGENTS」的约束；其他平台请人工转发上述两文件路径。
+**Cursor**：**`.cursor/rules/read-project-memory.mdc`**、**`.cursor/rules/utf8-chinese-ui-files.mdc`**（均已纳入本仓库版控，`alwaysApply`）。从父目录 `WuXiaDemo/` 打开工程时，可继续保留上层同名规则作镜像。其他平台请人工转发 `MEMORY.md` + `AGENTS.md`。
 
 ---
 
 ## 0. 当前版本（发版对照）
 
-- **`version.json` / `GAME_CONFIG.GAME_VERSION`**：**0.1.0**（build **10**，2026-05-17）— 武学图标 UI、黑风寨养成检验、队友阅历、主线 b08～b10 等；代码提交 **983df6a**。
+- **`version.json` / `GAME_CONFIG.GAME_VERSION`**：**0.1.1**（build **11**，2026-05-16）— 开局角色创建、陌路相逢队友线、青石镇 NPC/铁匠、三敌战斗头像等。
 
 ## 1. 本地怎么跑（以仓库为准）
 
@@ -19,7 +19,7 @@
 - **主线章节跳过（自测）**：**`http://127.0.0.1:3000/ui/dev_chapter_skip.html`** — 下拉选 `main_b_01`～`main_b_10` 起点，写入 `playerState`（不改 `game_save_0`）；可自动跳转青石/舆图/山林，并设 `dev_qingstone_node` / `dev_zhengyang_building` / `dev_forest_spawn` 出生点。
 - **自测重置（任务 + 武学 + 阅历）**：浏览器打开 **`http://127.0.0.1:3000/ui/dev_reset_martial_yueli.html`**（会清 `playerExperience`、`playerMartialArts_*`、`playerState` 内主线/武馆教程等，并清 `qingstone_dojo_spar_victory` 与常见战后 `localStorage` 键；**不改** `game_save_0`），约 1 秒后跳青石镇。
 - **自测：正阳三件套一重**（验招式未解锁灰态）：**`http://127.0.0.1:3000/ui/dev_reset_zhenyang_martial_level.html`** — 仅把 id **1 / 3 / 5** 的 `currentLevel`→1、`practiceTimes`→0（保留已学/装备），约 1 秒后跳武学页。
-- **新局全量归零（2026-05）**：须先 **`node server.js`**（在 `game/` 目录），再开 **`http://127.0.0.1:3000/ui/dev_new_game.html`**（或首页底部「开发：新局重置」）；勿用 `file://` 打开 html，否则会 404 或脚本异常。 — `localStorage` 全清（保留 `ai_config`），写入开局：**1 级、阅历 0、银两 0、四维各 5、气血 100、内力 50、攻击 50、五维修为 0、无已学武学（`playerMartialArts_*` 为 `[]`）**；勿再退回 `INITIAL_PLAYER_MARTIAL_ARTS` 演示三件套。面板基础值用 `deriveBaseStatFromFourDim`（四维=5 为锚点）。
+- **新局全量归零（2026-05）**：须先 **`node server.js`**（在 `game/` 目录）。**正式入口**：首页「新的江湖」→ **`ui/character_creation.html`**（黑屏开场打字机 → 卷轴五题、四维默认 5、每题 +1 预览 → 黑屏淡出 → **青石镇镇口** `qingstone_gate`）。写入逻辑 **`js/utils/newGameBootstrap.js`**（`NewGameBootstrap.resetNewGame(fourDim, saveSlot?)`）。**开发跳过问答**：`ui/dev_new_game.html`（四维全 5，仍清档进青石镇）。勿用 `file://` 打开。开局：**1 级、阅历 0、银两 0、气血/内力/攻击由四维推导、五维修为 0、无已学武学**；问答文案在 **`js/data/characterCreation.js`**（须原创，勿复用他游角色创建句式，如「没落武林世家」「宠溺放任」等）。
 - **PowerShell** 不要用 `cd ... && node ...`；用 `Set-Location ...; node server.js`。
 
 ---
@@ -61,7 +61,7 @@
 - **主线等级与副本落差（策划定案）**：**进黑风寨 Boss 战之前**（b01～b08 + 考校 + 九次剿匪山贼，**不计** Boss 战阅历）目标 **约 15 级**；**b09/b10 任务奖励另计**。黑风寨 Boss **Lv17～20**，养成检验关。
 - **黑风寨 = 养成检验（非硬挡进本）**：主线可推到寨口/进副本；**只推主线、不刷贡献换入门武/不练武学**的玩家允许进寨，但 **Boss 战应明显偏难**（等级 + 武学 + 装备综合），败退后自行回去接澄心堂差事、苏瑶换艺、武学修炼——**打不过不是 bug**，勿为「必过」削弱 Boss 或加进本等级硬门槛（除非策划另定）。
 - **主线 b08～b10（黑风寨）**：b08 首次进山林记结。**`main_b_09` 北峰问讯**：**山贼窝棚**（`shanze_shed`）孟青松问明缘由（`heifu_gate_story_ack`）即结章发任务奖励（`tryCompleteForestMainB09`）；黑风寨入口仅副本进战。**`main_b_10` 清剿黑风寨**：须击败茅老獾（`tryCompleteMainB10OnDungeonCleared`）才结章；打不过卡 b10。任务奖励与副本内战后阅历/掉落**分开结算**。进寨须 b09 已完成。孟青松人设以支线定稿为准。
-- **战后奖励阅历**：飘字「阅历」来自 `expReward`，须写入 **`localStorage.playerExperience`**（武学修炼）；`exp` 写入 **`game_save_0.player.exp`**（少侠角色等级阅历）。二者勿混；`BattleSettlement.applyMartialYueliFromBattleRewards` 供各小地图 `applyPendingBattleRewards` 调用。
+- **两套养成货币（对外名不同，勿混）**：**经验** = 角色等级池（`game_save_0.player.exp` / `char.exp`）→ `getCharLevelExpDisplayName()`；**历练** = 武学修炼池（`playerExperience` / 战后 `expReward`）→ `getMartialPracticeDisplayName()`。逻辑键仍 `exp` / `yueli`。
 - **队友角色阅历（2026-05）**：战后 `exp`（角色等级阅历）除少侠外，**本场参战队友**（`pending_battle_rewards.partyCharIds`，由 `battle.js` 从 `allyTeam` 写入，**不含 id=1**）同额写入 **`playerCharacters` 对应条目的 `exp.current`** 并走与少侠相同的升级公式（`config.js` → `processPartyBattleYueli` / `BattleSettlement.applyLevelYueliFromBattleRewards`）。**仅单人出战**时不发队友阅历。队友**武学修炼阅历**（`expReward`）仍只加少侠侧 `playerExperience`（待奇遇队友养成定案后再拆）。
 - **角色等级阅历池（勿与武学阅历混）**：`game_save_0.player.exp` / `playerCharacters[].exp.current` 表示**当前等级距下一级**的累计值，升级时按 `getExpRequiredForLevel` **逐级扣除**（见 `applyPlayerYueliLevelUps`）。若只加不减会堆到数千，角色页显示「还需负数升级」。**打开角色页**会调 `reconcileYueliOnCharacterPanel` 自动结算积压升级；战后须走 `processYueliLevelUpsForSave` / `applyLevelYueliFromBattleRewards`。
 - **正阳派 NPC「苏瑶」传授入门武**（与可出战队友**不是同一人**，见下节）：对话 `learn_skill` 须同时写 **`playerState.learnedSkills`** 与 **`playerMartialArts_{charId}`**（少侠 charId **1**；`grantZhengyangIntroMartialArt`，名→id 见 `taskData.js` 的 `ZHENGYANG_INTRO_SKILL_MARTIAL_ID`）；仅写 learnedSkills 会导致武学页空、贡献已扣。`repairZhengyangIntroMartialsFromLearnedSkills` 可补旧档。
@@ -97,23 +97,31 @@
 - **茅老獾（终 Boss）**：双人战 + **落草剑经 id6** Lv10；**内功** `innerSkillArtId: 11`（养气术）+ `innerSkillLevel: 10` → 第二回合起与玩家同源 **回合开始内功回血**（`归根`→`inner_yangqi_guigen` 被动表，与 `calculateInnerSkillHeal` 一致）。**第二回合绝尘首叠前**演出：`combatPerformances`（台词→再起手）。战后掉落仍只走主敌。
 - **正阳基础剑式（id1）**：「阳刚」`passiveIds: ['zhenyang_jianfa_yanggang']`（`loadoutPassive`：伤害倍率 +value 叠直刺等主动）；「剑影」`passiveIds: ['jianying_follow']`；旧档内联 `effect` 由 `normalizePlayerMartialArtsList` 从库同步。
 - **武学招式格 UI（2026-05）**：详情区招式为 **纯图标**（`skill-item--icon-only`）；`icon` 字段仍为 emoji 占位，PNG 路径 **`assets/images/UI/skills/ma_skill_{武学id}_{招式id}.png`** 或 `skill.iconUrl`；名称/类型/说明仅在悬停 tooltip。出图清单见 **`game/docs/martial-arts-ui-wuxia-assets.md` §3.10**。
+- **武学列表/详情·初阶图标**：凡 `rank === '初阶'`（武功/内功/轻功统一）用 **`assets/images/UI/ma_ui_martial_icon_chu.png`**（仅卷轴，无 `ma_ui_icon_frame` 金框、无默认米色底格）；中阶及以上仍回退类型 emoji。
 - **招式图标美术基准（定稿 · 2026-05）**：以 **正阳基础剑式** 三枚为准——`ma_skill_1_1`～`1_3`（去水印 + 抠透明底，约 **500×500**，图内保留招式自有金框/造型，**不要**程序侧米色外框）。后续武功/内功/轻功招式图标 **按同一画风与规格** 出图后覆盖同名路径即可；未出图前仍回退 emoji。**正阳吐纳诀**（武学 id 3）已落盘 `ma_skill_3_1`～`3_3`（培元/固本/调息）。**踏云步**（id 5）已落盘 `ma_skill_5_1`～`5_3`（踏云/逐日/凌虚）。**落草剑经**（id 6）已落盘 `ma_skill_6_1`～`6_3`（疾刺/缠影/绝尘）。
 - **招式未解锁态**：`currentLevel < skill.unlockLevel` 时该格 `locked`（例：修为 **6 重** 时 **7 重解锁** 的「剑影」）——**图标全灰**、三格等高对齐；**「N重解锁」** 仅在悬停 tooltip（`skill-tooltip-lock`），格内不占位。判定在 `martialArts.js` 的 `isUnlocked`。
 - **招式浮窗数值展示**：凡倍率/概率/属性加成文案一律 **整数**（`helpers.js` → `formatDisplayInt` / `formatMultiplierAsPercent` 等；武学页 `martialArts.js` 的 `fmtInt`/`fmtPct*`），避免 `1.14*100` 浮点尾巴；战斗内仍用表内浮点算。
 - **落草剑经（id6）**：初阶身法剑；**第一式疾刺**走命中卷，对手**闪避**后 `passiveIds: ['luocao_jici_miss_follow']`（`onActiveMiss`→`battlePassives.js`）并入 `onMissFollow`「续刺」（基础 50%+身法×0.6%），旧档内联 `onMissFollow` 仍兼容；**第二式缠影** `passiveIds: ['luocao_chanying_hit']`（`loadoutPassive`→命中 `hitBonus`，与敌人同形）；**三式绝尘**：`passiveIds: ['juechen_turn_start']` → 回合开始叠 `juechen_dust`（第二回合起、最多 3 层），与正阳「剑影」命中后追击区分；旧档 `turnStartSelfBuff` 仍兼容。
 
-### 3A. 两个「苏瑶」——不是同一人（策划澄清 · 2026-05）
+### 3A. 正阳苏瑶 vs 队友叶轻绾——不是同一人（策划定案 · 2026-05）
 
-代码里暂时都叫「苏瑶」，是**占位重名**，勿当同一条剧情线。
+| | **正阳派 NPC · 苏瑶** | **可出战队友 · 叶轻绾（charId 2）** |
+|---|----------------------|-------------------------------------|
+| **身份** | 正阳内门，传功、贡献、主线 b05～b08 | **浣花剑阁**外门弟子，江湖门派（与正阳**无关**） |
+| **名字** | **苏瑶**（定稿） | **叶轻绾**（定稿；`character.js` / `battle.js` / `martialArtsData.js` 已改） |
+| **立绘** | — | 角色面板列表 + 装备区中央头像与武学页同源：`ma_ui_char_portrait_xiao_yunche` / `ma_ui_char_portrait_su_qingli`（`CHARACTER_PORTRAIT_FLIP_H_BY_ID`） |
+| **入队** | — | 奇遇 **《陌路相逢》**（`taskData.adventure`）：玩家**自找**触发，与主线无前置；**任意进度**可接可做（含进黑风寨之后） |
+| **入口** | `npcData.js` → `suyao`；正阳/舆图主线 | 青石镇 **后巷** 地点下 NPC，**点击对话**才 `acceptTask`；未对话前任务页「奇遇」为空 |
+| **战斗/入队** | — | 全链 **2 场战**（战 2 建议镇口或东市）；**战后回后巷**同 NPC 对话 → 点 **「邀请同行」** → `companionJoined`（柳如意式，非自动入队） |
+| **数据键** | — | 仍 **charId 2**、`playerMartialArts_2`；头像 `suyao.png` 可暂用至新立绘 |
 
-| | **正阳派 NPC · 苏瑶** | **可出战队友（占位）** |
-|---|----------------------|------------------------|
-| **身份** | 内门弟子，传功、贡献、主线 b05～b08 | **另一人**；奇遇·入队；**人设 / 任务未定** |
-| **主要入口** | `npcData.js` → `suyao`；`map.html` / `taskData.js` 主线 | `character.js` **charId `2`**；`battle.js` 第二人；`playerMartialArts_2`；`martialArtsData` 角色 id 2；山林 `forest_map` 等 |
-| **名字** | 定稿为 **苏瑶** | **后期改名**（只改显示名与文案即可） |
-| **现在要不要动** | 保持 | **数值与存档键不动**（仍用 id 2、现有属性/头像资源 `suyao.png` 可先顶着） |
+**《陌路相逢》梗概（5 节任务链，≈主线一半篇幅，靠剧情/跑腿拉长）**：下山送阁中书信，信物被劫、受伤躲后巷 → 药铺/打听 → **战 1** → 揭仇 → **战 2** → 后巷邀请入队。
 
-**后续落地（策划就绪再做）**：定新人设名 → 批量改 `name` / 对话 / 任务文案 → 编**奇遇入队任务**（`taskData` 的 `adventure` 等）；**勿**把正阳苏瑶的对话/贡献逻辑硬接到队友身上。协作者读档、写剧情时默认：**提到「苏瑶」先问是 NPC 还是 charId 2**。
+**已实现（2026-05-17）**：`taskData.adventure` 五条 `adv_companion_01`～`05`；青石镇 `qingstoneCompanionQuest.js` + 地图 NPC 区（后巷叶轻绾、仁心药铺贺行舟、东市/镇口迎战）；战后 `companionJoined` + `battle.js` 未入队仅 id=1 出战；入队按钮「邀请同行」。镇口战 2 胜后步骤为 **`invite`**（`advCompanionAwaitInvite` / `companionBattle2Cleared`），勿与未完成的 `adv_companion_05` 混用，否则后巷无人、镇口可重复战。**战斗头像**：`game/assets/adv_companion_thug.png`（劫信泼皮伴战）、`adv_companion_ambush.png`（劫信骨头目）、`adv_companion_enforcer.png`（镇口执棍客）；`enemies.js` → `avatar`。**UI**：`companionParty.js` — 未入队不展示 charId 2。**养成**：队友独立 `playerMartialArts_2`、`char.exp` 战后阅历；武学页「阅历」仍全局共享（`playerExperience`）；切队友勿写 `save.player` 根级 hp/mp（已修 2026-05）。
+
+**后路（可选，未做）**：柳如意式队友养成/升级支线可挂 **浣花剑阁**（回阁、师叔赐招、同门试剑等）；实现时勿接 `npcData.suyao`。
+
+协作者：**「苏瑶」= 正阳 NPC**；**「叶轻绾」= 队友 charId 2**。
 
 ---
 
@@ -125,6 +133,7 @@
 - **青石武馆教头「问径」领抄本**：发放前会 **`qingstoneStripAllEquipmentFromBag`** 移除行囊内**全部装备类**条目（避免与黑风寨掉落、旧演示档混叠），再只加**本路秘籍 + 一木械**；`inventory.html` / `inventory.js` 不再在无存档时注入铁剑皮甲等演示装备。
 - **破旧夜行衣** `pojiu_yeyi`：`quality: legendary`（绝品），**`requiredLevel: 20`**（与策划口述一致）。
 - **背包判断主角等级**：勿只信 `playerData.level`（常缺省）；用 **`getProtagonistLevelForInventoryUi()`**——优先 **`game_save_0.player.level`**，见 `inventory.js`。
+- **改 `game/ui/inventory.js` 防乱码**：该文件含大量中文 UI 串。用 Cursor **StrReplace / 直接粘贴保存** 时，偶发会把 UTF-8 中文变成 `??`（整页按钮、等级文案全坏）。**优先**：在 `wuxia-demo` 根用 **Node 脚本 `fs.readFileSync`/`writeFileSync(..., 'utf8')`** 改；或只改无中文的英文行。若已坏：在 **`wuxia-demo` 仓库** `git restore game/ui/inventory.js` 再重改。PowerShell 重定向/无 BOM 保存也易踩坑，勿用来写该文件。
 
 ---
 
@@ -175,6 +184,8 @@
 - **大地图进出点**：从 `zhengyang_clan` 进嵌套正阳后，离开须回到 **正阳派** 节点（`goBackToWorldMap` 记 `world_map_return_location` + `currentLocation`）；`zhengyang_map.html` 返回亦写 `zhengyang_clan`。勿落默认悦来客栈。
 - **小地图底栏四键（背包/武学/任务/角色）**：打开子页前 `submap_quick_nav.js` 经各页 **`window.getSubmapLocationForPersist`** 写入站位键（山林 `forest_map_location`、青石 `qingstone_map_location`、黑风寨 `heifeng_dungeon_location`）；`init` 读回，避免关页后落默认道口/镇口。
 - **青石镇子图站位**：`qingstone_map.html` 在 `travelTo`、教头/旁白对话收起时写入 **`localStorage.qingstone_map_location`**；`init` 在消费完 `preBattleLocation` / `dev_qingstone_node` 后读该键，避免从武学/背包/战斗返回时落回镇口或告示墙。
+- **青石镇子图镜头**：`#mapWorld` 平移；`renderMap` 后始终把**当前地点**居中到扣除底栏后的安全视口；clamp 按全部节点坐标范围推算（避免 800×580 与视口同大时只能平移十几像素）。
+- **青石镇「此地NPC」**：`qingstone_map.html` 统一 `#qingstoneNpcSection` / `refreshQingstoneNpcHub`（对齐正阳派 `map.html`）；点击 NPC 先出对话选项（含「打听几句闲话」），街坊见闻走 `QINGSTONE_TOWN_TIP_LINES` / `QINGSTONE_TOWN_RUMORS` 嵌在对话里，不外露按钮；同地点可多 NPC（如铁匠铺 **李师傅**购武 + **学徒**打听）。**常驻**：仁心药铺 **贺行舟**；**李记铁匠铺** `QINGSTONE_SMITH_SHOP` 售 `liji_tie_jian/dao/quan`（低品·十级·500两·不限购，入背包可装备）；东市/镇口敌对仍按任务刷。
 - **山林初阶敌人速度**：`shanze_louluo_1/2` 速度约 **56/62**（对齐少侠 `50+身法×2` 量级）；勿再用个位数，否则新档高身法会压满速补、喽啰不出手。青竹蛇同调至 **58/64**。
 - **教头喂招考校**：`enemies.js` → `qingstone_jiaotou_spar` 设 **`sparProtagonistOnly`**（`battle.js` 仅 id=1 入场）、气血约 **460**、攻弱于野怪，目标 **3～4 回合**打完（勿双人队战秒杀）。
 - **角色装备弹窗**：`character.js` 的 **`getEquipPickerItemsForChar`** 只列 **`playerData.inventory`** 里对应槽位装备（已去掉 `PLAYER_INVENTORY` 演示剑）。**木械三选一**：问径后仅展示 **`qingstoneDojoTutorial.weaponId`** 那一件木械；教头发抄本+木械**只入背包，不自动穿戴**，玩家到角色面板手动装备。

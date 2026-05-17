@@ -269,15 +269,15 @@ function createDefaultCharacters() {
     },
     {
       id: 2,
-      name: '苏瑶',
-      icon: '👧',
+      name: '叶轻绾',
+      icon: '🌸',
       level: 1,
       gender: '女',
-      faction: '',
+      faction: '浣花剑阁',
       power: 0,
       health: { current: 100, max: 100 },
       exp: { current: 0, max: 100 },
-      description: '正阳派内门弟子。',
+      description: '浣花剑阁外门弟子，奇遇入队前不在少侠身旁。',
       equipped: Object.assign({}, emptyEquip),
       skills: {},
       stats: Object.assign({}, st),
@@ -337,12 +337,97 @@ if (savedChars) {
       }
       refreshBaseStats(char);
     });
+    if (typeof CompanionParty !== 'undefined') {
+      CompanionParty.normalizeAllCharacters(characters);
+      CompanionParty.persistNormalizedPlayerCharacters(characters);
+    }
   } catch (e) {
     console.error('从 localStorage 读取角色数据失败:', e);
     characters = createDefaultCharacters();
   }
 } else {
   characters = createDefaultCharacters();
+}
+window.characters = characters;
+
+/** 与武学页 / 战斗同源：ma_ui_char_portrait_*（见 martialArtsData.js） */
+function getCharacterPortraitMeta(charId) {
+  const id = Number(charId) || 1;
+  const flipMap =
+    typeof window !== 'undefined' && window.CHARACTER_PORTRAIT_FLIP_H_BY_ID
+      ? window.CHARACTER_PORTRAIT_FLIP_H_BY_ID
+      : { 1: false, 2: true };
+  const male =
+    (typeof window !== 'undefined' && window.PLAYER_PORTRAIT_MALE) ||
+    '../assets/images/UI/ma_ui_char_portrait_xiao_yunche.png';
+  const female =
+    (typeof window !== 'undefined' && window.PLAYER_PORTRAIT_FEMALE) ||
+    '../assets/images/UI/ma_ui_char_portrait_su_qingli.png';
+  return {
+    portraitUrl: id === 2 ? female : male,
+    iconFallback: id === 2 ? '🌸' : '👨‍🦰',
+    flipH: !!flipMap[id]
+  };
+}
+
+function renderCharacterPortraitHtml(char, variant) {
+  const id = char && char.id != null ? Number(char.id) : 1;
+  const meta = getCharacterPortraitMeta(id);
+  const fallback = (char && char.icon) || meta.iconFallback;
+  const flip = meta.flipH ? ' char-portrait-img--flip-h' : '';
+  const size = variant === 'list' ? 'char-portrait-img--list' : 'char-portrait-img--center';
+  return (
+    '<img class="char-portrait-img ' +
+    size +
+    flip +
+    '" src="' +
+    meta.portraitUrl +
+    '" alt="" loading="lazy" decoding="async" ' +
+    'onerror="this.classList.add(\'char-portrait-img--broken\');this.style.display=\'none\';var s=this.nextElementSibling;if(s)s.style.display=\'\'" />' +
+    '<span class="char-portrait-emoji char-portrait-emoji--' +
+    variant +
+    '" aria-hidden="true" style="display:none">' +
+    fallback +
+    '</span>'
+  );
+}
+
+function applyCharacterPortraitElement(el, char, variant) {
+  if (!el || !char) return;
+  el.classList.toggle('char-item-icon--portrait', variant === 'list');
+  el.classList.toggle('char-icon--portrait', variant === 'center');
+  el.innerHTML = renderCharacterPortraitHtml(char, variant);
+}
+
+function refreshCharacterListPortraits() {
+  document.querySelectorAll('.char-list .char-item').forEach((item, i) => {
+    const char = characters[i];
+    const iconEl = item.querySelector('.char-item-icon');
+    if (char && iconEl) applyCharacterPortraitElement(iconEl, char, 'list');
+  });
+}
+
+function syncCompanionPartyListUI() {
+  if (typeof CompanionParty === 'undefined') return;
+  CompanionParty.normalizeAllCharacters(characters);
+  const items = document.querySelectorAll('.char-list .char-item');
+  items.forEach((item, i) => {
+    const show = CompanionParty.isPartyListIndexVisible(i);
+    item.style.display = show ? '' : 'none';
+    if (!show) item.classList.remove('active');
+    const char = characters[i];
+    if (char && show) {
+      const nameEl = item.querySelector('.char-item-name');
+      if (nameEl) nameEl.textContent = char.name;
+      if (char) applyCharacterPortraitElement(item.querySelector('.char-item-icon'), char, 'list');
+    }
+  });
+  if (!CompanionParty.isJoined() && currentCharacterIndex === 1) {
+    currentCharacterIndex = 0;
+    items.forEach((item, i) => {
+      item.classList.toggle('active', i === 0);
+    });
+  }
 }
 
 /**
@@ -366,6 +451,10 @@ function applyPlayerCharactersFromStorage() {
       }
       refreshBaseStats(char);
     });
+    if (typeof CompanionParty !== 'undefined') {
+      CompanionParty.normalizeAllCharacters(list);
+      CompanionParty.persistNormalizedPlayerCharacters(list);
+    }
     characters = list;
     window.characters = characters;
     return true;
@@ -659,25 +748,23 @@ function loadFromSave() {
       }
     }
 
-    // 更新战力
-    if (player.power !== undefined) {
-      char.power = player.power;
-    }
-
-    // 更新气血
-    if (player.hp !== undefined) {
-      char.health.current = player.hp;
-    }
-    if (player.maxHp !== undefined) {
-      char.health.max = player.maxHp;
-    }
-    
-    // 更新内力（如果存档中有）
-    if (player.mp !== undefined) {
-      char.stats.mp = player.mp;
-    }
-    if (player.maxMp !== undefined) {
-      char.stats.maxMp = player.maxMp;
+    // 根级 player.hp/mp/power 仅属少侠；队友用 player.characters[i] 各自字段，避免切到叶轻绾时被盖成少侠气血
+    if (Number(char.id) === 1) {
+      if (player.power !== undefined) {
+        char.power = player.power;
+      }
+      if (player.hp !== undefined) {
+        char.health.current = player.hp;
+      }
+      if (player.maxHp !== undefined) {
+        char.health.max = player.maxHp;
+      }
+      if (player.mp !== undefined) {
+        char.stats.mp = player.mp;
+      }
+      if (player.maxMp !== undefined) {
+        char.stats.maxMp = player.maxMp;
+      }
     }
     
     // 根级 player.equipped 为旧版单角色字段；若已有 player.characters 则以队伍为准，避免陈旧根数据盖掉队伍装备。
@@ -806,6 +893,9 @@ function loadFromSave() {
 }
 
 function switchCharacter(index) {
+  if (typeof CompanionParty !== 'undefined' && !CompanionParty.isPartyListIndexVisible(index)) {
+    return;
+  }
   if (index >= 0 && index < characters.length) {
     currentCharacterIndex = index;
     
@@ -845,6 +935,7 @@ function toggleCharacterPanel() {
   } catch (e) {}
 
   checkLevelUpNotification();
+  syncCompanionPartyListUI();
   loadCharacterData();
 }
 
@@ -974,12 +1065,17 @@ window.updateEquippedMartialArtsDisplay = updateEquippedMartialArtsDisplay;
 function loadCharacterData() {
   // 先从存档加载最新数据
   loadFromSave();
+  syncCompanionPartyListUI();
 
   let panelLevelUp = null;
   if (typeof reconcileYueliOnCharacterPanel === 'function') {
     panelLevelUp = reconcileYueliOnCharacterPanel();
     if (panelLevelUp && panelLevelUp.levelsGained > 0) {
-      let msg = '阅历已满，升至 ' + panelLevelUp.newLevel + ' 级！';
+      const expName =
+        typeof getCharLevelExpDisplayName === 'function'
+          ? getCharLevelExpDisplayName()
+          : '经验';
+      let msg = expName + '已满，升至 ' + panelLevelUp.newLevel + ' 级！';
       if (panelLevelUp.pointsGained > 0) {
         msg += ' 属性点 +' + panelLevelUp.pointsGained;
       }
@@ -991,6 +1087,25 @@ function loadCharacterData() {
   }
 
   const char = getCurrentCharacter();
+  const expRowLabel = document.getElementById('charExpRowLabel');
+  if (expRowLabel && typeof getCharLevelExpDisplayName === 'function') {
+    expRowLabel.textContent = getCharLevelExpDisplayName();
+  }
+
+  if (
+    char &&
+    Number(char.id) !== 1 &&
+    typeof reconcilePartyMemberYueliOnPanel === 'function'
+  ) {
+    const partyUp = reconcilePartyMemberYueliOnPanel(char);
+    if (partyUp && partyUp.levelsGained > 0) {
+      let msg = char.name + ' 升至 ' + char.level + ' 级！';
+      if (partyUp.pointsGained > 0) {
+        msg += ' 属性点 +' + partyUp.pointsGained;
+      }
+      showCharFloatText(msg, '#ce93d8');
+    }
+  }
   
   // 调试输出：检查当前角色数据
   console.log('=== 角色面板加载数据 ===');
@@ -1005,7 +1120,7 @@ function loadCharacterData() {
     console.log('找不到calculateMartialArtsBonuses函数');
   }
 
-  CHAR_UI.charAvatar.textContent = char.icon;
+  if (CHAR_UI.charAvatar) applyCharacterPortraitElement(CHAR_UI.charAvatar, char, 'center');
   CHAR_UI.charLevel.textContent = 'Lv.' + char.level;
   if (typeof reconcileProtagonistStatPoints === 'function') {
     reconcileProtagonistStatPoints(char);
@@ -1948,19 +2063,19 @@ function persistCharactersAndGameSave() {
     const save = JSON.parse(saveData);
     if (!save.player) return;
     save.player.characters = JSON.parse(JSON.stringify(window.characters));
-    save.player.strength = char.stats.strength;
-    save.player.agility = char.stats.agility;
-    save.player.bone = char.stats.bone;
-    save.player.qi = char.stats.qi;
-    if (!save.player.stats || typeof save.player.stats !== 'object') {
-      save.player.stats = {};
-    }
-    save.player.stats.strength = char.stats.strength;
-    save.player.stats.agility = char.stats.agility;
-    save.player.stats.bone = char.stats.bone;
-    save.player.stats.qi = char.stats.qi;
-    save.player.remainingPoints = char.remainingPoints;
     if (Number(char.id) === 1) {
+      save.player.strength = char.stats.strength;
+      save.player.agility = char.stats.agility;
+      save.player.bone = char.stats.bone;
+      save.player.qi = char.stats.qi;
+      if (!save.player.stats || typeof save.player.stats !== 'object') {
+        save.player.stats = {};
+      }
+      save.player.stats.strength = char.stats.strength;
+      save.player.stats.agility = char.stats.agility;
+      save.player.stats.bone = char.stats.bone;
+      save.player.stats.qi = char.stats.qi;
+      save.player.remainingPoints = char.remainingPoints;
       save.player.level = char.level;
       save.player.exp = char.exp && char.exp.current != null ? char.exp.current : save.player.exp;
       if (!save.player.characters) save.player.characters = [];
@@ -1970,12 +2085,12 @@ function persistCharactersAndGameSave() {
         save.player.characters[0].exp.current = save.player.exp;
         save.player.characters[0].remainingPoints = char.remainingPoints;
       }
+      save.player.hp = char.health.current;
+      save.player.maxHp = char.health.max;
+      save.player.mp = char.stats.mp;
+      save.player.maxMp = char.stats.maxMp;
+      if (char.equipped) save.player.equipped = char.equipped;
     }
-    save.player.hp = char.health.current;
-    save.player.maxHp = char.health.max;
-    save.player.mp = char.stats.mp;
-    save.player.maxMp = char.stats.maxMp;
-    if (char.equipped) save.player.equipped = char.equipped;
     localStorage.setItem('game_save_0', JSON.stringify(save));
   } catch (e) {
     console.error('同步 game_save_0 失败:', e);
@@ -2564,7 +2679,21 @@ window.addEventListener('click', (e) => {
 
 // 暴露函数给全局
 window.toggleCharacterPanel = toggleCharacterPanel;
+/** 按 charId 重算四维衍生基础属性并落盘（入队/读档修复用） */
+function syncCharacterBaseStatsById(charId) {
+  const idx = characters.findIndex(function (c) {
+    return Number(c.id) === Number(charId);
+  });
+  if (idx < 0) return;
+  const prev = currentCharacterIndex;
+  currentCharacterIndex = idx;
+  updateStatsFromFour();
+  currentCharacterIndex = prev;
+  saveCharactersToLocalStorage();
+}
+
 window.switchCharacter = switchCharacter;
+window.syncCharacterBaseStatsById = syncCharacterBaseStatsById;
 window.switchCharTab = switchCharTab;
 window.showCharEquipment = showCharEquipment;
 window.equipCharItem = equipCharItem;
@@ -2574,4 +2703,21 @@ window.confirmCharPoint = confirmCharPoint;
 window.cancelCharPoint = cancelCharPoint;
 window.resetFourDimPoints = resetFourDimPoints;
 window.applyPlayerCharactersFromStorage = applyPlayerCharactersFromStorage;
+window.refreshCharacterListPortraits = refreshCharacterListPortraits;
 window.characters = characters;
+
+if (document.getElementById('charAvatar')) {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      refreshCharacterListPortraits();
+      if (characters[currentCharacterIndex] && CHAR_UI.charAvatar) {
+        applyCharacterPortraitElement(CHAR_UI.charAvatar, characters[currentCharacterIndex], 'center');
+      }
+    });
+  } else {
+    refreshCharacterListPortraits();
+    if (characters[currentCharacterIndex] && CHAR_UI.charAvatar) {
+      applyCharacterPortraitElement(CHAR_UI.charAvatar, characters[currentCharacterIndex], 'center');
+    }
+  }
+}

@@ -87,7 +87,14 @@
 
   function openTask() {
     rememberReturnContextForQuickNav();
-    window.location.href = 'task.html';
+    var href = 'task.html';
+    try {
+      var st = JSON.parse(localStorage.getItem('playerState') || '{}');
+      if (st.activeTasks && st.activeTasks.adv_companion_01 && !st.companionJoined) {
+        href = 'task.html?type=adventure';
+      }
+    } catch (e) {}
+    window.location.href = href;
   }
 
   window.submapOpenCharacter = openCharacterFromSubmap;

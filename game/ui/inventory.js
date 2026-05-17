@@ -452,17 +452,25 @@ function showItemDetail(item) {
 }
 
 function getAttrName(attr) {
+  const extras = {
+    vitality: '体质',
+    spirit: '内力属性',
+    critRate: '暴击率',
+    dodgeRate: '闪避率'
+  };
+  if (extras[attr]) return extras[attr];
+  if (typeof AttributeHelper !== 'undefined') {
+    return AttributeHelper.getDisplayName(attr);
+  }
   const attrNames = {
     attack: '攻击',
     defense: '防御',
     hp: '气血',
     mp: '内力',
-    strength: '力量',
-    agility: '敏捷',
-    vitality: '体质',
-    spirit: '内力属性',
-    critRate: '暴击率',
-    dodgeRate: '闪避率'
+    parry: '招架',
+    hit: '命中',
+    dodge: '闪避',
+    speed: '速度'
   };
   return attrNames[attr] || attr;
 }

@@ -275,8 +275,7 @@
      * 处理新游戏
      */
     function handleNewGame() {
-      window.game.startNewGame();
-      openMap();
+      window.location.href = './ui/character_creation.html';
     }
 
     /**
@@ -331,9 +330,8 @@
           slotElement.className = 'save-slot empty';
           slotElement.innerHTML = `<div class="save-name">存档 ${i + 1}</div><div class="save-info">空存档槽</div>`;
           slotElement.addEventListener('click', async () => {
-            window.game.startNewGame();
-            await window.game.saveGame(i);
-            openMap();
+            sessionStorage.setItem('pending_new_game_slot', String(i));
+            window.location.href = './ui/character_creation.html';
           });
         }
         

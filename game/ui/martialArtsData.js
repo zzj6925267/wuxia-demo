@@ -450,7 +450,7 @@ const INITIAL_PLAYER_MARTIAL_ARTS = [
 // 角色列表（跟角色系统一致）
 const martialCharacters = [
   { id: 1, name: '少侠', portraitUrl: PLAYER_PORTRAIT_MALE, iconFallback: '👨‍🦰' },
-  { id: 2, name: '苏瑶', portraitUrl: PLAYER_PORTRAIT_FEMALE, iconFallback: '👩' }
+  { id: 2, name: '叶轻绾', portraitUrl: PLAYER_PORTRAIT_FEMALE, iconFallback: '🌸' }
 ];
 
 let currentMartialCharacterId = 1;

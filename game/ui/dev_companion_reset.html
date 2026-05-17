@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>开发 · 队友入队线重置</title>
+  <style>
+    body {
+      font-family: 'Microsoft YaHei', sans-serif;
+      background: #1a1d22;
+      color: #ddd;
+      padding: 24px;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+    h1 { font-size: 18px; color: #ce93d8; }
+    p { line-height: 1.6; font-size: 14px; color: #aaa; }
+    .btn {
+      display: block;
+      width: 100%;
+      margin: 10px 0;
+      padding: 12px;
+      border: 1px solid #6b6254;
+      border-radius: 8px;
+      background: #2c2822;
+      color: #f0e6d8;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .btn:hover { border-color: #c9a227; }
+    .btn-primary { border-color: #ce93d8; }
+    #log { margin-top: 16px; font-size: 13px; color: #8bc34a; white-space: pre-wrap; }
+    a { color: #90caf9; }
+  </style>
+</head>
+<body>
+  <h1>队友 · 叶轻绾（charId 2）</h1>
+  <p>须在 <code>node server.js</code> 启动后使用本页（勿 file://）。</p>
+  <button type="button" class="btn" id="btnRemoveOnly">仅从队伍移除（保留奇遇进度）</button>
+  <button type="button" class="btn btn-primary" id="btnRepair">修复卡住的入队线（推荐）</button>
+  <button type="button" class="btn" id="btnFixAfterGate">镇口已胜、后巷无人 → 开启邀请</button>
+  <button type="button" class="btn" id="btnFullReset">重置《陌路相逢》并移除队友</button>
+  <button type="button" class="btn" id="btnMap">前往江湖舆图（大地图）</button>
+  <button type="button" class="btn" id="btnQs">前往青石镇 · 后巷</button>
+  <button type="button" class="btn" id="btnTask">打开任务页 · 奇遇</button>
+  <p><a href="map.html">map.html</a> · <a href="qingstone_map.html">qingstone_map.html</a> · <a href="task.html">task.html</a></p>
+  <div id="log"></div>
+
+  <script src="qingstoneCompanionQuest.js"></script>
+  <script>
+    const ADV_IDS = [
+      'adv_companion_01',
+      'adv_companion_02',
+      'adv_companion_03',
+      'adv_companion_04',
+      'adv_companion_05'
+    ];
+
+    function log(msg) {
+      document.getElementById('log').textContent = msg;
+    }
+
+    function readState() {
+      try {
+        return JSON.parse(localStorage.getItem('playerState') || '{}');
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function writeState(state) {
+      localStorage.setItem('playerState', JSON.stringify(state));
+    }
+
+    function removeCompanionFromParty() {
+      const state = readState();
+      state.companionJoined = false;
+      delete state.advCompanionAwaitInvite;
+      delete state.companionBattle2Cleared;
+      writeState(state);
+    }
+
+    function clearAdvCompanionFlags() {
+      try {
+        localStorage.removeItem('adv_companion_battle1_victory');
+        localStorage.removeItem('adv_companion_battle2_victory');
+      } catch (e) {}
+    }
+
+    function resetCompanionQuest() {
+      removeCompanionFromParty();
+      clearAdvCompanionFlags();
+      const state = readState();
+      if (!state.activeTasks) state.activeTasks = {};
+      ADV_IDS.forEach(function (id) {
+        delete state.activeTasks[id];
+      });
+      writeState(state);
+      localStorage.setItem('dev_qingstone_node', 'back_lane');
+    }
+
+    document.getElementById('btnRemoveOnly').addEventListener('click', function () {
+      removeCompanionFromParty();
+      log('已设置 companionJoined = false（奇遇任务进度未清）。\n战斗与地图将不再带 charId 2。');
+    });
+
+    document.getElementById('btnRepair').addEventListener('click', function () {
+      if (window.QingstoneCompanionQuest && QingstoneCompanionQuest.reconcileCompanionQuestChain) {
+        QingstoneCompanionQuest.reconcileCompanionQuestChain();
+      } else {
+        const state = readState();
+        if (state.activeTasks && state.activeTasks.adv_companion_01) {
+          const done01 =
+            state.activeTasks.adv_companion_01.completed ||
+            state.activeTasks.adv_companion_01.isCompleted;
+          if (done01 && !state.activeTasks.adv_companion_02) {
+            state.activeTasks.adv_companion_02 = { completed: false, isCompleted: false };
+            writeState(state);
+          }
+        }
+      }
+      localStorage.setItem('dev_qingstone_node', 'renxin_herbal');
+      log('已尝试修复任务链并补发未领奖励。\n请刷新青石镇 → 仁心药铺，应可见贺行舟。');
+    });
+
+    document.getElementById('btnFixAfterGate').addEventListener('click', function () {
+      const state = readState();
+      state.advCompanionAwaitInvite = true;
+      state.companionBattle2Cleared = true;
+      writeState(state);
+      clearAdvCompanionFlags();
+      localStorage.setItem('dev_qingstone_node', 'back_lane');
+      if (window.QingstoneCompanionQuest && QingstoneCompanionQuest.reconcileCompanionQuestChain) {
+        QingstoneCompanionQuest.reconcileCompanionQuestChain();
+      }
+      log(
+        '已标记镇口战完成，当前步骤应为「后巷邀请」。\n1 秒后跳转青石镇后巷，找叶轻绾点「邀请同行」。'
+      );
+      setTimeout(function () {
+        window.location.href = 'qingstone_map.html';
+      }, 900);
+    });
+
+    document.getElementById('btnFullReset').addEventListener('click', function () {
+      resetCompanionQuest();
+      log(
+        '已重置：《陌路相逢》任务、战后旗标、入队标记。\n已设 dev_qingstone_node = back_lane。\n请进青石镇后巷找叶轻绾。'
+      );
+    });
+
+    document.getElementById('btnMap').addEventListener('click', function () {
+      window.location.href = 'map.html';
+    });
+
+    document.getElementById('btnQs').addEventListener('click', function () {
+      localStorage.setItem('dev_qingstone_node', 'back_lane');
+      window.location.href = 'qingstone_map.html';
+    });
+
+    document.getElementById('btnTask').addEventListener('click', function () {
+      window.location.href = 'task.html';
+    });
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('auto') === 'full') {
+      resetCompanionQuest();
+      log('自动：已完整重置入队线，1 秒后跳转大地图…');
+      setTimeout(function () {
+        window.location.href = 'map.html';
+      }, 900);
+    } else if (params.get('auto') === 'remove') {
+      removeCompanionFromParty();
+      log('自动：已从队伍移除队友。');
+    }
+  </script>
+</body>
+</html>
